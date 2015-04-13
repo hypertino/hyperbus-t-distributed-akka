@@ -32,11 +32,16 @@ credentials += Credentials(Path.userHome / ".ivy2" / ".innova_credentials")
 resolvers += "Innova libs repo" at "http://repproxy.srv.inn.ru/artifactory/libs-release-local"
 
 libraryDependencies ++= Seq(
+  "eu.inn" %% "binders-core" % "0.5.12",
+  "eu.inn" %% "binders-json" % "0.5.12",
   "eu.inn" %% "sbus-core" % "[0.1.+]",
   "eu.inn" %% "forgame-datamodel" % "[0.1.+]",
   "eu.inn" %% "fluentd-scala" % "0.1.10",
   "eu.inn" %% "util-test" % "[0.1.+]" % "test",
   "eu.inn" %% "util-is-client" % "[0.1.+]",
   "eu.inn" %% "util-jdbc" % "[0.1.+]",
+  "com.typesafe.akka" %% "akka-cluster" % "2.3.9",
+  "com.typesafe.akka" %% "akka-contrib" % "2.3.9",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.9" % "test"
 )
+
