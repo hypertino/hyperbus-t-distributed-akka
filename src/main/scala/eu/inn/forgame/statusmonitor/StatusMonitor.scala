@@ -38,7 +38,8 @@ trait StatusMonitorComponent {
 
     def ready: Actor.Receive = {
       case s: String ⇒
-        log.info("Got {}", s)
+        log.info(s"Got $s replying to ${sender()}")
+        sender() ! "reply:" + s
       case _ =>
         log.info("GotX")
     }

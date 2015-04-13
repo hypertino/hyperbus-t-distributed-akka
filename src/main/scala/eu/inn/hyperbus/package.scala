@@ -109,6 +109,25 @@ package object hyperbus {
   // --------------- Bus Example ---------------
 
   class Bus {
+    val map = new scala.collection.mutable.HashMap[String, Any => Any]()
+
+    def ask[IN,OUT](topic: String, t:IN):OUT = {
+      map.get(topic) map { f =>
+        f(t).asInstanceOf[OUT]
+      } getOrElse {
+        throw new RuntimeException(s"No route to topic $topic")
+      }
+    }
+
+    def on[IN, OUT](topic: String, function: IN => OUT) = {
+      val f: Any => Any = function.asInstanceOf[Any => Any]
+      map += topic -> f
+    }
+
+    def off(topic: String) = map.remove(topic)
+  }
+
+  class HyperBus(bus: Bus) {
 
     def ??[RESP <: Response[_], REQ <: Request[_]] (r: REQ with DefinedResponse[RESP]): Future[RESP] = {
       val s = r.uri
@@ -118,7 +137,7 @@ package object hyperbus {
     //def on
   }
 
-  val hbus = new Bus
+  val hbus = new HyperBus(null)
 
   // --------------- Domain Example ---------------
 
@@ -154,7 +173,15 @@ package object hyperbus {
 
   object test {
     def x: Unit = {
+      val bus = new Bus
 
+      bus.on[String,Unit]("/test", (v: String) => {
+        println(s"Received $v")
+      })
+
+
+      bus.ask[String,String] ("/test","ha")
+/*
       import eu.inn.hyperbus.users._
 
       import ExecutionContext.Implicits.global
@@ -164,6 +191,7 @@ package object hyperbus {
       }
 
       ///val g = new Get["Ha"  ]("1")
+      */
     }
   }
 }
