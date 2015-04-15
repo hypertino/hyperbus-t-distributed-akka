@@ -12,9 +12,7 @@ class HyperBus(val underlyingBus: ServiceBus) {
   def subscribe[OUT/* <: Response[_]*/,IN <: Request[_]] (
                                                         groupName: Option[String],
                                                         handler: (IN) => Future[OUT]
-                                                        ): String = {
-
-  }
+                                                        ): String = ???
 
   def unsubscribe(subscriptionId: String): Unit = underlyingBus.unsubscribe(subscriptionId)
 }

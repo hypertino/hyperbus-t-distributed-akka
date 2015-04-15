@@ -12,15 +12,14 @@ import scala.util.Random
 todo:
   + annotations like // @WithContentType("application/vnd+identified-user.json"), @WithURI
 
- */
 package object hyperbus {
 
 
 
   //class DynamicResponse(initBody: DynamicBody, val status: Int) extends Response[DynamicBody](initBody)
 
-  /*class DynamicRequest(body: DynamicBody, val uriTemplate: String, val method: String) extends Request(body)
-    with DefinedResponse[DynamicResponse]*/
+  class DynamicRequest(body: DynamicBody, val uriTemplate: String, val method: String) extends Request(body)
+    with DefinedResponse[DynamicResponse]
 
   // --------------- Bus Example ---------------
 
@@ -57,7 +56,7 @@ package object hyperbus {
       }
     }
   }
-/*
+
   object test {
     def x: Unit = {
       val inprocTransport = new InprocTransport
@@ -81,5 +80,6 @@ package object hyperbus {
       ///val g = new Get["Ha"  ]("1")
 
     }
-  }*/
+  }
 }
+*/
