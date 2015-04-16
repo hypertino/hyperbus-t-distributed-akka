@@ -20,16 +20,11 @@ object StandardMethods {
   val DELETE = "delete"
 }
 
-case class Link(href: String, templated: Option[Boolean] = None, typ: Option[String] = None)
+case class Link(url: String, templated: Option[Boolean] = None, typ: Option[String] = None)
 
-trait Body
-
-trait Links {
-  def links: Map[String, Link]
-}
-
-trait ContentType {
-  def contentType: String
+trait Body {
+  def links: Map[String, Link] = Map()
+  def contentType: Option[String] = None
 }
 
 abstract class Message[B <: Body](initBody:B){
@@ -37,7 +32,7 @@ abstract class Message[B <: Body](initBody:B){
 }
 
 abstract class Request[B <: Body](initBody:B) extends Message[B](initBody){
-  def uri: String
+  def url: String
   def method: String
 }
 
@@ -53,14 +48,16 @@ class OK[B <: Body](initBody: B) extends Response[B](initBody) {
   override def status: Int = Status.OK
 }
 
-class CreatedResponseBody(initLocation: Link, otherLinks: Map[String, Link] = Map())
-  extends Body with Links {
-  val links = otherLinks + (StandardLink.LOCATION -> initLocation)
+trait CreatedResponseBody extends Body {
   def location = links(StandardLink.LOCATION)
 }
 
 class Created[B <: CreatedResponseBody](initBody: B) extends Response[B](initBody) {
   override def status: Int = Status.CREATED
+}
+
+class CreatedResponseBodyStatic(initLocation: Link, otherLinks: Map[String,Link] = Map()) extends  CreatedResponseBody {
+  override def links = otherLinks + (StandardLink.LOCATION -> initLocation)
 }
 
 // --------------- Request classes ---------------
@@ -91,4 +88,6 @@ trait DefinedResponse[R <: Response[_]] {
 
 // --------------- Dynamic ---------------
 
-class DynamicBody(content: DynamicValue) extends Body
+case class DynamicBody(content: DynamicValue, override val contentType: Option[String]) extends Body {
+  override def links: Map[String, Link] = content.__links[Map[String, Link]]
+}

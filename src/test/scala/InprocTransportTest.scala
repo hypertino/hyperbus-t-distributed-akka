@@ -1,6 +1,6 @@
 import java.util.concurrent.atomic.AtomicInteger
 
-import eu.inn.hyperbus.transport.{NoTransportRouteException, InprocTransport}
+import eu.inn.servicebus.transport.{NoTransportRouteException, InprocTransport}
 import org.scalatest.{Matchers, FreeSpec}
 import org.scalatest.concurrent.{ScalaFutures, Futures}
 import org.scalatest.time.{Span, Seconds, Millis}

@@ -3,7 +3,7 @@ package eu.inn
 import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.binders.dynamic._
-import eu.inn.hyperbus.transport.{InprocTransport, ServerTransport, ClientTransport}
+import eu.inn.servicebus.transport.{InprocTransport, ServerTransport, ClientTransport}
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.{Promise, ExecutionContext, Future}
 import scala.util.Random
@@ -11,6 +11,9 @@ import scala.util.Random
 /*
 todo:
   + annotations like // @WithContentType("application/vnd+identified-user.json"), @WithURI
+  + correlationId, sequenceId, replyTo
+  + other headers?
+  + Encoder/Decoder - String replace with Stream
 
 package object hyperbus {
 

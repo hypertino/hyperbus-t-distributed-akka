@@ -1,6 +1,6 @@
-package eu.inn.hyperbus.serialization
+package eu.inn.servicebus.serialization
 
-import eu.inn.hyperbus.serialization.impl.JsonSerializationMacro
+import eu.inn.servicebus.serialization.impl.JsonSerializationMacro
 
 import scala.language.experimental.macros
 

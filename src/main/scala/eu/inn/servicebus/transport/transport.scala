@@ -1,8 +1,8 @@
-package eu.inn.hyperbus.transport
+package eu.inn.servicebus.transport
 
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.inn.hyperbus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{Future, Promise}
@@ -31,7 +31,7 @@ trait ServerTransport {
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 
-private [hyperbus] case class Subscriber[OUT,IN](id: String, handler: IN => Future[OUT])
+private [transport] case class Subscriber[OUT,IN](id: String, handler: IN => Future[OUT])
 
 class InprocTransport extends ClientTransport with ServerTransport {
   import scala.collection.concurrent.TrieMap

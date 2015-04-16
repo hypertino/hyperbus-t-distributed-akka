@@ -1,4 +1,4 @@
-import eu.inn.hyperbus.serialization.{JsonDecoder, JsonEncoder}
+import eu.inn.servicebus.serialization.{JsonDecoder, JsonEncoder}
 import org.scalatest.{Matchers, FreeSpec}
 
 case class TestMsg(x: String, y: Int)

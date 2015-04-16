@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.impl
+package eu.inn.servicebus.impl
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
@@ -14,11 +14,11 @@ object ServiceBusMacro {
     val in = weakTypeOf[IN]
 
     val obj = q"""{
-      import eu.inn.hyperbus.serialization._
+      import eu.inn.servicebus.serialization._
       val decoder = JsonDecoder.createDecoder[$out]
       val encoder = JsonEncoder.createEncoder[$in]
       val thiz = $thiz
-      thiz.lookupClientTransport($topic).send[$out,$in]($topic,$message,decoder,encoder)
+      thiz.send[$out,$in]($topic,$message,decoder,encoder)
     }"""
     //println(obj)
     c.Expr[Future[OUT]](obj)
@@ -39,7 +39,7 @@ object ServiceBusMacro {
     val in = weakTypeOf[IN]
 
     val obj = q"""{
-      import eu.inn.hyperbus.serialization._
+      import eu.inn.servicebus.serialization._
       val decoder = JsonDecoder.createDecoder[$out]
       val encoder = JsonEncoder.createEncoder[$in]
       val thiz = $thiz

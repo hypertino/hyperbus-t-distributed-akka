@@ -1,10 +1,10 @@
-package eu.inn.hyperbus
+package eu.inn.servicebus
 
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.inn.hyperbus.impl.ServiceBusMacro
-import eu.inn.hyperbus.serialization.{Decoder, Encoder}
-import eu.inn.hyperbus.transport.{ServerTransport, ClientTransport}
+import eu.inn.servicebus.impl.ServiceBusMacro
+import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.transport.{ClientTransport, ServerTransport}
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
@@ -21,6 +21,15 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                     message: IN
                     ): Future[OUT] = macro ServiceBusMacro.send[OUT,IN]
 
+  def send[OUT,IN](
+                    topic: String,
+                    message: IN,
+                    outputDecoder: Decoder[OUT],
+                    inputEncoder: Encoder[IN]
+                    ): Future[OUT] = {
+    this.lookupClientTransport(topic).send[OUT,IN](topic,message,outputDecoder,inputEncoder)
+  }
+
   def subscribe[OUT,IN](
                          topic: String,
                          groupName: Option[String],
@@ -36,19 +45,13 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     }
   }
 
-  def lookupServerTransport(topic: String): ServerTransport =
-    serverRoutes.getOrElse(topic, defaultServerTransport)
-
-  def lookupClientTransport(topic: String): ClientTransport =
-    clientRoutes.getOrElse(topic, defaultClientTransport)
-
-  protected[hyperbus] def subscribe[OUT,IN](
-      topic: String,
-      groupName: Option[String],
-      inputDecoder: Decoder[IN],
-      outputEncoder: Encoder[OUT],
-      handler: (IN) => Future[OUT]
-    ): String = {
+  def subscribe[OUT,IN](
+                         topic: String,
+                         groupName: Option[String],
+                         inputDecoder: Decoder[IN],
+                         outputEncoder: Encoder[OUT],
+                         handler: (IN) => Future[OUT]
+                         ): String = {
 
     val id = this.subscriptionId.incrementAndGet().toHexString + "-" +
       lookupServerTransport(topic: String).subscribe[OUT,IN](
@@ -57,4 +60,10 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     subscriptions.put(id, topic)
     id
   }
+
+  protected def lookupServerTransport(topic: String): ServerTransport =
+    serverRoutes.getOrElse(topic, defaultServerTransport)
+
+  protected def lookupClientTransport(topic: String): ClientTransport =
+    clientRoutes.getOrElse(topic, defaultClientTransport)
 }

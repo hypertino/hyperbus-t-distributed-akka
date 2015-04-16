@@ -1,6 +1,6 @@
-package eu.inn.hyperbus.serialization.impl
+package eu.inn.servicebus.serialization.impl
 
-import eu.inn.hyperbus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.serialization.{Decoder, Encoder}
 
 import scala.reflect.macros.blackbox.Context
 
@@ -10,7 +10,7 @@ object JsonSerializationMacro {
     val t = weakTypeOf[T]
 
     val obj = q"""
-      new Object with eu.inn.hyperbus.serialization.Encoder[$t] {
+      new Object with eu.inn.servicebus.serialization.Encoder[$t] {
         import eu.inn.binders.json._
         def encode(t: $t) = t.toJson
       }
@@ -24,7 +24,7 @@ object JsonSerializationMacro {
     val t = weakTypeOf[T]
 
     val obj = q"""
-      new Object with eu.inn.hyperbus.serialization.Decoder[$t] {
+      new Object with eu.inn.servicebus.serialization.Decoder[$t] {
         import eu.inn.binders.json._
         def decode(s: String) = s.parseJson[$t]
       }

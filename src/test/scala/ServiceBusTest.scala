@@ -1,7 +1,5 @@
-package eu.inn.hyperbus.serialization
-
-import eu.inn.hyperbus.ServiceBus
-import eu.inn.hyperbus.transport.InprocTransport
+import eu.inn.servicebus.transport.InprocTransport
+import eu.inn.servicebus.ServiceBus
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
