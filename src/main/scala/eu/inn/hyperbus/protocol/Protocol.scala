@@ -39,16 +39,16 @@ object Body {
   type LinksMap = Map[String, Either[Link,Seq[Link]]]
 }
 
-abstract class Message[B <: Body](initBody:B){
-  def body: B = initBody
+trait Message[B <: Body]{
+  def body: B
 }
 
-abstract class Request[B <: Body](initBody:B) extends Message[B](initBody){
+trait Request[B <: Body] extends Message[B]{
   def url: String
   def method: String
 }
 
-abstract class Response[B <: Body](initBody:B) extends Message[B](initBody) {
+trait Response[B <: Body] extends Message[B] {
   def status: Int
 }
 
@@ -56,7 +56,7 @@ abstract class Response[B <: Body](initBody:B) extends Message[B](initBody) {
 
 // --------------- Responses ---------------
 
-class OK[B <: Body](initBody: B) extends Response[B](initBody) {
+case class OK[B <: Body](body: B) extends Response[B] {
   override def status: Int = Status.OK
 }
 
@@ -64,7 +64,7 @@ trait CreatedBody extends Body with Links {
   def location = links(StandardLink.LOCATION)
 }
 
-class Created[B <: CreatedBody](initBody: B) extends Response[B](initBody) {
+case class Created[B <: CreatedBody](body: B) extends Response[B] {
   override def status: Int = Status.CREATED
 }
 
@@ -75,38 +75,41 @@ class CreatedResponseBodyStatic(initLocation: Link, otherLinks: Map[String,Link]
 */
 
 // --------------- Request classes ---------------
+trait DynamicRequest
 
-abstract class Get[B <: Body](initBody: B) extends Request[B](initBody) {
+trait Get[B <: Body] extends Request[B] {
   override def method = StandardMethods.GET
 }
+abstract class StaticGet[B <: Body](initBody: B) extends Get[B]
+case class DynamicGet[B <: Body](url: String, body: B) extends Get[B] with DynamicRequest
 
-abstract class Delete[B <: Body](initBody: B) extends Request[B](initBody) {
+trait Delete[B <: Body] extends Request[B] {
   override def method = StandardMethods.DELETE
 }
+abstract class StaticDelete[B <: Body](initBody: B) extends Delete[B]
+case class DynamicDelete[B <: Body](url: String, body: B) extends Delete[B] with DynamicRequest
 
-abstract class Post[B <: Body](initBody: B) extends Request[B](initBody) {
+trait Post[B <: Body] extends Request[B] {
   override def method = StandardMethods.POST
 }
+abstract class StaticPost[B <: Body](initBody: B) extends Post[B]
+case class DynamicPost[B <: Body](url: String, body: B) extends Post[B] with DynamicRequest
 
-abstract class Put[B <: Body](initBody: B) extends Request[B](initBody) {
+trait Put[B <: Body] extends Request[B] {
   override def method = StandardMethods.PUT
 }
+abstract class StaticPut[B <: Body](initBody: B) extends Put[B]
+case class DynamicPut[B <: Body](url: String, body: B) extends Put[B] with DynamicRequest
 
-abstract class Patch[B <: Body](initBody: B) extends Request[B](initBody) {
+trait Patch[B <: Body] extends Request[B] {
   override def method = StandardMethods.PATCH
 }
+abstract class StaticPatch[B <: Body](initBody: B) extends Patch[B]
+case class DynamicPatch[B <: Body](url: String, body: B) extends Patch[B] with DynamicRequest
 
 trait DefinedResponse[R <: Response[_]] {
   type responseType = R
 }
-
-trait DynamicRequest
-
-case class DynamicGet[B <: Body](url: String, initBody: B) extends Get(initBody) with DynamicRequest
-class DynamicDelete[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
-class DynamicPost[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
-class DynamicPut[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
-class DynamicPatch[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
 
 // --------------- Dynamic ---------------
 

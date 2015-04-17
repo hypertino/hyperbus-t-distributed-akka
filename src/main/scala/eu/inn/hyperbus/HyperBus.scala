@@ -7,7 +7,19 @@ import eu.inn.servicebus.impl.Subscriptions
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 
-private [hyperbus] case class Subscription[OUT,IN](handler: IN => Future[OUT])
+private [hyperbus] class Subscription[OUT,IN <: Request[Body]]
+  (val subscriptions: TrieMap[String, (IN) => Future[OUT]]) {
+
+  def innerHandler(in: IN with DynamicRequest): Future[OUT] = {
+    val key: String = in.body.contentType map (c => in.method + ":" + c) getOrElse in.method
+
+    subscriptions.get(key).map { h=>
+      h(in)
+    } getOrElse {
+      throw new RuntimeException("yoyo") // todo: unhandled messages
+    }
+  }
+}
 
 class HyperBus(val underlyingBus: ServiceBus) {
 
@@ -25,21 +37,24 @@ class HyperBus(val underlyingBus: ServiceBus) {
     underlyingBus.subscribe[OUT,IN]("/resources", groupName, null, null, handler)
   }
 
-//  def subscribe[OUT/* <: Response[_]*/,IN <: Request[_]] (
-//                                                           url: String,
-//                                                           method: String,
-//                                                           contentType: Option[String],
-//                                                           groupName: Option[String],
-//                                                           handler: (IN) => Future[OUT]
-//                                                           ): String = {
-//
-//
-//
-//    val subscription = Subscription(handler)
-//    val id = underlyingBus.subscribe[OUT,IN](url, groupName, null, null, handler)
-//
-//
-//  }
+  val subscriptions: TrieMap[]
+
+  def subscribe[OUT/* <: Response[_]*/,IN <: Request[_]] (
+                                                           url: String,
+                                                           method: String,
+                                                           contentType: Option[String],
+                                                           groupName: Option[String],
+                                                           handler: (IN) => Future[OUT]
+                                                           ): String = {
+
+
+
+    //val subscription = Subscription(handler)
+    //val id = underlyingBus.subscribe[OUT,IN](url, groupName, null, null, handler)
+
+    //id
+    ""
+  }
 
   def unsubscribe(subscriptionId: String): Unit = underlyingBus.unsubscribe(subscriptionId)
 }

@@ -22,11 +22,11 @@ case class TestCreatedBody(resourceId: String,
 
 
 @url("/resources")
-case class TestPost1(initBody: TestBody1) extends Post(initBody)
+case class TestPost1(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
-case class TestPost2(initBody: TestBody2) extends Post(initBody)
+case class TestPost2(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {

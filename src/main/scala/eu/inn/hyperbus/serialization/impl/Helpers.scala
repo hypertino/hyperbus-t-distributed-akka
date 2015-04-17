@@ -30,11 +30,11 @@ object Helpers {
     writeUtf8("}",out)
   }
 
-  def decodeMessage[B <: Body](in: InputStream, bodyDecoder: Decoder[B]) = {
+  def decodeMessage[B <: Body](in: InputStream, bodyDecoder: Decoder[B]) = ???/*{
     new Post(bodyDecoder.decode(in)) {
       def url = ""
     }
-  }
+  }*/
 
   def writeUtf8(s:String, out: OutputStream) = {
     out.write(s.getBytes("UTF8"))
