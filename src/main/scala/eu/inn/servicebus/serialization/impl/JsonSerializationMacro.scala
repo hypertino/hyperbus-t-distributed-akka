@@ -13,6 +13,11 @@ private [servicebus] object JsonSerializationMacro {
       new Object with eu.inn.servicebus.serialization.Encoder[$t] {
         import eu.inn.binders.json._
         def encode(t: $t) = t.toJson
+        def encode(t: $t, out: java.io.OutputStream) = {
+          SerializerFactory.findFactory().withStreamGenerator(out, serializer=> {
+            serializer.bind[${weakTypeOf[T]}](t)
+          })
+        }
       }
     """
     //println(obj)
@@ -26,7 +31,11 @@ private [servicebus] object JsonSerializationMacro {
     val obj = q"""
       new Object with eu.inn.servicebus.serialization.Decoder[$t] {
         import eu.inn.binders.json._
-        def decode(s: String) = s.parseJson[$t]
+        def decode(in: java.io.InputStream) = {
+          SerializerFactory.findFactory().withStreamParser[${weakTypeOf[T]}](in, deserializer=> {
+          deserializer.unbind[${weakTypeOf[T]}]
+          })
+        }
       }
     """
     //println(obj)

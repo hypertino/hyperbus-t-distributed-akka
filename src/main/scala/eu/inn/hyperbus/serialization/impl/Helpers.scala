@@ -1,28 +1,42 @@
 package eu.inn.hyperbus.serialization.impl
 
+import java.io.{InputStream, OutputStream}
+
 import eu.inn.hyperbus.protocol.{Post, Response, Body, Request}
-import eu.inn.servicebus.serialization.Decoder
+import eu.inn.servicebus.serialization.{Encoder, Decoder}
 
 object Helpers {
 
   case class RequestHeader(url:String, method:String, contentType:Option[String])
   case class ResponseHeader(status:Int)
-  
-  def toJson[B <: Body](request: Request[B], bodyJson: String) = {
+
+  def encodeMessage[B <: Body](request: Request[B], b: B, bodyEncoder: Encoder[B], out: OutputStream) = {
     import eu.inn.binders.json._
     val req = RequestHeader(request.url, request.method, request.body.contentType)
-    s"""{"request":${req.toJson},"body":$bodyJson"}"""
+    writeUtf8("""{"request":""",out)
+    req.writeJson(out)
+    writeUtf8(""","body":""",out)
+    bodyEncoder.encode(b, out)
+    writeUtf8("}",out)
   }
 
-  def toJson[B <: Body](response: Response[B], bodyJson: String) = {
+  def encodeMessage[B <: Body](response: Response[B], b: B, bodyEncoder: Encoder[B], out: OutputStream) = {
     import eu.inn.binders.json._
     val resp = ResponseHeader(response.status)
-    s"""{"request":${resp.toJson},"body":$bodyJson"}"""
+    writeUtf8("""{"response":""",out)
+    resp.writeJson(out)
+    writeUtf8(""","body":""",out)
+    bodyEncoder.encode(b, out)
+    writeUtf8("}",out)
   }
 
-  def parseJson[B <: Body](jsonString: String, bodyDecoder: Decoder[B]) = {
-    new Post(bodyDecoder.decode(jsonString)) {
+  def decodeMessage[B <: Body](in: InputStream, bodyDecoder: Decoder[B]) = {
+    new Post(bodyDecoder.decode(in)) {
       def url = ""
     }
+  }
+
+  def writeUtf8(s:String, out: OutputStream) = {
+    out.write(s.getBytes("UTF8"))
   }
 }
