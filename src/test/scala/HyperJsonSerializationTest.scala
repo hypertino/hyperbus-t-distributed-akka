@@ -39,7 +39,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
       //println(s)
       s should equal("""{"response":{"status":201},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
     }
-
+/*
     "Decode Response" in {
       val decoder = HyperJsonDecoder.createDecoder[Created[TestCreatedBody]]
       val s = """{"response":{"status":201},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true,"type":null}}}}"""
@@ -48,6 +48,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
       //println(s)
       r should equal(new Created(TestCreatedBody("100500")))
     }
+*/
 
 //    "Decode" in {
 //      val decoder = HyperJsonDecoder.createDecoder[TestPost1]

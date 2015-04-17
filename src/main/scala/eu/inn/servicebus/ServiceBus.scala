@@ -2,7 +2,7 @@ package eu.inn.servicebus
 
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.inn.servicebus.impl.ServiceBusMacro
+import eu.inn.servicebus.impl.{Subscriptions, ServiceBusMacro}
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import eu.inn.servicebus.transport.{ClientTransport, ServerTransport}
 
@@ -13,8 +13,7 @@ import scala.language.experimental.macros
 class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerTransport: ServerTransport) {
   protected val clientRoutes = new TrieMap[String, ClientTransport]
   protected val serverRoutes = new TrieMap[String, ServerTransport]
-  protected val subscriptionId = new AtomicLong(0)
-  protected val subscriptions = new TrieMap[String, String]()
+  protected val subscriptions = new Subscriptions[String]
 
   def send[OUT,IN](
                     topic: String,
@@ -37,14 +36,16 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                          ): String = macro ServiceBusMacro.subscribe[OUT,IN]
 
   def unsubscribe(subscriptionId: String): Unit = {
-    val a = subscriptionId.split('-')
-    if (a.length == 2) {
-      subscriptions.get(a(0)) foreach { topic =>
-        lookupServerTransport(topic).unsubscribe(a(1))
+    subscriptions.getRouteByKeyId(subscriptionId) foreach { topic =>
+      subscriptions.get(topic) foreach { case (_,subscrSeq) =>
+        subscrSeq.find(_.subscriptionId == subscriptionId).foreach {
+          underlyingSubscription =>
+            lookupServerTransport(topic).unsubscribe(underlyingSubscription.subcription)
+        }
       }
     }
+    subscriptions.remove(subscriptionId)
   }
-
   def subscribe[OUT,IN](
                          topic: String,
                          groupName: Option[String],
@@ -53,12 +54,10 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                          handler: (IN) => Future[OUT]
                          ): String = {
 
-    val id = this.subscriptionId.incrementAndGet().toHexString + "-" +
-      lookupServerTransport(topic: String).subscribe[OUT,IN](
+    val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[OUT,IN](
         topic, groupName, inputDecoder, outputEncoder, handler)
 
-    subscriptions.put(id, topic)
-    id
+    subscriptions.add(topic,None,underlyingSubscriptionId)
   }
 
   protected def lookupServerTransport(topic: String): ServerTransport =

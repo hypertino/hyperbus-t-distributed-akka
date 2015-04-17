@@ -100,6 +100,14 @@ trait DefinedResponse[R <: Response[_]] {
   type responseType = R
 }
 
+trait DynamicRequest
+
+case class DynamicGet[B <: Body](url: String, initBody: B) extends Get(initBody) with DynamicRequest
+class DynamicDelete[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
+class DynamicPost[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
+class DynamicPut[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
+class DynamicPatch[B <: Body](initBody: B, val url: String) extends Get(initBody) with DynamicRequest
+
 // --------------- Dynamic ---------------
 
 case class DynamicBody(content: DynamicValue, contentType: Option[String]) extends Body with Links{

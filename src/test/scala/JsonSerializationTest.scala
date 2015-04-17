@@ -14,7 +14,7 @@ class JsonSerializationTest extends FreeSpec with Matchers {
       ba.toString("UTF8") should equal("""{"x":"yo","y":1}""")
     }
     "Decode" in {
-      val str = "\"\"\"{\"x\":\"yo\",\"y\":1}\"\"\""
+      val str = """{"x":"yo","y":1}"""
       val is = new ByteArrayInputStream(str.getBytes("UTF8"))
       val decoder = JsonDecoder.createDecoder[TestMsg]
       val t = decoder.decode(is)

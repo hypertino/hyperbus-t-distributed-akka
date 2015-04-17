@@ -13,8 +13,7 @@ todo:
   + annotations like // @WithContentType("application/vnd+identified-user.json"), @WithURI
   + correlationId, sequenceId, replyTo
   + other headers?
-  + Encoder/Decoder - String replace with Stream
-  + remove unnecessary nulls
+  + exception when duplicate subscription
 
 package object hyperbus {
 

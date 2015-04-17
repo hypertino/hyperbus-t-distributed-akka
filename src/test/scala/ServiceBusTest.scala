@@ -1,4 +1,4 @@
-import eu.inn.servicebus.transport.InprocTransport
+import eu.inn.servicebus.transport.{NoTransportRouteException, InprocTransport}
 import eu.inn.servicebus.ServiceBus
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, FreeSpec}
@@ -12,7 +12,7 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
       val tr = new InprocTransport
       val serviceBus = new ServiceBus(tr,tr)
 
-      serviceBus.subscribe("topic", None, { s: String =>
+      val id = serviceBus.subscribe("topic", None, { s: String =>
         Future {
           s.reverse
         }
@@ -22,6 +22,12 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       whenReady(f) { s =>
         s should equal ("yeh")
+        serviceBus.unsubscribe(id)
+
+        val f2: Future[String] = serviceBus.send[String,String]("topic", "hey")
+        whenReady(f2.failed) { e =>
+          e shouldBe a [NoTransportRouteException]
+        }
       }
     }
   }
