@@ -3,7 +3,7 @@ package eu.inn.servicebus.impl
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
 
-object ServiceBusMacro {
+private[servicebus] object ServiceBusMacro {
   def send[OUT: c.WeakTypeTag, IN: c.WeakTypeTag](c: Context)(topic: c.Expr[String],
                                                               message: c.Expr[IN]): c.Expr[Future[OUT]] = {
     import c.universe._

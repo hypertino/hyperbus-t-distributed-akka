@@ -1,5 +1,6 @@
 import eu.inn.binders.naming.PlainConverter
 import eu.inn.hyperbus.protocol.Link
+import eu.inn.hyperbus.serialization.{HyperJsonDecoder, HyperJsonEncoder}
 import eu.inn.servicebus.serialization.{JsonDecoder, JsonEncoder}
 import org.scalatest.{Matchers, FreeSpec}
 
@@ -19,15 +20,17 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
       body should equal(TestCreatedBody("100500"))
     }
 
-    /*"Encode" in {
-      val encoder = JsonEncoder.createEncoder[TestMsg]
-      val s = encoder.encode(TestMsg("yo",1))
-      s should equal("""{"x":"yo","y":1}""")
+    "Encode" in {
+      val encoder = HyperJsonEncoder.createEncoder[TestPost1]
+      val s = encoder.encode(TestPost1(TestBody1("ha ha")))
+      println(s)
+      s should equal("""{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}"}""")
     }
-    "Decode" in {
-      val decoder = JsonDecoder.createDecoder[TestMsg]
-      val t = decoder.decode("""{"x":"yo","y":1}""")
-      t should equal(TestMsg("yo",1))
-    }*/
+
+//    "Decode" in {
+//      val decoder = HyperJsonDecoder.createDecoder[TestPost1]
+//      val t = decoder.decode("""{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}"}""")
+//      t should equal(TestPost1(TestBody1("ha ha")))
+//    }
   }
 }

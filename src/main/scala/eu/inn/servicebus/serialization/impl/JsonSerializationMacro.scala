@@ -4,7 +4,7 @@ import eu.inn.servicebus.serialization.{Decoder, Encoder}
 
 import scala.reflect.macros.blackbox.Context
 
-object JsonSerializationMacro {
+private [servicebus] object JsonSerializationMacro {
   def createEncoder[T: c.WeakTypeTag](c: Context): c.Expr[Encoder[T]] = {
     import c.universe._
     val t = weakTypeOf[T]

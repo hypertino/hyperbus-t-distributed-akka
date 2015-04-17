@@ -1,6 +1,7 @@
 import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.HyperBus
+import eu.inn.hyperbus.protocol.annotations.{url, contentType}
 import eu.inn.servicebus.transport.InprocTransport
 import eu.inn.servicebus.ServiceBus
 import org.scalatest.concurrent.ScalaFutures
@@ -8,13 +9,11 @@ import org.scalatest.{Matchers, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class TestBody1(resourceData: String) extends Body {
-  override def contentType = Some("application/vnd+test-1.json")
-}
+@contentType("application/vnd+test-1.json")
+case class TestBody1(resourceData: String) extends Body
 
-case class TestBody2(resourceData: Long) extends Body {
-  override def contentType = Some("application/vnd+test-2.json")
-}
+@contentType("application/vnd+test-2.json")
+case class TestBody2(resourceData: Long) extends Body
 
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
@@ -22,16 +21,13 @@ case class TestCreatedBody(resourceId: String,
   extends CreatedBody with NoContentType
 
 
-
+@url("/resources")
 case class TestPost1(initBody: TestBody1) extends Post(initBody)
-with DefinedResponse[Created[TestCreatedBody]] {
-  override def url = "/resources"
-}
+with DefinedResponse[Created[TestCreatedBody]]
 
+@url("/resources")
 case class TestPost2(initBody: TestBody2) extends Post(initBody)
-with DefinedResponse[Created[TestCreatedBody]] {
-  override def url = "/resources"
-}
+with DefinedResponse[Created[TestCreatedBody]]
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
