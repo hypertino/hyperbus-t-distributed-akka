@@ -14,6 +14,7 @@ todo:
   + correlationId, sequenceId, replyTo
   + other headers?
   + Encoder/Decoder - String replace with Stream
+  + remove unnecessary nulls
 
 package object hyperbus {
 

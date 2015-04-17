@@ -1,5 +1,6 @@
 package eu.inn.hyperbus.protocol
 
+import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.DynamicValue
 
 object Status {
@@ -20,11 +21,22 @@ object StandardMethods {
   val DELETE = "delete"
 }
 
-case class Link(url: String, templated: Option[Boolean] = None, typ: Option[String] = None)
+case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
 trait Body {
-  def links: Map[String, Link] = Map()
+  def contentType: Option[String]
+}
+
+trait NoContentType {
   def contentType: Option[String] = None
+}
+
+trait Links {
+  def links: Body.LinksMap
+}
+
+object Body {
+  type LinksMap = Map[String, Either[Link,Seq[Link]]]
 }
 
 abstract class Message[B <: Body](initBody:B){
@@ -48,17 +60,19 @@ class OK[B <: Body](initBody: B) extends Response[B](initBody) {
   override def status: Int = Status.OK
 }
 
-trait CreatedResponseBody extends Body {
+trait CreatedBody extends Body with Links {
   def location = links(StandardLink.LOCATION)
 }
 
-class Created[B <: CreatedResponseBody](initBody: B) extends Response[B](initBody) {
+class Created[B <: CreatedBody](initBody: B) extends Response[B](initBody) {
   override def status: Int = Status.CREATED
 }
 
+/*
 class CreatedResponseBodyStatic(initLocation: Link, otherLinks: Map[String,Link] = Map()) extends  CreatedResponseBody {
   override def links = otherLinks + (StandardLink.LOCATION -> initLocation)
 }
+*/
 
 // --------------- Request classes ---------------
 
@@ -88,6 +102,6 @@ trait DefinedResponse[R <: Response[_]] {
 
 // --------------- Dynamic ---------------
 
-case class DynamicBody(content: DynamicValue, override val contentType: Option[String]) extends Body {
-  override def links: Map[String, Link] = content.__links[Map[String, Link]]
+case class DynamicBody(content: DynamicValue, contentType: Option[String]) extends Body with Links{
+  val links: Body.LinksMap = content.__links[Body.LinksMap]
 }

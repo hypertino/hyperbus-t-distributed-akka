@@ -1,3 +1,4 @@
+import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.HyperBus
 import eu.inn.servicebus.transport.InprocTransport
@@ -15,9 +16,12 @@ case class TestBody2(resourceData: Long) extends Body {
   override def contentType = Some("application/vnd+test-2.json")
 }
 
-case class TestCreatedBody(resourceId: String)
-  extends CreatedResponseBodyStatic(Link("/resources/{resourceId}", templated = Some(true))) {
-}
+case class TestCreatedBody(resourceId: String,
+                           @fieldName("_links") links: Body.LinksMap = Map(
+                             StandardLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
+  extends CreatedBody with NoContentType
+
+
 
 case class TestPost1(initBody: TestBody1) extends Post(initBody)
 with DefinedResponse[Created[TestCreatedBody]] {
