@@ -6,6 +6,7 @@ import eu.inn.binders.dynamic.DynamicValue
 object Status {
   val OK = 200
   val CREATED = 201
+  val INTERNAL_ERROR=500
 }
 
 object StandardLink {
@@ -19,6 +20,11 @@ object StandardMethods {
   val PUT = "put"
   val PATCH = "patch"
   val DELETE = "delete"
+}
+
+// todo: is this needed?
+object StandardErrors {
+  val HANDLER_NOT_FOUND = "handler_not_found"
 }
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
@@ -56,7 +62,9 @@ trait Response[B <: Body] extends Message[B] {
 
 // --------------- Responses ---------------
 
-case class OK[B <: Body](body: B) extends Response[B] {
+trait NormalResponse[B <: Body] extends Response[B]
+
+case class OK[B <: Body](body: B) extends Response[B] with NormalResponse[B] {
   override def status: Int = Status.OK
 }
 
@@ -64,9 +72,20 @@ trait CreatedBody extends Body with Links {
   def location = links(StandardLink.LOCATION)
 }
 
-case class Created[B <: CreatedBody](body: B) extends Response[B] {
+case class Created[B <: CreatedBody](body: B) extends Response[B] with NormalResponse[B] {
   override def status: Int = Status.CREATED
 }
+
+trait ErrorResponse[B <: Body] extends Response[B]
+
+case class InternalError[B <: Body](body: B) extends Response[B] with ErrorResponse[B] {
+  override def status: Int = Status.INTERNAL_ERROR
+}
+
+case class ErrorBody(error:String,
+                     description:Option[String] = None,
+                     errorId: Option[String] = None,// todo: common mechanism
+                     contentType: Option[String] = None) extends Body
 
 /*
 class CreatedResponseBodyStatic(initLocation: Link, otherLinks: Map[String,Link] = Map()) extends  CreatedResponseBody {

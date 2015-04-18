@@ -36,7 +36,7 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                          ): String = macro ServiceBusMacro.subscribe[OUT,IN]
 
   def unsubscribe(subscriptionId: String): Unit = {
-    subscriptions.getRouteByKeyId(subscriptionId) foreach { topic =>
+    subscriptions.getRouteKeyById(subscriptionId) foreach { topic =>
       subscriptions.get(topic) foreach { case (_,subscrSeq) =>
         subscrSeq.find(_.subscriptionId == subscriptionId).foreach {
           underlyingSubscription =>

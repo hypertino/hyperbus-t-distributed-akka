@@ -12,7 +12,7 @@ class Subscriptions[T] {
   protected val indexGen = new AtomicLong(0)
 
   def get(routeKey: String) : SubscriptionMap = routes.getOrElse(routeKey, Map())
-  def getRouteByKeyId(subscriptionId:String) = routeKeyById.get(subscriptionId)
+  def getRouteKeyById(subscriptionId:String) = routeKeyById.get(subscriptionId)
 
   def add(routeKey: String, subRouteKey: Option[String], subscription:T): String = {
     val subscriptionId = indexGen.incrementAndGet().toHexString
@@ -26,14 +26,14 @@ class Subscriptions[T] {
         val map =
           if (existing.contains(subRouteKeyStr)) {
             existing.map {
-              kv => (
-                kv._1,
+              kv => {
+                (kv._1,
                 if (kv._1 == subRouteKeyStr) {
                   kv._2 ++ subscriberSeq
                 } else {
                   kv._2
-                }
-                )
+                })
+              }
             }
           }
           else {

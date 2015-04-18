@@ -30,16 +30,14 @@ trait ServerTransport {
   def unsubscribe(subscriptionId: String)
 }
 
-private [servicebus] case class Subscriber[OUT,IN](handler: IN => Future[OUT])
+private [transport] case class Subscription[OUT,IN](handler: IN => Future[OUT])
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 
 class InprocTransport extends ClientTransport with ServerTransport {
-  import scala.collection.concurrent.TrieMap
-
-  val subscriptions = new Subscriptions[Subscriber[_,_]]
-  val randomGen = new Random()
-  val log = LoggerFactory.getLogger(this.getClass)
+  protected val subscriptions = new Subscriptions[Subscription[_,_]]
+  protected val randomGen = new Random()
+  protected val log = LoggerFactory.getLogger(this.getClass)
 
   override def send[OUT,IN](
                               topic: String,
@@ -57,14 +55,14 @@ class InprocTransport extends ClientTransport with ServerTransport {
       }
 
       if (groupName.isEmpty) { // default subscription (groupName="") returns reply
-        val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscriber[OUT,IN]]
+        val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscription[OUT,IN]]
         result = subscriber.handler(message)
       } else {
-        val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscriber[Unit,IN]]
+        val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscription[Unit,IN]]
         subscriber.handler(message)
       }
       if (log.isTraceEnabled) {
-        log.trace(s"Message ($message) is delivered to ${subscrSeq(idx).subscriptionId}@${groupName}}")
+        log.trace(s"Message ($message) is delivered to ${subscrSeq(idx).subscriptionId}@$groupName}")
       }
 
       if (result == null) {
@@ -92,7 +90,7 @@ class InprocTransport extends ClientTransport with ServerTransport {
                          handler: IN => Future[OUT]
                          ): String = {
 
-    subscriptions.add(topic,groupName,Subscriber[OUT,IN](handler))
+    subscriptions.add(topic,groupName,Subscription[OUT,IN](handler))
   }
 
   def unsubscribe(subscriptionId: String) = {
