@@ -52,9 +52,9 @@ class HyperBus(val underlyingBus: ServiceBus) {
       }
     }
 
-    def safe(t:() => String): String = Try(t()).getOrElse("???")
     val encoder: Encoder[Response[Body]] = null
     val decoder: Decoder[Request[Body]] = null
+    def safe(t:() => String): String = Try(t()).getOrElse("???")
   }
 
   def send[OUT <: Response[Body], IN <: Request[Body]]

@@ -3,11 +3,11 @@ package eu.inn.hyperbus.serialization.impl
 import java.io.{InputStream, OutputStream}
 
 import eu.inn.hyperbus.protocol.{Post, Response, Body, Request}
+import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.servicebus.serialization.{Encoder, Decoder}
 
 object Helpers {
 
-  case class RequestHeader(url:String, method:String, contentType:Option[String])
   case class ResponseHeader(status:Int)
 
   def encodeMessage[B <: Body](request: Request[B], b: B, bodyEncoder: Encoder[B], out: OutputStream) = {
