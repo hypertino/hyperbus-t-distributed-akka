@@ -13,24 +13,25 @@ trait ClientTransport {
   def send[OUT,IN](
                     topic: String,
                     message: IN,
-                    outputDecoder: Decoder[OUT],
-                    inputEncoder: Encoder[IN]
+                    inputEncoder: Encoder[IN],
+                    outputDecoder: Decoder[OUT]
                     ): Future[OUT]
 }
+
+case class HandlerResult[OUT](futureResult: Future[OUT],encoder:Encoder[OUT])
 
 trait ServerTransport {
   def subscribe[OUT,IN](
                          topic: String,
                          groupName: Option[String],
                          inputDecoder: Decoder[IN],
-                         outputEncoder: Encoder[OUT],
-                         handler: IN => Future[OUT]
+                         handler: (IN) => HandlerResult[OUT]
                          ): String
 
   def unsubscribe(subscriptionId: String)
 }
 
-private [transport] case class Subscription[OUT,IN](handler: IN => Future[OUT])
+private [transport] case class Subscription[OUT,IN](handler: (IN) => HandlerResult[OUT])
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 
@@ -42,8 +43,8 @@ class InprocTransport extends ClientTransport with ServerTransport {
   override def send[OUT,IN](
                               topic: String,
                               message: IN,
-                              outputDecoder: Decoder[OUT],
-                              inputEncoder: Encoder[IN]
+                              inputEncoder: Encoder[IN],
+                              outputDecoder: Decoder[OUT]
                               ): Future[OUT] = {
     var result: Future[OUT] = null
 
@@ -56,7 +57,7 @@ class InprocTransport extends ClientTransport with ServerTransport {
 
       if (groupName.isEmpty) { // default subscription (groupName="") returns reply
         val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscription[OUT,IN]]
-        result = subscriber.handler(message)
+        result = subscriber.handler(message).futureResult
       } else {
         val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscription[Unit,IN]]
         subscriber.handler(message)
@@ -74,7 +75,7 @@ class InprocTransport extends ClientTransport with ServerTransport {
 
     if (result == null) {
       val p = Promise[OUT]()
-      p.failure(new NoTransportRouteException(s"Topic '$topic' route isn't found"))
+      p.failure(new NoTransportRouteException(s"Route to '$topic' isn't found"))
       p.future
     }
     else {
@@ -86,8 +87,7 @@ class InprocTransport extends ClientTransport with ServerTransport {
                          topic: String,
                          groupName: Option[String],
                          inputDecoder: Decoder[IN],
-                         outputEncoder: Encoder[OUT],
-                         handler: IN => Future[OUT]
+                         handler: (IN) => HandlerResult[OUT]
                          ): String = {
 
     subscriptions.add(topic,groupName,Subscription[OUT,IN](handler))

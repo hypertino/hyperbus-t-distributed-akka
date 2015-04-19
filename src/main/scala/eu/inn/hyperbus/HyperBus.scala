@@ -2,73 +2,105 @@ package eu.inn.hyperbus
 
 import eu.inn.hyperbus.protocol._
 import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.impl.Subscriptions
+import eu.inn.servicebus.impl.{SubscriptionWithId, Subscriptions}
+import eu.inn.servicebus.serialization.{Encoder, Decoder}
+import eu.inn.servicebus.transport.HandlerResult
 import org.slf4j.LoggerFactory
 
-import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.concurrent.{Promise, Future}
-import scala.util.Random
+import scala.util.{Try, Random}
 
 class HyperBus(val underlyingBus: ServiceBus) {
   protected val subscriptions = new Subscriptions[Subscription]
   protected val randomGen = new Random()
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler)]
 
-  protected case class Subscription(handler: (Request[_]) => Future[Response[_]])
+  protected case class Subscription(
+                                     handler: (Request[Body]) => HandlerResult[Response[Body]],
+                                     requestDecoder: Decoder[Request[Body]] )
 
   protected class UnderlyingHandler(routeKey: String) {
-    def handler[B <: Body](in: Request[B]): Future[Response[_]] = {
-      val subRouteKey = getSubRouteKey(in.method, in.body.contentType)
-      subscriptions.get(routeKey).get(subRouteKey) map { subscrSeq =>
+
+    def handler(in: Request[Body]): HandlerResult[Response[Body]] = {
+      getSubscription(in) map { subscrSeq =>
         val idx = if (subscrSeq.size > 1) {
           randomGen.nextInt(subscrSeq.size)
         } else {
           0
         }
-        val subscr = subscrSeq(idx)
-        subscr.subcription.handler(in)
+        subscrSeq(idx).subcription.handler(in)
+
       } getOrElse {
-        val s = s"Unhandled request $subRouteKey:$routeKey"
+
+        val s = "Unhandled request " + safe(()=>in.method) + routeKey +
+          safe(()=>in.body.contentType.map("@"+_).getOrElse(""))
         log.error(s)
 
-        val p = Promise[Response[_]]()
+        val p = Promise[Response[Body]]()
         p.success(InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s))))
-        p.future
+        HandlerResult(p.future,null) //todo: encoder
       }
     }
+
+    protected def getSubscription(in: Request[Body]): Option[IndexedSeq[SubscriptionWithId[Subscription]]] = {
+      val ct = in.body.contentType
+      val subRouteKey = getSubRouteKey(in.method, ct)
+
+      subscriptions.get(routeKey).get(subRouteKey).orElse{
+        subscriptions.get(routeKey).get(getSubRouteKey(in.method, None))
+      }
+    }
+
+    def safe(t:() => String): String = Try(t()).getOrElse("???")
+    val encoder: Encoder[Response[Body]] = null
+    val decoder: Decoder[Request[Body]] = null
   }
 
-  def send[OUT <: Response[_],IN <: Request[_]]
+  def send[OUT <: Response[Body], IN <: Request[Body]]
     (r: IN with DefinedResponse[OUT]): Future[OUT] = {
 
     underlyingBus.send[OUT, IN](r.url, r, null, null)
   }
 
-  def subscribe (groupName: Option[String],
-                 handler: (Request[_]) => Future[Response[_]]): String = {
-
-    //underlyingBus.subscribe[OUT,IN]("/resources", groupName, null, null, handler)
-
-    subscribe("/resource", "get", None, groupName, handler)
+  // todo: this is macro
+  def subscribe[OUT <: Response[Body], IN <: Request[Body]]
+    (groupName: Option[String], handler: (IN) => Future[OUT]): String = {
+    subscribe("/resources", "post", None, groupName,
+      null, // todo: decoder
+      ((in: Request[Body]) => {
+        HandlerResult(handler(in.asInstanceOf[IN]), null) //todo: encoder
+      })
+    )
   }
 
-  def subscribe[A,B](url: String,
-                method: String,
-                contentType: Option[String],
-                groupName: Option[String],
-                handler: (Request[A]) => Future[Response[B]]
-                 ): String = {
+  def send[OUT <: Response[Body], IN <: Request[Body]]
+    (r: IN with DefinedResponse[OUT],
+    outputDecoder: Decoder[OUT],
+    inputEncoder: Encoder[IN]): Future[OUT] = {
+
+    underlyingBus.send[OUT, IN](r.url, r, inputEncoder, outputDecoder)
+  }
+
+  def subscribe
+    (url: String,
+     method: String,
+     contentType: Option[String],
+     groupName: Option[String],
+     requestDecoder: Decoder[Request[Body]],
+     handler: (Request[Body]) => HandlerResult[Response[Body]]): String = {
 
     val routeKey = getRouteKey(url, groupName)
     val subRouteKey = getSubRouteKey(method, contentType)
 
     underlyingSubscriptions.synchronized {
-      val r = subscriptions.add(routeKey, Some(subRouteKey), Subscription(handler))
+      val r = subscriptions.add(routeKey, Some(subRouteKey), Subscription(
+        handler, requestDecoder
+      ))
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingHandler(routeKey)
-        val uid = underlyingBus.subscribe(url, groupName, null, null, uh.handler)
+        val uid = underlyingBus.subscribe(url, groupName, uh.decoder, uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
@@ -97,4 +129,3 @@ class HyperBus(val underlyingBus: ServiceBus) {
 
   protected val log = LoggerFactory.getLogger(this.getClass)
 }
-

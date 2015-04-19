@@ -1,5 +1,7 @@
 package eu.inn.servicebus.impl
 
+import eu.inn.servicebus.transport.HandlerResult
+
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
 
@@ -15,10 +17,10 @@ private[servicebus] object ServiceBusMacro {
 
     val obj = q"""{
       import eu.inn.servicebus.serialization._
-      val decoder = JsonDecoder.createDecoder[$out]
       val encoder = JsonEncoder.createEncoder[$in]
+      val decoder = JsonDecoder.createDecoder[$out]
       val thiz = $thiz
-      thiz.send[$out,$in]($topic,$message,decoder,encoder)
+      thiz.send[$out,$in]($topic,$message,encoder,decoder)
     }"""
     //println(obj)
     c.Expr[Future[OUT]](obj)
@@ -40,10 +42,13 @@ private[servicebus] object ServiceBusMacro {
 
     val obj = q"""{
       import eu.inn.servicebus.serialization._
-      val decoder = JsonDecoder.createDecoder[$out]
       val encoder = JsonEncoder.createEncoder[$in]
+      val decoder = JsonDecoder.createDecoder[$out]
       val thiz = $thiz
-      val id = thiz.subscribe[$out,$in]($topic,$groupName,decoder,encoder,$handler)
+      val handler = $handler
+      val id = thiz.subscribe[$out,$in]($topic,$groupName,decoder,
+        (in:$in) => eu.inn.servicebus.transport.HandlerResult(handler(in), encoder)
+      )
       id
     }"""
     //println(obj)

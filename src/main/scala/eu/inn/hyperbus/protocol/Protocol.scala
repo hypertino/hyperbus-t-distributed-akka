@@ -45,16 +45,16 @@ object Body {
   type LinksMap = Map[String, Either[Link,Seq[Link]]]
 }
 
-trait Message[B <: Body]{
+trait Message[+B <: Body]{
   def body: B
 }
 
-trait Request[B <: Body] extends Message[B]{
+trait Request[+B <: Body] extends Message[B]{
   def url: String
   def method: String
 }
 
-trait Response[B <: Body] extends Message[B] {
+trait Response[+B <: Body] extends Message[B] {
   def status: Int
 }
 
@@ -62,9 +62,9 @@ trait Response[B <: Body] extends Message[B] {
 
 // --------------- Responses ---------------
 
-trait NormalResponse[B <: Body] extends Response[B]
+trait NormalResponse[+B <: Body] extends Response[B]
 
-case class OK[B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+case class OK[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
   override def status: Int = Status.OK
 }
 
@@ -72,13 +72,13 @@ trait CreatedBody extends Body with Links {
   def location = links(StandardLink.LOCATION)
 }
 
-case class Created[B <: CreatedBody](body: B) extends Response[B] with NormalResponse[B] {
+case class Created[+B <: CreatedBody](body: B) extends Response[B] with NormalResponse[B] {
   override def status: Int = Status.CREATED
 }
 
-trait ErrorResponse[B <: Body] extends Response[B]
+trait ErrorResponse[+B <: Body] extends Response[B]
 
-case class InternalError[B <: Body](body: B) extends Response[B] with ErrorResponse[B] {
+case class InternalError[+B <: Body](body: B) extends Response[B] with ErrorResponse[B] {
   override def status: Int = Status.INTERNAL_ERROR
 }
 
@@ -96,35 +96,35 @@ class CreatedResponseBodyStatic(initLocation: Link, otherLinks: Map[String,Link]
 // --------------- Request classes ---------------
 trait DynamicRequest
 
-trait Get[B <: Body] extends Request[B] {
+trait Get[+B <: Body] extends Request[B] {
   override def method = StandardMethods.GET
 }
-abstract class StaticGet[B <: Body](initBody: B) extends Get[B]
-case class DynamicGet[B <: Body](url: String, body: B) extends Get[B] with DynamicRequest
+abstract class StaticGet[+B <: Body](initBody: B) extends Get[B]
+case class DynamicGet[+B <: Body](url: String, body: B) extends Get[B] with DynamicRequest
 
-trait Delete[B <: Body] extends Request[B] {
+trait Delete[+B <: Body] extends Request[B] {
   override def method = StandardMethods.DELETE
 }
-abstract class StaticDelete[B <: Body](initBody: B) extends Delete[B]
-case class DynamicDelete[B <: Body](url: String, body: B) extends Delete[B] with DynamicRequest
+abstract class StaticDelete[+B <: Body](initBody: B) extends Delete[B]
+case class DynamicDelete[+B <: Body](url: String, body: B) extends Delete[B] with DynamicRequest
 
-trait Post[B <: Body] extends Request[B] {
+trait Post[+B <: Body] extends Request[B] {
   override def method = StandardMethods.POST
 }
-abstract class StaticPost[B <: Body](initBody: B) extends Post[B]
-case class DynamicPost[B <: Body](url: String, body: B) extends Post[B] with DynamicRequest
+abstract class StaticPost[+B <: Body](initBody: B) extends Post[B]
+case class DynamicPost[+B <: Body](url: String, body: B) extends Post[B] with DynamicRequest
 
-trait Put[B <: Body] extends Request[B] {
+trait Put[+B <: Body] extends Request[B] {
   override def method = StandardMethods.PUT
 }
-abstract class StaticPut[B <: Body](initBody: B) extends Put[B]
-case class DynamicPut[B <: Body](url: String, body: B) extends Put[B] with DynamicRequest
+abstract class StaticPut[+B <: Body](initBody: B) extends Put[B]
+case class DynamicPut[+B <: Body](url: String, body: B) extends Put[B] with DynamicRequest
 
-trait Patch[B <: Body] extends Request[B] {
+trait Patch[+B <: Body] extends Request[B] {
   override def method = StandardMethods.PATCH
 }
-abstract class StaticPatch[B <: Body](initBody: B) extends Patch[B]
-case class DynamicPatch[B <: Body](url: String, body: B) extends Patch[B] with DynamicRequest
+abstract class StaticPatch[+B <: Body](initBody: B) extends Patch[B]
+case class DynamicPatch[+B <: Body](url: String, body: B) extends Patch[B] with DynamicRequest
 
 trait DefinedResponse[R <: Response[_]] {
   type responseType = R

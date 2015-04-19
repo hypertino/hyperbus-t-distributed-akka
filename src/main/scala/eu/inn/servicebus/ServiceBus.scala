@@ -4,13 +4,33 @@ import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.servicebus.impl.{Subscriptions, ServiceBusMacro}
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport.{ClientTransport, ServerTransport}
+import eu.inn.servicebus.transport.{HandlerResult, ClientTransport, ServerTransport}
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 import scala.language.experimental.macros
 
-class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerTransport: ServerTransport) {
+trait ServiceBusBase {
+  def send[OUT,IN](
+                    topic: String,
+                    message: IN,
+                    inputEncoder: Encoder[IN],
+                    outputDecoder: Decoder[OUT]
+                    ): Future[OUT]
+
+  def subscribe[OUT,IN](
+                         topic: String,
+                         groupName: Option[String],
+                         inputDecoder: Decoder[IN],
+                         handler: (IN) => HandlerResult[OUT]
+                         ): String
+
+  def unsubscribe(subscriptionId: String): Unit
+}
+
+class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerTransport: ServerTransport)
+  extends ServiceBusBase {
+
   protected val clientRoutes = new TrieMap[String, ClientTransport]
   protected val serverRoutes = new TrieMap[String, ServerTransport]
   protected val subscriptions = new Subscriptions[String]
@@ -23,10 +43,10 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
   def send[OUT,IN](
                     topic: String,
                     message: IN,
-                    outputDecoder: Decoder[OUT],
-                    inputEncoder: Encoder[IN]
+                    inputEncoder: Encoder[IN],
+                    outputDecoder: Decoder[OUT]
                     ): Future[OUT] = {
-    this.lookupClientTransport(topic).send[OUT,IN](topic,message,outputDecoder,inputEncoder)
+    this.lookupClientTransport(topic).send[OUT,IN](topic,message,inputEncoder,outputDecoder)
   }
 
   def subscribe[OUT,IN](
@@ -50,12 +70,11 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                          topic: String,
                          groupName: Option[String],
                          inputDecoder: Decoder[IN],
-                         outputEncoder: Encoder[OUT],
-                         handler: (IN) => Future[OUT]
+                         handler: (IN) => HandlerResult[OUT]
                          ): String = {
 
     val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[OUT,IN](
-        topic, groupName, inputDecoder, outputEncoder, handler)
+        topic, groupName, inputDecoder, handler)
 
     subscriptions.add(topic,None,underlyingSubscriptionId)
   }
