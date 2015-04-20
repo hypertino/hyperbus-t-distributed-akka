@@ -1,6 +1,9 @@
 package eu.inn.hyperbus
 
+import java.io.InputStream
+
 import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.impl.{SubscriptionWithId, Subscriptions}
 import eu.inn.servicebus.serialization.{Encoder, Decoder}
@@ -19,6 +22,7 @@ class HyperBus(val underlyingBus: ServiceBus) {
   protected case class Subscription(
                                      handler: (Request[Body]) => HandlerResult[Response[Body]],
                                      requestDecoder: Decoder[Request[Body]] )
+
 
   protected class UnderlyingHandler(routeKey: String) {
 
@@ -52,8 +56,8 @@ class HyperBus(val underlyingBus: ServiceBus) {
       }
     }
 
-    val encoder: Encoder[Response[Body]] = null
-    val decoder: Decoder[Request[Body]] = null
+    //val encoder: Encoder[Response[Body]] = null
+    //val decoder: Decoder[Request[Body]] = null
     def safe(t:() => String): String = Try(t()).getOrElse("???")
   }
 
