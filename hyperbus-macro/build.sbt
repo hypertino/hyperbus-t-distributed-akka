@@ -25,6 +25,8 @@ javacOptions ++= Seq(
   "-Xlint:deprecation"
 )
 
+libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
+
 val paradiseVersion = "2.1.0-M5"
 
 addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)

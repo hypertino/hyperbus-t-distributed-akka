@@ -1,7 +1,6 @@
 package eu.inn.hyperbus.protocol.annotations.impl
 
 import eu.inn.hyperbus.protocol.annotations.contentType
-import eu.inn.servicebus.serialization.{Decoder, Encoder}
 
 import scala.reflect.macros.whitebox.Context
 
@@ -42,4 +41,3 @@ private[hyperbus] object AnnotationsMacro {
     c.Expr[Unit](q"..$outputs")
   }
 }
-
