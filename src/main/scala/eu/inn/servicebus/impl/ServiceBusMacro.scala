@@ -1,6 +1,6 @@
 package eu.inn.servicebus.impl
 
-import eu.inn.servicebus.transport.HandlerResult
+import eu.inn.servicebus.transport.SubscriptionHandlerResult
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
@@ -45,7 +45,7 @@ private[servicebus] object ServiceBusMacro {
       val thiz = $thiz
       val handler = $handler
       val id = thiz.subscribe[$out,$in]($topic,$groupName,decoder){
-        (in:$in) => eu.inn.servicebus.transport.HandlerResult(handler(in), encoder)
+        (in:$in) => eu.inn.servicebus.transport.SubscriptionHandlerResult(handler(in), encoder)
       }
       id
     }"""

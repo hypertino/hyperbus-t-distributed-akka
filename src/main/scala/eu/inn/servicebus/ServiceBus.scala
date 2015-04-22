@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.servicebus.impl.{Subscriptions, ServiceBusMacro}
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport.{HandlerResult, ClientTransport, ServerTransport}
+import eu.inn.servicebus.transport.{SubscriptionHandlerResult, ClientTransport, ServerTransport}
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
@@ -19,7 +19,7 @@ trait ServiceBusBase {
                     ): Future[OUT]
 
   def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
-                       (handler: (IN) => HandlerResult[OUT]): String
+                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
   def unsubscribe(subscriptionId: String): Unit
 }
@@ -60,7 +60,7 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     subscriptions.remove(subscriptionId)
   }
   def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
-                       (handler: (IN) => HandlerResult[OUT]): String = {
+                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[OUT,IN](topic, groupName, inputDecoder)(handler)
 

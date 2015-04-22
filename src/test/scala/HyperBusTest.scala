@@ -20,7 +20,6 @@ case class TestCreatedBody(resourceId: String,
                              StandardLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody with NoContentType
 
-
 @url("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
@@ -28,6 +27,12 @@ with DefinedResponse[Created[TestCreatedBody]]
 @url("/resources")
 case class TestPost2(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
+
+@url("/resources")
+case class TestPost3(body: TestBody2) extends StaticPost(body)
+with DefinedResponse[
+    | [OK[DynamicBody], | [Created[TestCreatedBody], !]]
+  ]
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {

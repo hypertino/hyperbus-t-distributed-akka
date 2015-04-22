@@ -5,12 +5,12 @@ import java.io.InputStream
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.hyperbus.impl.HyperBusMacro
 import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.serialization.{RequestDecoder, RequestHeader}
+import eu.inn.hyperbus.serialization.{ResponseDecoder, RequestDecoder, RequestHeader}
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.impl.Subscriptions
 import eu.inn.servicebus.serialization.{Encoder, Decoder}
-import eu.inn.servicebus.transport.HandlerResult
+import eu.inn.servicebus.transport.SubscriptionHandlerResult
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -25,23 +25,23 @@ class HyperBus(val underlyingBus: ServiceBus) {
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler)]
 
   protected case class Subscription(
-                                     handler: (Request[Body]) => HandlerResult[Response[Body]],
+                                     handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]],
                                      requestDecoder: RequestDecoder )
 
 
   protected class UnderlyingHandler(routeKey: String) {
 
-    def unhandledRequest(request: Request[Body]): HandlerResult[Response[Body]] = {
+    def unhandledRequest(request: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
       val s = "Unhandled request " + safe(()=>request.method) + routeKey +
         safe(()=>request.body.contentType.map("@"+_).getOrElse(""))
       log.error(s)
 
       val p = Promise[Response[Body]]()
       p.success(InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s))))
-      HandlerResult(p.future,null) //todo: exception encoder
+      SubscriptionHandlerResult(p.future,null) //todo: exception encoder
     }
 
-    def handler(in: Request[Body]): HandlerResult[Response[Body]] = {
+    def handler(in: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
       getSubscription(in).map { r =>
         r.handler(in)
       } getOrElse {
@@ -66,10 +66,10 @@ class HyperBus(val underlyingBus: ServiceBus) {
       }
     }
 
-    val decoder: Decoder[Request[Body]] = new Object with Decoder[Request[Body]] {
+    val decoder: Decoder[Request[Body]] = new Decoder[Request[Body]] {
       // todo: handle deserialization errors
       def decode(inputStream: InputStream): Request[Body] = {
-        Helpers.decodeRequestWith(inputStream, requestDecoder)
+        Helpers.decodeRequestWith(inputStream)(requestDecoder)
       }
 
       def requestDecoder(requestHeader: RequestHeader, requestBodyJson: JsonParser): Request[Body] = {
@@ -84,21 +84,23 @@ class HyperBus(val underlyingBus: ServiceBus) {
   }
 
   def send[OUT <: Response[Body], IN <: Request[Body]]
-    (r: IN with DefinedResponse[OUT]): Future[OUT] = {
+    (r: IN with DefinedResponse[OUT]): Future[Response[Body]] = macro HyperBusMacro.send[OUT, IN]
 
-    underlyingBus.send[OUT, IN](r.url, r, null, null)
+  def send
+    (r: Request[Body],
+      requestEncoder: Encoder[Request[Body]],
+      responseDecoder: ResponseDecoder): Future[Response[Body]] = {
+
+    val outputDecoder = new Decoder[Response[Body]] {
+      override def decode(inputStream: InputStream): Response[Body] = {
+        Helpers.decodeResponseWith(inputStream)((responseHeader, jsonParser) => responseDecoder.decode(responseHeader, jsonParser))
+      }
+    }
+    underlyingBus.send[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder)
   }
 
-  def subscribe[IN <: Request[Body]] (groupName: Option[String])
-    (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.subscribe[IN]
-
-  def send[OUT <: Response[Body], IN <: Request[Body]]
-    (r: IN with DefinedResponse[OUT],
-    outputDecoder: Decoder[OUT],
-    inputEncoder: Encoder[IN]): Future[OUT] = {
-
-    underlyingBus.send[OUT, IN](r.url, r, inputEncoder, outputDecoder)
-  }
+  def subscribe[IN <: Request[Body]] (groupName: Option[String] = None)
+                                     (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.subscribe[IN]
 
   def subscribe
     (url: String,
@@ -106,7 +108,7 @@ class HyperBus(val underlyingBus: ServiceBus) {
      contentType: Option[String],
      groupName: Option[String],
      requestDecoder: RequestDecoder)
-    (handler: (Request[Body]) => HandlerResult[Response[Body]]): String = {
+    (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String = {
 
     val routeKey = getRouteKey(url, groupName)
     val subRouteKey = getSubRouteKey(method, contentType)

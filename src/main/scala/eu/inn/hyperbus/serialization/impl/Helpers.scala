@@ -29,8 +29,7 @@ object Helpers {
     writeUtf8("}",out)
   }
 
-  def decodeRequestWith[B <: Body](inputStream: InputStream,
-                               decoder: (RequestHeader, JsonParser) => Request[B]): Request[B] = {
+  def decodeRequestWith[B <: Body](inputStream: InputStream)(decoder: (RequestHeader, JsonParser) => Request[B]): Request[B] = {
 
     val jf = new JsonFactory()
     val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
@@ -52,6 +51,37 @@ object Helpers {
       val result =
         if (fieldName2 == "body") {
           decoder(requestHeader, jp)
+        } else {
+          throw DecodeException(s"'body' field expected, but found: '$fieldName'")
+        }
+      expect(jp, JsonToken.END_OBJECT)
+      result
+    } finally {
+      jp.close()
+    }
+  }
+
+  def decodeResponseWith[B <: Body](inputStream: InputStream)(decoder: (ResponseHeader, JsonParser) => Response[B]): Response[B] = {
+    val jf = new JsonFactory()
+    val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
+    val factory = SerializerFactory.findFactory()
+    try {
+      expect(jp, JsonToken.START_OBJECT)
+      expect(jp, JsonToken.FIELD_NAME)
+      val fieldName = jp.getCurrentName
+      val responseHeader =
+        if (fieldName == "response") {
+          factory.withJsonParser(jp) { deserializer=>
+            deserializer.unbind[ResponseHeader]
+          }
+        } else {
+          throw DecodeException(s"'response' field expected, but found: '$fieldName'")
+        }
+      expect(jp, JsonToken.FIELD_NAME)
+      val fieldName2 = jp.getCurrentName
+      val result =
+        if (fieldName2 == "body") {
+          decoder(responseHeader, jp)
         } else {
           throw DecodeException(s"'body' field expected, but found: '$fieldName'")
         }

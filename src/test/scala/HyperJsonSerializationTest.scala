@@ -46,9 +46,9 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
     "Decode DynamicRequest" in {
       val s = """{"request":{"method":"get","url":"/test"},"body":{"resourceId":"100500"}}"""
       val is = new ByteArrayInputStream(s.getBytes("UTF8"))
-      val d = Helpers.decodeRequestWith(is, (rh, is2) => {
+      val d = Helpers.decodeRequestWith(is) { (rh, is2) =>
         Helpers.decodeDynamicRequest(rh, is2)
-      })
+      }
 
       d should equal(new DynamicGet("/test",DynamicBody(Obj(Map("resourceId" -> Text("100500"))))))
     }

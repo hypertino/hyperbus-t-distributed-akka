@@ -11,7 +11,7 @@ private[hyperbus] object HyperSerializationMacro {
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
     val obj = q"""
-      new Object with eu.inn.servicebus.serialization.Encoder[$t] {
+      new eu.inn.servicebus.serialization.Encoder[$t] {
         import eu.inn.binders.json._
         def encode(t: $t, out: java.io.OutputStream) = {
           val bodyEncoder = eu.inn.servicebus.serialization.JsonEncoder.createEncoder[$tBody]
@@ -29,7 +29,7 @@ private[hyperbus] object HyperSerializationMacro {
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
     val obj = q"""
-      new Object with eu.inn.servicebus.serialization.Decoder[$t] {
+      new eu.inn.servicebus.serialization.Decoder[$t] {
         def decode(in: java.io.InputStream) = {
           val bodyDecoder = eu.inn.servicebus.serialization.JsonDecoder.createDecoder[$tBody]
           eu.inn.hyperbus.serialization.impl.Helpers.decodeMessage[$tBody](s, bodyDecoder)

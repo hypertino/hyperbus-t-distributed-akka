@@ -126,9 +126,9 @@ trait Patch[+B <: Body] extends Request[B] {
 abstract class StaticPatch[+B <: Body](initBody: B) extends Patch[B]
 case class DynamicPatch[+B <: Body](url: String, body: B) extends Patch[B] with DynamicRequest
 
-trait DefinedResponse[R <: Response[_]] {
-  type responseType = R
-}
+trait DefinedResponse[R <: Response[_]]
+trait |[L<: Response[Body], R <: Response[Body]] extends Response[Body]
+trait ! extends Response[Body]
 
 // --------------- Dynamic ---------------
 

@@ -18,16 +18,16 @@ trait ClientTransport {
                     ): Future[OUT]
 }
 
-case class HandlerResult[OUT](futureResult: Future[OUT],encoder:Encoder[OUT])
+case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
 
 trait ServerTransport {
   def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
-                       (handler: (IN) => HandlerResult[OUT]): String
+                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
   def unsubscribe(subscriptionId: String)
 }
 
-private [transport] case class Subscription[OUT,IN](handler: (IN) => HandlerResult[OUT])
+private [transport] case class Subscription[OUT,IN](handler: (IN) => SubscriptionHandlerResult[OUT])
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 
@@ -80,7 +80,7 @@ class InprocTransport extends ClientTransport with ServerTransport {
   }
 
   def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
-                       (handler: (IN) => HandlerResult[OUT]): String = {
+                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     subscriptions.add(topic,groupName,Subscription[OUT,IN](handler))
   }
