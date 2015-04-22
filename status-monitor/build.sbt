@@ -4,7 +4,7 @@ name := "forgame-status-monitor"
 
 version := "1.0"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.6"
 
 scalacOptions ++= Seq(
   "-language:postfixOps",
@@ -32,6 +32,7 @@ credentials += Credentials(Path.userHome / ".ivy2" / ".innova_credentials")
 resolvers += "Innova libs repo" at "http://repproxy.srv.inn.ru/artifactory/libs-release-local"
 
 libraryDependencies ++= Seq(
+  "eu.inn" %% "hyperbus" % "0.0.1",
   "eu.inn" %% "binders-core" % "0.5.12",
   "eu.inn" %% "binders-json" % "0.5.12",
   "eu.inn" %% "sbus-core" % "[0.1.+]",

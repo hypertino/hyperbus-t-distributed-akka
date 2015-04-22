@@ -1,5 +1,6 @@
 package eu.inn.hyperbus.impl
 
+import eu.inn.hyperbus.protocol.annotations.{contentType, url}
 import eu.inn.hyperbus.protocol.{DefinedResponse, Body, Response}
 import eu.inn.hyperbus.serialization.RequestDecoder
 
@@ -18,7 +19,7 @@ private[hyperbus] object HyperBusMacro {
     val thiz = c.prefix.tree
 
     val in = weakTypeOf[IN]
-    val url = "/resources"
+    val url = getUrlAnnotation(c)(in.typeSymbol)
     val method = "post"
     val contentType: Option[String] = None
     val decoder: RequestDecoder = null
@@ -29,7 +30,7 @@ private[hyperbus] object HyperBusMacro {
       val id = thiz.subscribe($url, $method, $contentType, $groupName, null)(handler)
       id
     }"""
-    <-- response encoders
+    //<-- response encoders
     println(obj)
     c.Expr[String](obj)
   }
@@ -48,8 +49,26 @@ private[hyperbus] object HyperBusMacro {
       val thiz = $thiz
       thiz.send($r, null, null)
     }"""
-    <-- response decoders
+    //<-- response decoders
     println(obj) // <--
     obj
+  }
+
+  private def getUrlAnnotation(c: Context)(symbol: c.Symbol): Option[String] =
+    getStringAnnotation(c)(symbol, c.typeOf[url])
+
+  private def getContentTypeAnnotation(c: Context)(symbol: c.Symbol): Option[String] =
+    getStringAnnotation(c)(symbol, c.typeOf[contentType])
+
+  def getStringAnnotation(c: Context)(symbol: c.Symbol, atype: c.Type): Option[String] = {
+    import c.universe._
+    symbol.annotations.find { a =>
+      a.tpe == atype
+    } map {
+      annotation => annotation.scalaArgs.head match {
+        case Literal(Constant(s: String)) => Some(s)
+        case _ => None
+      }
+    } flatten
   }
 }
