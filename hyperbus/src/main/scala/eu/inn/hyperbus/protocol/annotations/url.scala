@@ -7,6 +7,7 @@ import scala.language.experimental.macros
 
 trait UrlMarker
 
+@compileTimeOnly("enable macro paradise to expand macro annotations")
 class url(v: String) extends StaticAnnotation with UrlMarker {
   def macroTransform(annottees: Any*): Unit = macro AnnotationsMacro.url
 }

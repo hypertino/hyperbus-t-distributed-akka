@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.impl
 
-import eu.inn.hyperbus.protocol.annotations.{contentType, UrlMarker}
+import eu.inn.hyperbus.protocol.annotations.{ContentTypeMarker, UrlMarker}
 import eu.inn.hyperbus.protocol.{DefinedResponse, Body, Response}
 import eu.inn.hyperbus.serialization.RequestDecoder
 
@@ -58,7 +58,7 @@ private[hyperbus] object HyperBusMacro {
     getStringAnnotation(c)(symbol, c.typeOf[UrlMarker])
 
   private def getContentTypeAnnotation(c: Context)(symbol: c.Symbol): Option[String] =
-    getStringAnnotation(c)(symbol, c.typeOf[contentTypeMarker])
+    getStringAnnotation(c)(symbol, c.typeOf[ContentTypeMarker])
 
   def getStringAnnotation(c: Context)(symbol: c.Symbol, atype: c.Type): Option[String] = {
     import c.universe._
