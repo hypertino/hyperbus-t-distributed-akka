@@ -1,13 +1,13 @@
 package eu.inn.hyperbus.serialization
 
-import java.io.InputStream
 
+import com.fasterxml.jackson.core.JsonParser
 import eu.inn.hyperbus.protocol.{Body, Request}
 
 case class RequestHeader(url:String, method:String, contentType:Option[String])
 
-trait RequestDecoder[R <: Request[Body]] {
-  def decode(requestHeader: RequestHeader, inputStream: InputStream)
+trait RequestDecoder {
+  def decode(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body]
 }
 
 case class ResponseHeader(status:Int)

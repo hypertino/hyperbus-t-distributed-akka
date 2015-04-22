@@ -1,7 +1,9 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
+import eu.inn.binders.dynamic.{Text, Obj}
 import eu.inn.binders.naming.PlainConverter
-import eu.inn.hyperbus.protocol.{Created, Link}
+import eu.inn.hyperbus.protocol.{DynamicBody, DynamicGet, Created, Link}
+import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.hyperbus.serialization.{HyperJsonDecoder, HyperJsonEncoder}
 import eu.inn.servicebus.serialization.{JsonDecoder, JsonEncoder}
 import org.scalatest.{Matchers, FreeSpec}
@@ -15,6 +17,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
       val s = body.toJson
       s should equal("""{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}""")
     }
+
     "Deserialize Body" in {
       import eu.inn.binders.json._
       val s = """{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}"""
@@ -38,6 +41,16 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
       val s = ba.toString("UTF8")
       //println(s)
       s should equal("""{"response":{"status":201},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
+    }
+
+    "Decode DynamicRequest" in {
+      val s = """{"request":{"method":"get","url":"/test"},"body":{"resourceId":"100500"}}"""
+      val is = new ByteArrayInputStream(s.getBytes("UTF8"))
+      val d = Helpers.decodeRequestWith(is, (rh, is2) => {
+        Helpers.decodeDynamicRequest(rh, is2)
+      })
+
+      d should equal(new DynamicGet("/test",DynamicBody(Obj(Map("resourceId" -> Text("100500"))))))
     }
 /*
     "Decode Response" in {

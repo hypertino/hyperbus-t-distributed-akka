@@ -3,7 +3,7 @@ package eu.inn.servicebus.impl
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.concurrent.TrieMap
 
-case class SubscriptionWithId[T](subscriptionId:String, subcription:T)
+case class SubscriptionWithId[T](subscriptionId:String, subscription:T)
 
 class Subscriptions[T] {
   type SubscriptionMap = Map[String,IndexedSeq[SubscriptionWithId[T]]]

@@ -12,11 +12,11 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
       val tr = new InprocTransport
       val serviceBus = new ServiceBus(tr,tr)
 
-      val id = serviceBus.subscribe("topic", None, { s: String =>
+      val id = serviceBus.subscribe[String,String]("topic", None) { s =>
         Future {
           s.reverse
         }
-      })
+      }
 
       val f: Future[String] = serviceBus.send[String,String]("topic", "hey")
 

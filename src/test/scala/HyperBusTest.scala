@@ -35,11 +35,11 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val tr = new InprocTransport
       val hyperBus = new HyperBus(new ServiceBus(tr,tr))
 
-      hyperBus.subscribe(None, { post: TestPost1 =>
+      hyperBus.subscribe[Request[Body]](None) { post =>
         Future {
           new Created(TestCreatedBody("100500"))
         }
-      })
+      }
 
       val f = hyperBus.send(TestPost1(TestBody1("ha ha")))
 

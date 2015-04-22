@@ -1,19 +1,17 @@
 package eu.inn.hyperbus.serialization.impl
 
-import java.io.{InputStream, OutputStream}
+import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 
 import com.fasterxml.jackson.core.{JsonParser, JsonToken, JsonFactory}
-import eu.inn.binders.json.SerializerFactory
-import eu.inn.hyperbus.protocol.{Post, Response, Body, Request}
+import eu.inn.binders.dynamic.DynamicValue
+import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.serialization.{DecodeException, ResponseHeader, RequestHeader}
-import eu.inn.servicebus.serialization.{Encoder, Decoder}
-
-
+import eu.inn.servicebus.serialization.{Encoder}
 
 object Helpers {
+  import eu.inn.binders.json._
 
   def encodeMessage[B <: Body](request: Request[B], b: B, bodyEncoder: Encoder[B], out: OutputStream) = {
-    import eu.inn.binders.json._
     val req = RequestHeader(request.url, request.method, request.body.contentType)
     writeUtf8("""{"request":""",out)
     req.writeJson(out)
@@ -23,7 +21,6 @@ object Helpers {
   }
 
   def encodeMessage[B <: Body](response: Response[B], b: B, bodyEncoder: Encoder[B], out: OutputStream) = {
-    import eu.inn.binders.json._
     val resp = ResponseHeader(response.status)
     writeUtf8("""{"response":""",out)
     resp.writeJson(out)
@@ -32,26 +29,29 @@ object Helpers {
     writeUtf8("}",out)
   }
 
-  def decodeMessage[B <: Body](inputStream: InputStream,
-                               decoder: (RequestHeader, InputStream) => Request[B]): Request[B] = {
+  def decodeRequestWith[B <: Body](inputStream: InputStream,
+                               decoder: (RequestHeader, JsonParser) => Request[B]): Request[B] = {
 
-    import eu.inn.binders.json._
     val jf = new JsonFactory()
     val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
+    val factory = SerializerFactory.findFactory()
     try {
       expect(jp, JsonToken.START_OBJECT)
       expect(jp, JsonToken.FIELD_NAME)
       val fieldName = jp.getCurrentName
       val requestHeader =
         if (fieldName == "request") {
-          inputStream.readJson[RequestHeader]
+          factory.withJsonParser(jp) { deserializer=>
+            deserializer.unbind[RequestHeader]
+          }
         } else {
           throw DecodeException(s"'request' field expected, but found: '$fieldName'")
         }
       expect(jp, JsonToken.FIELD_NAME)
+      val fieldName2 = jp.getCurrentName
       val result =
-        if (fieldName == "body") {
-          decoder(requestHeader, inputStream)
+        if (fieldName2 == "body") {
+          decoder(requestHeader, jp)
         } else {
           throw DecodeException(s"'body' field expected, but found: '$fieldName'")
         }
@@ -62,13 +62,28 @@ object Helpers {
     }
   }
 
-  def expect(parser: JsonParser, token: JsonToken) = {
+  def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
+    val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
+      DynamicBody(deserializer.unbind[DynamicValue], requestHeader.contentType)
+    }
+
+    requestHeader.method match {
+      case StandardMethods.GET => DynamicGet(requestHeader.url, body)
+      case StandardMethods.POST => DynamicPost(requestHeader.url, body)
+      case StandardMethods.PUT => DynamicPut(requestHeader.url, body)
+      case StandardMethods.DELETE => DynamicDelete(requestHeader.url, body)
+      case StandardMethods.PATCH => DynamicPatch(requestHeader.url, body)
+      case _ => throw new RuntimeException(s"Unknown method: '${requestHeader.method}'") //todo: exception class and save more details
+    }
+  }
+
+  private def expect(parser: JsonParser, token: JsonToken) = {
     val loc = parser.getCurrentLocation
     val next = parser.nextToken()
     if (next != token) throw DecodeException(s"$token expected at $loc, but found: $next")
   }
 
-  def writeUtf8(s:String, out: OutputStream) = {
+  private def writeUtf8(s:String, out: OutputStream) = {
     out.write(s.getBytes("UTF8"))
   }
 }

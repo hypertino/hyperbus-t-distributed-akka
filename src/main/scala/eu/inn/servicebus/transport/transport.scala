@@ -21,12 +21,8 @@ trait ClientTransport {
 case class HandlerResult[OUT](futureResult: Future[OUT],encoder:Encoder[OUT])
 
 trait ServerTransport {
-  def subscribe[OUT,IN](
-                         topic: String,
-                         groupName: Option[String],
-                         inputDecoder: Decoder[IN],
-                         handler: (IN) => HandlerResult[OUT]
-                         ): String
+  def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+                       (handler: (IN) => HandlerResult[OUT]): String
 
   def unsubscribe(subscriptionId: String)
 }
@@ -56,10 +52,10 @@ class InprocTransport extends ClientTransport with ServerTransport {
       }
 
       if (groupName.isEmpty) { // default subscription (groupName="") returns reply
-        val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscription[OUT,IN]]
+        val subscriber = subscrSeq(idx).subscription.asInstanceOf[Subscription[OUT,IN]]
         result = subscriber.handler(message).futureResult
       } else {
-        val subscriber = subscrSeq(idx).subcription.asInstanceOf[Subscription[Unit,IN]]
+        val subscriber = subscrSeq(idx).subscription.asInstanceOf[Subscription[Unit,IN]]
         subscriber.handler(message)
       }
       if (log.isTraceEnabled) {
@@ -83,12 +79,8 @@ class InprocTransport extends ClientTransport with ServerTransport {
     }
   }
 
-  def subscribe[OUT,IN](
-                         topic: String,
-                         groupName: Option[String],
-                         inputDecoder: Decoder[IN],
-                         handler: (IN) => HandlerResult[OUT]
-                         ): String = {
+  def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+                       (handler: (IN) => HandlerResult[OUT]): String = {
 
     subscriptions.add(topic,groupName,Subscription[OUT,IN](handler))
   }

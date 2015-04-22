@@ -27,11 +27,9 @@ private[servicebus] object ServiceBusMacro {
   }
 
   def subscribe[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]
-    (c: Context) (
-      topic: c.Expr[String],
-      groupName: c.Expr[Option[String]],
-      handler: c.Expr[(IN) => Future[OUT]]
-      ): c.Expr[String] = {
+    (c: Context)
+    (topic: c.Expr[String], groupName: c.Expr[Option[String]])
+    (handler: c.Expr[(IN) => Future[OUT]]): c.Expr[String] = {
 
     import c.universe._
 
@@ -46,9 +44,9 @@ private[servicebus] object ServiceBusMacro {
       val decoder = JsonDecoder.createDecoder[$out]
       val thiz = $thiz
       val handler = $handler
-      val id = thiz.subscribe[$out,$in]($topic,$groupName,decoder,
+      val id = thiz.subscribe[$out,$in]($topic,$groupName,decoder){
         (in:$in) => eu.inn.servicebus.transport.HandlerResult(handler(in), encoder)
-      )
+      }
       id
     }"""
     //println(obj)

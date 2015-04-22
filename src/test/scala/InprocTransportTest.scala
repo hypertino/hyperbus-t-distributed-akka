@@ -12,9 +12,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
   "InprocTransport " - {
     "Simple Test" in {
       val t = new InprocTransport
-      t.subscribe("a", None, null, (s: String) => {
+      t.subscribe[String,String]("a", None, null) { s =>
         HandlerResult(Future { s.reverse }, null)
-      })
+      }
 
       val f: Future[String] = t.send("a", "hey", null, null)
 
@@ -25,9 +25,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "NoTransportRouteException Test" in {
       val t = new InprocTransport
-      t.subscribe("notexists", None, null, (s: String) => {
+      t.subscribe[String,String]("notexists", None, null) {s  =>
         HandlerResult(Future { s.reverse }, null)
-      })
+      }
 
       val f: Future[String] = t.send("a", "hey", null, null)
 
@@ -38,9 +38,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Complex Test (Service and Subscribers)" in {
       val t = new InprocTransport
-      t.subscribe("a", None, null, (s: String) => {
+      t.subscribe[String,String]("a", None, null) { s =>
         HandlerResult(Future { s.reverse }, null)
-      })
+      }
 
       val group1 = new AtomicInteger(0)
       val group1promise = Promise[Unit]
@@ -51,9 +51,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         }, null)
       }
 
-      t.subscribe("a", Some("group1"), null, group1Func)
-      t.subscribe("a", Some("group1"), null, group1Func)
-      t.subscribe("a", Some("group1"), null, group1Func)
+      t.subscribe("a", Some("group1"), null)(group1Func)
+      t.subscribe("a", Some("group1"), null)(group1Func)
+      t.subscribe("a", Some("group1"), null)(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]
@@ -64,8 +64,8 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         },null)
       }
 
-      t.subscribe("a", Some("group2"), null, group2Func)
-      t.subscribe("a", Some("group2"), null, group2Func)
+      t.subscribe("a", Some("group2"), null)(group2Func)
+      t.subscribe("a", Some("group2"), null)(group2Func)
 
       val f: Future[String] = t.send("a", "hey", null, null)
 
@@ -96,9 +96,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         null)
       }
 
-      t.subscribe("a", Some("group1"), null, group1Func)
-      t.subscribe("a", Some("group1"), null, group1Func)
-      t.subscribe("a", Some("group1"), null, group1Func)
+      t.subscribe("a", Some("group1"), null)(group1Func)
+      t.subscribe("a", Some("group1"), null)(group1Func)
+      t.subscribe("a", Some("group1"), null)(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]
@@ -110,8 +110,8 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         null)
       }
 
-      t.subscribe("a", Some("group2"), null, group2Func)
-      t.subscribe("a", Some("group2"), null, group2Func)
+      t.subscribe("a", Some("group2"), null)(group2Func)
+      t.subscribe("a", Some("group2"), null)(group2Func)
 
       val f: Future[Unit] = t.send("a", "hey", null, null)
 
@@ -131,19 +131,19 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       val t = new InprocTransport
       val receivers = new AtomicInteger(0)
 
-      t.subscribe("a", None, null, (s: String) => {
+      t.subscribe[String,String]("a", None, null) { s =>
         HandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
         },null)
-      })
+      }
 
-      t.subscribe("a", None, null, (s: String) => {
+      t.subscribe[String,String]("a", None, null) { s =>
         HandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
         },null)
-      })
+      }
 
       val f1: Future[String] =
         t.send("a", "hey", null, null)
@@ -168,13 +168,13 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Unsubscribe Test" in {
       val t = new InprocTransport
-      val id1 = t.subscribe("a", None, null, (s: String) => {
+      val id1 = t.subscribe[String,String]("a", None, null) { s =>
         HandlerResult(Future { s.reverse },null)
-      })
+      }
 
-      val id2 = t.subscribe("a", None, null, (s: String) => {
+      val id2 = t.subscribe[String,String]("a", None, null) { s =>
         HandlerResult(Future { s.reverse },null)
-      })
+      }
 
       val f1: Future[String] = t.send("a", "hey", null, null)
 

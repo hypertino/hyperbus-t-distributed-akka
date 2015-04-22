@@ -14,9 +14,9 @@ private [servicebus] object JsonSerializationMacro {
         import eu.inn.binders.json._
         def encode(t: $t) = t.toJson
         def encode(t: $t, out: java.io.OutputStream) = {
-          SerializerFactory.findFactory().withStreamGenerator(out, serializer=> {
+          SerializerFactory.findFactory().withStreamGenerator(out) { serializer=>
             serializer.bind[${weakTypeOf[T]}](t)
-          })
+          }
         }
       }
     """
@@ -32,9 +32,9 @@ private [servicebus] object JsonSerializationMacro {
       new Object with eu.inn.servicebus.serialization.Decoder[$t] {
         import eu.inn.binders.json._
         def decode(in: java.io.InputStream) = {
-          SerializerFactory.findFactory().withStreamParser[${weakTypeOf[T]}](in, deserializer=> {
-          deserializer.unbind[${weakTypeOf[T]}]
-          })
+          SerializerFactory.findFactory().withStreamParser[${weakTypeOf[T]}](in) { deserializer=>
+            deserializer.unbind[${weakTypeOf[T]}]
+          }
         }
       }
     """
