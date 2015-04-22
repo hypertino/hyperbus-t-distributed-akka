@@ -30,9 +30,8 @@ object Build extends sbt.Build {
       )
     )
 
-    lazy val hyperbusMacro = project.in(file("hyperbus-macro"))
-    lazy val hyperbus    = project.in(file("hyperbus")) dependsOn hyperbusMacro
-    lazy val rootX = project.in(file(".")) aggregate (hyperbus, hyperbusMacro/*, forgameStatusMonitor*/)
-
-//  lazy val forgameStatusMonitor = project.in(file("status-monitor")) dependsOn hyperbus
+    //lazy val hyperbusMacro = project.in(file("hyperbus-macro"))
+    lazy val hyperbus    = project.in(file("hyperbus"))
+    lazy val forgameStatusMonitor = project.in(file("status-monitor")) dependsOn hyperbus
+    lazy val rootX = project.in(file(".")) aggregate (hyperbus, forgameStatusMonitor)
 }

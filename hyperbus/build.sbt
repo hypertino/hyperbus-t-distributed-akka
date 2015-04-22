@@ -28,7 +28,6 @@ javacOptions ++= Seq(
 libraryDependencies ++= Seq(
   "eu.inn" %% "binders-core" % "0.5.12",
   "eu.inn" %% "binders-json" % "0.5.12",
-  "eu.inn" %% "hyperbus-macro" % "0.0.1",
   "org.slf4j" % "slf4j-api" % "1.7.12"
 )
 

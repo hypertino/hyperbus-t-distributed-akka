@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.impl
 
-import eu.inn.hyperbus.protocol.annotations.{contentType, url}
+import eu.inn.hyperbus.protocol.annotations.{contentType, UrlMarker}
 import eu.inn.hyperbus.protocol.{DefinedResponse, Body, Response}
 import eu.inn.hyperbus.serialization.RequestDecoder
 
@@ -19,7 +19,7 @@ private[hyperbus] object HyperBusMacro {
     val thiz = c.prefix.tree
 
     val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(c)(in.typeSymbol)
+    val url = ""//getUrlAnnotation(c)(in.typeSymbol)
     val method = "post"
     val contentType: Option[String] = None
     val decoder: RequestDecoder = null
@@ -55,10 +55,10 @@ private[hyperbus] object HyperBusMacro {
   }
 
   private def getUrlAnnotation(c: Context)(symbol: c.Symbol): Option[String] =
-    getStringAnnotation(c)(symbol, c.typeOf[url])
+    getStringAnnotation(c)(symbol, c.typeOf[UrlMarker])
 
   private def getContentTypeAnnotation(c: Context)(symbol: c.Symbol): Option[String] =
-    getStringAnnotation(c)(symbol, c.typeOf[contentType])
+    getStringAnnotation(c)(symbol, c.typeOf[contentTypeMarker])
 
   def getStringAnnotation(c: Context)(symbol: c.Symbol, atype: c.Type): Option[String] = {
     import c.universe._
