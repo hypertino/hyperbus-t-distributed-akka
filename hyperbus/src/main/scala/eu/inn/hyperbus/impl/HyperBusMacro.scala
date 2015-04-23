@@ -1,7 +1,8 @@
 package eu.inn.hyperbus.impl
 
-import eu.inn.hyperbus.protocol.annotations.{ContentTypeMarker, UrlMarker}
-import eu.inn.hyperbus.protocol.{DefinedResponse, Body, Response}
+import eu.inn.hyperbus.protocol.annotations.impl.{ContentTypeMarker, UrlMarker}
+import eu.inn.hyperbus.protocol.annotations.method
+import eu.inn.hyperbus.protocol.{Post, Request, Body, Response}
 import eu.inn.hyperbus.serialization.RequestDecoder
 
 import scala.concurrent.Future
@@ -19,10 +20,25 @@ private[hyperbus] object HyperBusMacro {
     val thiz = c.prefix.tree
 
     val in = weakTypeOf[IN]
-    val url = ""//getUrlAnnotation(c)(in.typeSymbol)
-    val method = "post"
-    val contentType: Option[String] = None
-    val decoder: RequestDecoder = null
+    val url = getUrlAnnotation(c)(in) getOrElse {
+      c.abort(c.enclosingPosition, s"@url annotation is not defined for $in.}")
+    }
+
+    val requestTypeSig = c.typeOf[Request[_]].typeSymbol.typeSignature
+
+    // !!! todo: val decoder: RequestDecoder = null
+    val (method: String, bodySymbol) = in.baseClasses.flatMap { baseSymbol =>
+      val baseType = in.baseType(baseSymbol)
+      baseType.baseClasses.find(_.typeSignature =:= requestTypeSig).flatMap { requestTrait =>
+        getMethodAnnotation(c)(baseSymbol.typeSignature) map { ma =>
+          (ma, in.baseType(requestTrait).typeArgs.head)
+        }
+      }
+    }.headOption.getOrElse {
+      c.abort(c.enclosingPosition, s"@method annotation is not defined.}")
+    }
+
+    val contentType: Option[String] = getContentTypeAnnotation(c)(bodySymbol)
 
     val obj = q"""{
       val thiz = $thiz
@@ -42,8 +58,6 @@ private[hyperbus] object HyperBusMacro {
 
     val in = weakTypeOf[IN]
     val out = weakTypeOf[OUT]
-    println(in)
-    println(out)
     val thiz = c.prefix.tree
     val obj = q"""{
       val thiz = $thiz
@@ -54,18 +68,21 @@ private[hyperbus] object HyperBusMacro {
     obj
   }
 
-  private def getUrlAnnotation(c: Context)(symbol: c.Symbol): Option[String] =
-    getStringAnnotation(c)(symbol, c.typeOf[UrlMarker])
+  private def getUrlAnnotation(c: Context)(t: c.Type): Option[String] =
+    getStringAnnotation(c)(t.typeSymbol, c.typeOf[UrlMarker])
 
-  private def getContentTypeAnnotation(c: Context)(symbol: c.Symbol): Option[String] =
-    getStringAnnotation(c)(symbol, c.typeOf[ContentTypeMarker])
+  private def getContentTypeAnnotation(c: Context)(t: c.Type): Option[String] =
+    getStringAnnotation(c)(t.typeSymbol, c.typeOf[ContentTypeMarker])
+
+  private def getMethodAnnotation(c: Context)(t: c.Type): Option[String] =
+    getStringAnnotation(c)(t.typeSymbol, c.typeOf[method])
 
   def getStringAnnotation(c: Context)(symbol: c.Symbol, atype: c.Type): Option[String] = {
     import c.universe._
     symbol.annotations.find { a =>
-      a.tpe == atype
+      a.tree.tpe <:< atype
     } map {
-      annotation => annotation.scalaArgs.head match {
+      annotation => annotation.tree.children.tail.head match {
         case Literal(Constant(s: String)) => Some(s)
         case _ => None
       }

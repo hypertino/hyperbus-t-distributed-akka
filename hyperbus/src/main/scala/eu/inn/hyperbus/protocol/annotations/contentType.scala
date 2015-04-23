@@ -6,9 +6,11 @@ import scala.annotation.StaticAnnotation
 import scala.annotation.compileTimeOnly
 import scala.language.experimental.macros
 
-trait ContentTypeMarker
+package impl {
+class ContentTypeMarker(v: String) extends StaticAnnotation
+}
 
 @compileTimeOnly("enable macro paradise to expand macro annotations")
-class contentType(v: String) extends StaticAnnotation with ContentTypeMarker{
+class contentType(v: String) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Unit = macro AnnotationsMacro.contentType
 }

@@ -99,24 +99,26 @@ class HyperBus(val underlyingBus: ServiceBus) {
     underlyingBus.send[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder)
   }
 
-  def subscribe[IN <: Request[Body]] (groupName: Option[String] = None)
+  def subscribe[IN <: Request[_ <: Body]] (groupName: Option[String] = None)
                                      (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.subscribe[IN]
 
-  def subscribe
-    (url: String,
+  def subscribe[OUT <: Response[_ <: Body], IN <: Request[_ <: Body]]
+  (url: String,
      method: String,
      contentType: Option[String],
      groupName: Option[String],
      requestDecoder: RequestDecoder)
-    (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String = {
+    (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     val routeKey = getRouteKey(url, groupName)
     val subRouteKey = getSubRouteKey(method, contentType)
 
     underlyingSubscriptions.synchronized {
-      val r = subscriptions.add(routeKey, Some(subRouteKey), Subscription(
-        handler, requestDecoder
-      ))
+      val r = subscriptions.add(
+        routeKey,
+        Some(subRouteKey),
+        Subscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Response[Body]]], requestDecoder)
+      )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingHandler(routeKey)

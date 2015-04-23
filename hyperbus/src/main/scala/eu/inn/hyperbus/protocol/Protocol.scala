@@ -2,6 +2,7 @@ package eu.inn.hyperbus.protocol
 
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.DynamicValue
+import eu.inn.hyperbus.protocol.annotations.method
 
 object Status {
   val OK = 200
@@ -50,6 +51,7 @@ trait Message[+B <: Body]{
 }
 
 trait Request[+B <: Body] extends Message[B]{
+  type bodyType = Body
   def url: String
   def method: String
 }
@@ -96,30 +98,35 @@ class CreatedResponseBodyStatic(initLocation: Link, otherLinks: Map[String,Link]
 // --------------- Request classes ---------------
 trait DynamicRequest
 
+@method("get")
 trait Get[+B <: Body] extends Request[B] {
   override def method = StandardMethods.GET
 }
 abstract class StaticGet[+B <: Body](initBody: B) extends Get[B]
 case class DynamicGet[+B <: Body](url: String, body: B) extends Get[B] with DynamicRequest
 
+@method("delete")
 trait Delete[+B <: Body] extends Request[B] {
   override def method = StandardMethods.DELETE
 }
 abstract class StaticDelete[+B <: Body](initBody: B) extends Delete[B]
 case class DynamicDelete[+B <: Body](url: String, body: B) extends Delete[B] with DynamicRequest
 
+@method("post")
 trait Post[+B <: Body] extends Request[B] {
   override def method = StandardMethods.POST
 }
 abstract class StaticPost[+B <: Body](initBody: B) extends Post[B]
 case class DynamicPost[+B <: Body](url: String, body: B) extends Post[B] with DynamicRequest
 
+@method("put")
 trait Put[+B <: Body] extends Request[B] {
   override def method = StandardMethods.PUT
 }
 abstract class StaticPut[+B <: Body](initBody: B) extends Put[B]
 case class DynamicPut[+B <: Body](url: String, body: B) extends Put[B] with DynamicRequest
 
+@method("patch")
 trait Patch[+B <: Body] extends Request[B] {
   override def method = StandardMethods.PATCH
 }
