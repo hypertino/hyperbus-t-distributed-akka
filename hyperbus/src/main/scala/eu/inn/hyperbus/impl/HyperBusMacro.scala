@@ -30,8 +30,8 @@ private[hyperbus] object HyperBusMacro {
     val (method: String, bodySymbol) = in.baseClasses.flatMap { baseSymbol =>
       val baseType = in.baseType(baseSymbol)
       baseType.baseClasses.find(_.typeSignature =:= requestTypeSig).flatMap { requestTrait =>
-        getMethodAnnotation(c)(baseSymbol.typeSignature) map { ma =>
-          (ma, in.baseType(requestTrait).typeArgs.head)
+        getMethodAnnotation(c)(baseSymbol.typeSignature) map { annotationOfMethod =>
+          (annotationOfMethod, in.baseType(requestTrait).typeArgs.head)
         }
       }
     }.headOption.getOrElse {
@@ -42,8 +42,9 @@ private[hyperbus] object HyperBusMacro {
 
     val obj = q"""{
       val thiz = $thiz
+      val decoder = eu.inn.hyperbus.serialization.HyperJsonDecoder.createDecoder[$in]
       val handler = eu.inn.hyperbus.impl.Helpers.wrapHandler($handler, null)
-      val id = thiz.subscribe($url, $method, $contentType, $groupName, null)(handler)
+      val id = thiz.subscribe($url, $method, $contentType, $groupName, decoder)(handler)
       id
     }"""
     //<-- response encoders
