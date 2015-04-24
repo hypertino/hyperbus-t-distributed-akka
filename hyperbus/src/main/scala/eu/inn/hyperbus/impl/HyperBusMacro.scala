@@ -26,7 +26,6 @@ private[hyperbus] object HyperBusMacro {
 
     val requestTypeSig = c.typeOf[Request[_]].typeSymbol.typeSignature
 
-    // !!! todo: val decoder: RequestDecoder = null
     val (method: String, bodySymbol) = in.baseClasses.flatMap { baseSymbol =>
       val baseType = in.baseType(baseSymbol)
       baseType.baseClasses.find(_.typeSignature =:= requestTypeSig).flatMap { requestTrait =>
@@ -41,10 +40,26 @@ private[hyperbus] object HyperBusMacro {
     val contentType: Option[String] = getContentTypeAnnotation(c)(bodySymbol)
 
     val obj = q"""{
+      import eu.inn.servicebus.serialization._
+      import eu.inn.hyperbus.serialization._
+      import eu.inn.hyperbus.protocol._
       val thiz = $thiz
-      val decoder = eu.inn.hyperbus.serialization.HyperJsonDecoder.createDecoder[$in]
-      val handler = eu.inn.hyperbus.impl.Helpers.wrapHandler($handler, null)
-      val id = thiz.subscribe($url, $method, $contentType, $groupName, decoder)(handler)
+      val requestDecoder = eu.inn.hyperbus.serialization.HyperJsonDecoder.createRequestDecoder[$in]
+      val responseEncoder = new Encoder[Response[Body]] {
+        def encode(response: Response[Body], outputStream: java.io.OutputStream) = {
+          val encoder: Encoder[Response[Body]] =
+            response match {
+              case b1: Created[TestCreatedBody] => HyperJsonEncoder.createEncoder[Created[TestCreatedBody]]
+              case _ => throw new RuntimeException("todo: implement fallback")
+            }
+          encoder.encode(response, outputStream)
+        }
+      }
+
+      val handler = (response: $in) => {
+        eu.inn.servicebus.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
+      }
+      val id = thiz.subscribe($url, $method, $contentType, $groupName, requestDecoder)(handler)
       id
     }"""
     //<-- response encoders

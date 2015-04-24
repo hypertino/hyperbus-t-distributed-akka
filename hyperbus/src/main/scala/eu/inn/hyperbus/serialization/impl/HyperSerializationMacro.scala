@@ -1,10 +1,12 @@
 package eu.inn.hyperbus.serialization.impl
 
-import eu.inn.hyperbus.protocol.Message
+import eu.inn.hyperbus.protocol.{DynamicRequest, Message}
+import eu.inn.hyperbus.serialization.RequestDecoder
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import scala.reflect.macros.blackbox.Context
 
 private[hyperbus] object HyperSerializationMacro {
+  // todo: is this really needed?
   def createEncoder[T: c.WeakTypeTag](c: Context): c.Expr[Encoder[T]] = {
     import c.universe._
     val t = weakTypeOf[T]
@@ -23,21 +25,37 @@ private[hyperbus] object HyperSerializationMacro {
     c.Expr[Encoder[T]](obj)
   }
 
-  def createDecoder[T: c.WeakTypeTag](c: Context): c.Expr[Decoder[T]] = {
+  def createRequestDecoder[T: c.WeakTypeTag](c: Context): c.Expr[RequestDecoder] = {
     import c.universe._
     val t = weakTypeOf[T]
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
-    val obj = q"""
-      new eu.inn.servicebus.serialization.Decoder[$t] {
-        def decode(in: java.io.InputStream) = {
-          val bodyDecoder = eu.inn.servicebus.serialization.JsonDecoder.createDecoder[$tBody]
-          eu.inn.hyperbus.serialization.impl.Helpers.decodeMessage[$tBody](s, bodyDecoder)
+    val decoder = if (t <:< typeOf[DynamicRequest]) {
+      q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicRequest(requestHeader, requestBodyJson)"
+    } else {
+      val to = t.typeSymbol.companion
+      if (to == NoSymbol) {
+        c.abort(c.enclosingPosition, s"$t doesn't have a companion object (it's not a case class)")
+      }
+      // todo: validate method & contentType?
+      q"""
+        val body = eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(requestBodyJson) { deserializer =>
+          deserializer.unbind[$tBody]
+        }
+        $to.${TermName("apply")}(body)
+      """
+    }
+
+    val obj = q"""{
+      import eu.inn.hyperbus.serialization._
+      new RequestDecoder {
+        def decode(requestHeader: RequestHeader, requestBodyJson: com.fasterxml.jackson.core.JsonParser): Request[Body] = {
+          ..$decoder
         }
       }
-    """
+    }"""
     //println(obj)
-    c.Expr[Decoder[T]](obj)
+    c.Expr[RequestDecoder](obj)
   }
 
   protected def extractTypeArgs(c: Context)(tpe: c.Type): List[c.Tree] = {

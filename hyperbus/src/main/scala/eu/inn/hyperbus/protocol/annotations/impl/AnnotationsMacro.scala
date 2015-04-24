@@ -28,7 +28,7 @@ private[hyperbus] object AnnotationsMacro {
     )
   }
 
-  def method(c: Context)(annottees: c.Expr[Any]*): c.Expr[Unit] = {
+  /*def method(c: Context)(annottees: c.Expr[Any]*): c.Expr[Unit] = {
     import c.universe._
     val (_ :: methodResult :: _) = c.prefix.tree.children
     defineMethod(c)("url",
@@ -36,7 +36,7 @@ private[hyperbus] object AnnotationsMacro {
       q"""$methodResult""",
       annottees
     )
-  }
+  }*/
 
   private[this] def defineMethod(c: Context)
                                 (methodName: String, annotation: c.Tree, result: c.Tree, annottees: Seq[c.Expr[Any]]): c.Expr[Unit] = {
