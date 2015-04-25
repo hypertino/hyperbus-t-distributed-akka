@@ -2,8 +2,7 @@ package eu.inn.hyperbus.impl
 
 import eu.inn.hyperbus.protocol.annotations.impl.{ContentTypeMarker, UrlMarker}
 import eu.inn.hyperbus.protocol.annotations.method
-import eu.inn.hyperbus.protocol.{Post, Request, Body, Response}
-import eu.inn.hyperbus.serialization.RequestDecoder
+import eu.inn.hyperbus.protocol._
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
@@ -11,25 +10,48 @@ import scala.reflect.macros.blackbox.Context
 private[hyperbus] object HyperBusMacro {
 
   def subscribe[IN: c.WeakTypeTag]
-    (c: Context)
-    (groupName: c.Expr[Option[String]])
-    (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
+  (c: Context)
+  (groupName: c.Expr[Option[String]])
+  (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
+    val c0: c.type = c
+    val bundle = new {
+      val c: c0.type = c0
+    } with HyperBusMacroImplementation
+    bundle.subscribe[IN](groupName)(handler)
+  }
 
-    import c.universe._
+  def send[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]
+  (c: Context)
+  (r: c.Expr[IN]): c.Tree = {
+    val c0: c.type = c
+    val bundle = new {
+      val c: c0.type = c0
+    } with HyperBusMacroImplementation
+    bundle.send[OUT,IN](r)
+  }
+}
+
+private[hyperbus] trait HyperBusMacroImplementation {
+  val c: Context
+  import c.universe._
+
+  def subscribe[IN: c.WeakTypeTag]
+  (groupName: c.Expr[Option[String]])
+  (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
 
     val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(c)(in) getOrElse {
+    val url = getUrlAnnotation(in) getOrElse {
       c.abort(c.enclosingPosition, s"@url annotation is not defined for $in.}")
     }
 
-    val requestTypeSig = c.typeOf[Request[_]].typeSymbol.typeSignature
+    val requestTypeSig = typeOf[Request[_]].typeSymbol.typeSignature
 
     val (method: String, bodySymbol) = in.baseClasses.flatMap { baseSymbol =>
       val baseType = in.baseType(baseSymbol)
       baseType.baseClasses.find(_.typeSignature =:= requestTypeSig).flatMap { requestTrait =>
-        getMethodAnnotation(c)(baseSymbol.typeSignature) map { annotationOfMethod =>
+        getMethodAnnotation(baseSymbol.typeSignature) map { annotationOfMethod =>
           (annotationOfMethod, in.baseType(requestTrait).typeArgs.head)
         }
       }
@@ -37,7 +59,9 @@ private[hyperbus] object HyperBusMacro {
       c.abort(c.enclosingPosition, s"@method annotation is not defined.}")
     }
 
-    val contentType: Option[String] = getContentTypeAnnotation(c)(bodySymbol)
+    println ("RRR + " + getResponses(in))
+
+    val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
       import eu.inn.servicebus.serialization._
@@ -64,10 +88,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def send[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]
-  (c: Context)
   (r: c.Expr[IN]): c.Tree = {
-    import c.universe._
-
     val in = weakTypeOf[IN]
     val out = weakTypeOf[OUT]
     val thiz = c.prefix.tree
@@ -80,17 +101,47 @@ private[hyperbus] object HyperBusMacro {
     obj
   }
 
-  private def getUrlAnnotation(c: Context)(t: c.Type): Option[String] =
-    getStringAnnotation(c)(t.typeSymbol, c.typeOf[UrlMarker])
+  private def getResponses(t: c.Type): Seq[c.Type] = {
+    println("YYY: " + t.baseClasses)
+    val tDefined = typeOf[DefinedResponse[_]].typeSymbol.typeSignature
 
-  private def getContentTypeAnnotation(c: Context)(t: c.Type): Option[String] =
-    getStringAnnotation(c)(t.typeSymbol, c.typeOf[ContentTypeMarker])
+    t.baseClasses.find(_.typeSignature <:< tDefined) map { responses =>
+      println("ZZZ: " + responses + " " + responses.typeSignature.typeArgs)
+      getResponsesIn(t.baseType(responses).typeArgs)
+    } getOrElse {
+      Seq()
+    }
+  }
 
-  private def getMethodAnnotation(c: Context)(t: c.Type): Option[String] =
-    getStringAnnotation(c)(t.typeSymbol, c.typeOf[method])
+  private def getResponsesIn(tin: Seq[c.Type]): Seq[c.Type] = {
+    val tOr = typeOf[eu.inn.hyperbus.protocol.|[_,_]].typeSymbol.typeSignature
+    val tAsk = typeOf[eu.inn.hyperbus.protocol.!].typeSymbol.typeSignature
 
-  def getStringAnnotation(c: Context)(symbol: c.Symbol, atype: c.Type): Option[String] = {
-    import c.universe._
+    tin.flatMap { t =>
+      if (t.typeSymbol.typeSignature <:< tOr) {
+        println("FOUND:IN " + t)
+        getResponsesIn(t.typeArgs)
+      } else
+      if (t.typeSymbol.typeSignature <:< tAsk) {
+        println("FOUND:ASK " + t)
+        Seq()
+      } else {
+        println("FOUND:X " + t)
+        Seq(t)
+      }
+    }
+  }
+
+  private def getUrlAnnotation(t: c.Type): Option[String] =
+    getStringAnnotation(t.typeSymbol, c.typeOf[UrlMarker])
+
+  private def getContentTypeAnnotation(t: c.Type): Option[String] =
+    getStringAnnotation(t.typeSymbol, c.typeOf[ContentTypeMarker])
+
+  private def getMethodAnnotation(t: c.Type): Option[String] =
+    getStringAnnotation(t.typeSymbol, c.typeOf[method])
+
+  private def getStringAnnotation(symbol: c.Symbol, atype: c.Type): Option[String] = {
     symbol.annotations.find { a =>
       a.tree.tpe <:< atype
     } map {

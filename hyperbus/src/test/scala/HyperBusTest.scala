@@ -22,7 +22,9 @@ case class TestCreatedBody(resourceId: String,
 
 @url("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
-with DefinedResponse[Created[TestCreatedBody]]
+with DefinedResponse[
+    | [OK[DynamicBody], | [Created[TestCreatedBody], !]]
+  ]
 
 @url("/resources")
 case class TestPost2(body: TestBody2) extends StaticPost(body)

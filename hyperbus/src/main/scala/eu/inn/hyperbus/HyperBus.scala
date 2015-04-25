@@ -2,7 +2,6 @@ package eu.inn.hyperbus
 
 import java.io.InputStream
 
-import com.fasterxml.jackson.core.JsonParser
 import eu.inn.hyperbus.impl.HyperBusMacro
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.serialization.{ResponseDecoder, RequestDecoder, RequestHeader}
