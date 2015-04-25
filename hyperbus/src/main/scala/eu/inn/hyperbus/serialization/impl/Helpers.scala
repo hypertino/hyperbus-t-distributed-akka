@@ -16,7 +16,7 @@ object Helpers {
     writeUtf8("""{"request":""",out)
     req.writeJson(out)
     writeUtf8(""","body":""",out)
-    bodyEncoder.encode(b, out)
+    bodyEncoder(b, out)
     writeUtf8("}",out)
   }
 
@@ -25,7 +25,7 @@ object Helpers {
     writeUtf8("""{"response":""",out)
     resp.writeJson(out)
     writeUtf8(""","body":""",out)
-    bodyEncoder.encode(b, out)
+    bodyEncoder(b, out)
     writeUtf8("}",out)
   }
 

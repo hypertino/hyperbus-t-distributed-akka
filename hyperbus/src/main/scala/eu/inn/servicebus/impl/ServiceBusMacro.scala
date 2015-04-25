@@ -16,9 +16,8 @@ private[servicebus] object ServiceBusMacro {
     val in = weakTypeOf[IN]
 
     val obj = q"""{
-      import eu.inn.servicebus.serialization._
-      val encoder = JsonEncoder.createEncoder[$in]
-      val decoder = JsonDecoder.createDecoder[$out]
+      val encoder = eu.inn.servicebus.serialization.createEncoder[$in]
+      val decoder = eu.inn.servicebus.serialization.createDecoder[$out]
       val thiz = $thiz
       thiz.send[$out,$in]($topic,$message,encoder,decoder)
     }"""
@@ -39,9 +38,8 @@ private[servicebus] object ServiceBusMacro {
     val in = weakTypeOf[IN]
 
     val obj = q"""{
-      import eu.inn.servicebus.serialization._
-      val encoder = JsonEncoder.createEncoder[$in]
-      val decoder = JsonDecoder.createDecoder[$out]
+      val encoder = eu.inn.servicebus.serialization.createEncoder[$in]
+      val decoder = eu.inn.servicebus.serialization.createDecoder[$out]
       val thiz = $thiz
       val handler = $handler
       val id = thiz.subscribe[$out,$in]($topic,$groupName,decoder){

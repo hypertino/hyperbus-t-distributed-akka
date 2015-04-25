@@ -44,15 +44,11 @@ private[hyperbus] object HyperBusMacro {
       import eu.inn.hyperbus.serialization._
       import eu.inn.hyperbus.protocol._
       val thiz = $thiz
-      val requestDecoder = eu.inn.hyperbus.serialization.HyperJsonDecoder.createRequestDecoder[$in]
-      val responseEncoder = new Encoder[Response[Body]] {
-        def encode(response: Response[Body], outputStream: java.io.OutputStream) = {
-          val encoder: Encoder[Response[Body]] =
-            response match {
-              case b1: Created[TestCreatedBody] => HyperJsonEncoder.createEncoder[Created[TestCreatedBody]]
-              case _ => throw new RuntimeException("todo: implement fallback")
-            }
-          encoder.encode(response, outputStream)
+      val requestDecoder = eu.inn.hyperbus.serialization.createRequestDecoder[$in]
+      val responseEncoder = (response: Response[Body], outputStream: java.io.OutputStream) => {
+        response match {
+          case b1: Created[TestCreatedBody] => eu.inn.hyperbus.serialization.createEncoder[Created[TestCreatedBody]](b1, outputStream)
+          case _ => throw new RuntimeException("todo: implement fallback")
         }
       }
 

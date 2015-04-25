@@ -10,13 +10,10 @@ private [servicebus] object JsonSerializationMacro {
     val t = weakTypeOf[T]
 
     val obj = q"""
-      new eu.inn.servicebus.serialization.Encoder[$t] {
+      (t: $t, out: java.io.OutputStream) => {
         import eu.inn.binders.json._
-        def encode(t: $t) = t.toJson
-        def encode(t: $t, out: java.io.OutputStream) = {
-          SerializerFactory.findFactory().withStreamGenerator(out) { serializer=>
-            serializer.bind[${weakTypeOf[T]}](t)
-          }
+        SerializerFactory.findFactory().withStreamGenerator(out) { serializer=>
+          serializer.bind[${weakTypeOf[T]}](t)
         }
       }
     """
@@ -29,12 +26,10 @@ private [servicebus] object JsonSerializationMacro {
     val t = weakTypeOf[T]
 
     val obj = q"""
-      new eu.inn.servicebus.serialization.Decoder[$t] {
+      (in: java.io.InputStream) => {
         import eu.inn.binders.json._
-        def decode(in: java.io.InputStream) = {
-          SerializerFactory.findFactory().withStreamParser[${weakTypeOf[T]}](in) { deserializer=>
-            deserializer.unbind[${weakTypeOf[T]}]
-          }
+        SerializerFactory.findFactory().withStreamParser[$t](in) { deserializer=>
+          deserializer.unbind[$t]
         }
       }
     """

@@ -13,15 +13,12 @@ private[hyperbus] object HyperSerializationMacro {
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
     val obj = q"""
-      new eu.inn.servicebus.serialization.Encoder[$t] {
-        import eu.inn.binders.json._
-        def encode(t: $t, out: java.io.OutputStream) = {
-          val bodyEncoder = eu.inn.servicebus.serialization.JsonEncoder.createEncoder[$tBody]
-          eu.inn.hyperbus.serialization.impl.Helpers.encodeMessage(t, t.body, bodyEncoder, out)
-        }
+      (t: $t, out: java.io.OutputStream) => {
+        val bodyEncoder = eu.inn.servicebus.serialization.createEncoder[$tBody]
+        eu.inn.hyperbus.serialization.impl.Helpers.encodeMessage(t, t.body, bodyEncoder, out)
       }
     """
-    //println(obj)
+    println(obj)
     c.Expr[Encoder[T]](obj)
   }
 
@@ -39,6 +36,7 @@ private[hyperbus] object HyperSerializationMacro {
       }
       // todo: validate method & contentType?
       q"""
+        import eu.inn.hyperbus.serialization._
         val body = eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(requestBodyJson) { deserializer =>
           deserializer.unbind[$tBody]
         }
@@ -47,11 +45,8 @@ private[hyperbus] object HyperSerializationMacro {
     }
 
     val obj = q"""{
-      import eu.inn.hyperbus.serialization._
-      new RequestDecoder {
-        def decode(requestHeader: RequestHeader, requestBodyJson: com.fasterxml.jackson.core.JsonParser): Request[Body] = {
-          ..$decoder
-        }
+      (requestHeader: RequestHeader, requestBodyJson: com.fasterxml.jackson.core.JsonParser) => {
+        ..$decoder
       }
     }"""
     //println(obj)

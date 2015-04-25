@@ -1,11 +1,8 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.binders.dynamic.{Text, Obj}
-import eu.inn.binders.naming.PlainConverter
-import eu.inn.hyperbus.protocol.{DynamicBody, DynamicGet, Created, Link}
+import eu.inn.hyperbus.protocol.{DynamicBody, DynamicGet, Created}
 import eu.inn.hyperbus.serialization.impl.Helpers
-import eu.inn.hyperbus.serialization.{HyperJsonDecoder, HyperJsonEncoder}
-import eu.inn.servicebus.serialization.{JsonDecoder, JsonEncoder}
 import org.scalatest.{Matchers, FreeSpec}
 
 
@@ -26,18 +23,18 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
     }
 
     "Encode Request" in {
-      val encoder = HyperJsonEncoder.createEncoder[TestPost1]
+      val encoder = eu.inn.hyperbus.serialization.createEncoder[TestPost1]
       val ba = new ByteArrayOutputStream()
-      encoder.encode(TestPost1(TestBody1("ha ha")),ba)
+      encoder(TestPost1(TestBody1("ha ha")),ba)
       val s = ba.toString("UTF8")
       //println(s)
       s should equal("""{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}""")
     }
 
     "Encode Response" in {
-      val encoder = HyperJsonEncoder.createEncoder[Created[TestCreatedBody]]
+      val encoder = eu.inn.hyperbus.serialization.createEncoder[Created[TestCreatedBody]]
       val ba = new ByteArrayOutputStream()
-      encoder.encode(new Created(TestCreatedBody("100500")),ba)
+      encoder(new Created(TestCreatedBody("100500")),ba)
       val s = ba.toString("UTF8")
       //println(s)
       s should equal("""{"response":{"status":201},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")

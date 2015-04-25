@@ -66,15 +66,11 @@ class HyperBus(val underlyingBus: ServiceBus) {
       }
     }
 
-    val decoder: Decoder[Request[Body]] = new Decoder[Request[Body]] {
+    def decoder(inputStream: InputStream): Request[Body] = {
       // todo: handle deserialization errors
-      def decode(inputStream: InputStream): Request[Body] = {
-        Helpers.decodeRequestWith(inputStream)(requestDecoder)
-      }
-
-      def requestDecoder(requestHeader: RequestHeader, requestBodyJson: JsonParser): Request[Body] = {
+      Helpers.decodeRequestWith(inputStream) { (requestHeader, requestBodyJson) =>
         getSubscription(requestHeader.method, requestHeader.contentType) map { subscription =>
-          subscription.requestDecoder.decode(requestHeader, requestBodyJson)
+          subscription.requestDecoder(requestHeader, requestBodyJson)
         } getOrElse {
           Helpers.decodeDynamicRequest(requestHeader, requestBodyJson)
         }
@@ -91,11 +87,7 @@ class HyperBus(val underlyingBus: ServiceBus) {
       requestEncoder: Encoder[Request[Body]],
       responseDecoder: ResponseDecoder): Future[Response[Body]] = {
 
-    val outputDecoder = new Decoder[Response[Body]] {
-      override def decode(inputStream: InputStream): Response[Body] = {
-        Helpers.decodeResponseWith(inputStream)((responseHeader, jsonParser) => responseDecoder.decode(responseHeader, jsonParser))
-      }
-    }
+    val outputDecoder = Helpers.decodeResponseWith(_:InputStream)(responseDecoder)
     underlyingBus.send[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder)
   }
 
