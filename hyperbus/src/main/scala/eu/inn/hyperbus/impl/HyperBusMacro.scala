@@ -59,7 +59,18 @@ private[hyperbus] trait HyperBusMacroImplementation {
       c.abort(c.enclosingPosition, s"@method annotation is not defined.}")
     }
 
-    println ("RRR + " + getResponses(in))
+    val definedResponses = getResponses(in)
+    val uniqueBodyResponses = definedResponses.foldLeft(Set[c.Type]())((set,el) => {
+      if (!set.exists(_ =:= el.typeArgs.head)) {
+        set + el.typeArgs.head
+      }
+      else
+        set
+    })
+    val bodyCases: Seq[c.Tree] = uniqueBodyResponses.toSeq.map { body =>
+      cq"_: $body => eu.inn.hyperbus.serialization.createEncoder[Response[$body]]"
+    }
+    //println(uniqueBodyResponses)
 
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
@@ -68,11 +79,11 @@ private[hyperbus] trait HyperBusMacroImplementation {
       import eu.inn.hyperbus.serialization._
       import eu.inn.hyperbus.protocol._
       val thiz = $thiz
-      val requestDecoder = eu.inn.hyperbus.serialization.createRequestDecoder[$in]
-      val responseEncoder = (response: Response[Body], outputStream: java.io.OutputStream) => {
-        response match {
-          case b1: Created[TestCreatedBody] => eu.inn.hyperbus.serialization.createEncoder[Created[TestCreatedBody]](b1, outputStream)
-          case _ => throw new RuntimeException("todo: implement fallback")
+      val requestDecoder = createRequestDecoder[$in]
+      val responseEncoder: Encoder[Response[Body]] = (response: Response[Body], outputStream: java.io.OutputStream) => {
+        response.body match {
+          case ..$bodyCases
+          case _ => throw new RuntimeException("todo: common handling need to be fixed")
         }
       }
 
@@ -102,11 +113,9 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getResponses(t: c.Type): Seq[c.Type] = {
-    println("YYY: " + t.baseClasses)
     val tDefined = typeOf[DefinedResponse[_]].typeSymbol.typeSignature
 
     t.baseClasses.find(_.typeSignature <:< tDefined) map { responses =>
-      println("ZZZ: " + responses + " " + responses.typeSignature.typeArgs)
       getResponsesIn(t.baseType(responses).typeArgs)
     } getOrElse {
       Seq()
@@ -119,14 +128,11 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
     tin.flatMap { t =>
       if (t.typeSymbol.typeSignature <:< tOr) {
-        println("FOUND:IN " + t)
         getResponsesIn(t.typeArgs)
       } else
       if (t.typeSymbol.typeSignature <:< tAsk) {
-        println("FOUND:ASK " + t)
         Seq()
       } else {
-        println("FOUND:X " + t)
         Seq(t)
       }
     }
