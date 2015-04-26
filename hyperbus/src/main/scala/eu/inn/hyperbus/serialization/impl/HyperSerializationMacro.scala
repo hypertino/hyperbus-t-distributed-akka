@@ -1,7 +1,7 @@
 package eu.inn.hyperbus.serialization.impl
 
-import eu.inn.hyperbus.protocol.{DynamicRequest, Message}
-import eu.inn.hyperbus.serialization.RequestDecoder
+import eu.inn.hyperbus.protocol.{DynamicBody, DynamicRequest, Message}
+import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, RequestDecoder}
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import scala.reflect.macros.blackbox.Context
 
@@ -15,10 +15,10 @@ private[hyperbus] object HyperSerializationMacro {
     val obj = q"""
       (t: $t, out: java.io.OutputStream) => {
         val bodyEncoder = eu.inn.servicebus.serialization.createEncoder[$tBody]
-        eu.inn.hyperbus.serialization.impl.Helpers.encodeMessage(t, t.body, bodyEncoder, out)
+        eu.inn.hyperbus.serialization.impl.Helpers.encodeMessage(t, bodyEncoder, out)
       }
     """
-    println(obj)
+    //println(obj)
     c.Expr[Encoder[T]](obj)
   }
 
@@ -36,7 +36,6 @@ private[hyperbus] object HyperSerializationMacro {
       }
       // todo: validate method & contentType?
       q"""
-        import eu.inn.hyperbus.serialization._
         val body = eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(requestBodyJson) { deserializer =>
           deserializer.unbind[$tBody]
         }
@@ -45,12 +44,36 @@ private[hyperbus] object HyperSerializationMacro {
     }
 
     val obj = q"""{
-      (requestHeader: RequestHeader, requestBodyJson: com.fasterxml.jackson.core.JsonParser) => {
+      (requestHeader: eu.inn.hyperbus.serialization.RequestHeader, requestBodyJson: com.fasterxml.jackson.core.JsonParser) => {
         ..$decoder
       }
     }"""
     //println(obj)
     c.Expr[RequestDecoder](obj)
+  }
+
+  def createResponseBodyDecoder[T: c.WeakTypeTag](c: Context): c.Expr[ResponseBodyDecoder] = {
+    import c.universe._
+    val t = weakTypeOf[T]
+
+    val decoder = if (t <:< typeOf[DynamicBody]) {
+      q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicResponseBody(responseHeader, responseBodyJson)"
+    } else {
+      // todo: validate contentType?
+      q"""
+        eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(responseBodyJson) { deserializer =>
+          deserializer.unbind[$t]
+        }
+      """
+    }
+
+    val obj = q"""{
+      (responseHeader: eu.inn.hyperbus.serialization.ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
+        ..$decoder
+      }
+    }"""
+    //println(obj)
+    c.Expr[ResponseBodyDecoder](obj)
   }
 
   protected def extractTypeArgs(c: Context)(tpe: c.Type): List[c.Tree] = {

@@ -78,8 +78,7 @@ class HyperBus(val underlyingBus: ServiceBus) {
     def safe(t:() => String): String = Try(t()).getOrElse("???")
   }
 
-  def send[OUT <: Response[Body], IN <: Request[Body]]
-    (r: IN with DefinedResponse[OUT]): Future[Response[Body]] = macro HyperBusMacro.send[OUT, IN]
+  def send[IN <: Request[Body]](r: IN): Future[Response[Body]] = macro HyperBusMacro.send[IN]
 
   def send
     (r: Request[Body],

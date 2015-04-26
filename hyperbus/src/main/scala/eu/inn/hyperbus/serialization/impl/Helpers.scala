@@ -11,21 +11,21 @@ import eu.inn.servicebus.serialization.{Encoder}
 object Helpers {
   import eu.inn.binders.json._
 
-  def encodeMessage[B <: Body](request: Request[B], b: B, bodyEncoder: Encoder[B], out: OutputStream) = {
+  def encodeMessage[B <: Body](request: Request[B], bodyEncoder: Encoder[B], out: OutputStream) = {
     val req = RequestHeader(request.url, request.method, request.body.contentType)
     writeUtf8("""{"request":""",out)
     req.writeJson(out)
     writeUtf8(""","body":""",out)
-    bodyEncoder(b, out)
+    bodyEncoder(request.body, out)
     writeUtf8("}",out)
   }
 
-  def encodeMessage[B <: Body](response: Response[B], b: B, bodyEncoder: Encoder[B], out: OutputStream) = {
-    val resp = ResponseHeader(response.status)
+  def encodeMessage[B <: Body](response: Response[B], bodyEncoder: Encoder[B], out: OutputStream) = {
+    val resp = ResponseHeader(response.status, response.body.contentType)
     writeUtf8("""{"response":""",out)
     resp.writeJson(out)
     writeUtf8(""","body":""",out)
-    bodyEncoder(b, out)
+    bodyEncoder(response.body, out)
     writeUtf8("}",out)
   }
 
@@ -104,6 +104,12 @@ object Helpers {
       case StandardMethods.DELETE => DynamicDelete(requestHeader.url, body)
       case StandardMethods.PATCH => DynamicPatch(requestHeader.url, body)
       case _ => throw new RuntimeException(s"Unknown method: '${requestHeader.method}'") //todo: exception class and save more details
+    }
+  }
+
+  def decodeDynamicResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): DynamicBody = {
+    SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
+      DynamicBody(deserializer.unbind[DynamicValue], responseHeader.contentType)
     }
   }
 

@@ -22,9 +22,12 @@ case class TestCreatedBody(resourceId: String,
 
 @url("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
-with DefinedResponse[
-    | [OK[DynamicBody], | [Created[TestCreatedBody], !]]
-  ]
+with DefinedResponse[Created[TestCreatedBody]]
+
+
+/*with DefinedResponse[
+    | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
+  ]*/
 
 @url("/resources")
 case class TestPost2(body: TestBody2) extends StaticPost(body)
@@ -33,7 +36,7 @@ with DefinedResponse[Created[TestCreatedBody]]
 @url("/resources")
 case class TestPost3(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[
-    | [OK[DynamicBody], | [Created[TestCreatedBody], !]]
+    | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
   ]
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
@@ -51,6 +54,11 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus.send(TestPost1(TestBody1("ha ha")))
 
       whenReady(f) { r =>
+        /*if (r.status == 201)
+        r match {
+          case c: Created[TestCreatedBody] => println(c)
+          case c: Created[DynamicBody] => println(c)
+        }*/
         //r should (new Created(TestCreatedBody("100500")))
         r.body should equal(TestCreatedBody("100500"))
       }

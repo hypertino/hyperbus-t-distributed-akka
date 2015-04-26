@@ -66,7 +66,7 @@ trait Response[+B <: Body] extends Message[B] {
 
 trait NormalResponse[+B <: Body] extends Response[B]
 
-case class OK[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+case class Ok[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
   override def status: Int = Status.OK
 }
 
