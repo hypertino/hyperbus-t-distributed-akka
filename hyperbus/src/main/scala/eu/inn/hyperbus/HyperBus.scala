@@ -4,7 +4,7 @@ import java.io.InputStream
 
 import eu.inn.hyperbus.impl.HyperBusMacro
 import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.serialization.{ResponseDecoder, RequestDecoder, RequestHeader}
+import eu.inn.hyperbus.serialization.{ResponseDecoder, RequestDecoder}
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.impl.Subscriptions
@@ -78,21 +78,21 @@ class HyperBus(val underlyingBus: ServiceBus) {
     def safe(t:() => String): String = Try(t()).getOrElse("???")
   }
 
-  def send[IN <: Request[Body]](r: IN): Future[Response[Body]] = macro HyperBusMacro.send[IN]
+  def ?[IN <: Request[Body]](r: IN): Future[Response[Body]] = macro HyperBusMacro.ask[IN]
 
-  def send
+  def ask
     (r: Request[Body],
       requestEncoder: Encoder[Request[Body]],
       responseDecoder: ResponseDecoder): Future[Response[Body]] = {
 
     val outputDecoder = Helpers.decodeResponseWith(_:InputStream)(responseDecoder)
-    underlyingBus.send[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder)
+    underlyingBus.ask[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder)
   }
 
-  def subscribe[IN <: Request[_ <: Body]] (groupName: Option[String] = None)
-                                     (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.subscribe[IN]
+  def on[IN <: Request[_ <: Body]] (groupName: Option[String] = None)
+                                     (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.on[IN]
 
-  def subscribe[OUT <: Response[_ <: Body], IN <: Request[_ <: Body]]
+  def on[OUT <: Response[_ <: Body], IN <: Request[_ <: Body]]
   (url: String,
      method: String,
      contentType: Option[String],
@@ -114,21 +114,21 @@ class HyperBus(val underlyingBus: ServiceBus) {
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingHandler(routeKey)
-        val uid = underlyingBus.subscribe(url, groupName, uh.decoder)(uh.handler)
+        val uid = underlyingBus.on(url, groupName, uh.decoder)(uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
     }
   }
 
-  def unsubscribe(subscriptionId: String): Unit = {
+  def off(subscriptionId: String): Unit = {
     underlyingSubscriptions.synchronized {
       subscriptions.getRouteKeyById(subscriptionId) foreach { routeKey =>
         val cnt = subscriptions.get(routeKey).foldLeft(0){ (c, x) =>
           c + x._2.size
         }
         if (cnt <= 1) {
-          underlyingSubscriptions.get(routeKey).foreach(k => underlyingBus.unsubscribe(k._1))
+          underlyingSubscriptions.get(routeKey).foreach(k => underlyingBus.off(k._1))
         }
       }
       subscriptions.remove(subscriptionId)

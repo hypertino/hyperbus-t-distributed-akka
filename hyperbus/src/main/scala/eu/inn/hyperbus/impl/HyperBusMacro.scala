@@ -10,7 +10,7 @@ import scala.reflect.macros.blackbox.Context
 
 private[hyperbus] object HyperBusMacro {
 
-  def subscribe[IN: c.WeakTypeTag]
+  def on[IN: c.WeakTypeTag]
   (c: Context)
   (groupName: c.Expr[Option[String]])
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
@@ -18,17 +18,17 @@ private[hyperbus] object HyperBusMacro {
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.subscribe[IN](groupName)(handler)
+    bundle.on[IN](groupName)(handler)
   }
 
-  def send[IN: c.WeakTypeTag]
+  def ask[IN: c.WeakTypeTag]
   (c: Context)
   (r: c.Expr[IN]): c.Tree = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.send[IN](r)
+    bundle.ask[IN](r)
   }
 }
 
@@ -36,7 +36,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   val c: Context
   import c.universe._
 
-  def subscribe[IN: c.WeakTypeTag]
+  def on[IN: c.WeakTypeTag]
   (groupName: c.Expr[Option[String]])
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
@@ -84,7 +84,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val handler = (response: $in) => {
         eu.inn.servicebus.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
-      val id = thiz.subscribe($url, $method, $contentType, $groupName, requestDecoder)(handler)
+      val id = thiz.on($url, $method, $contentType, $groupName, requestDecoder)(handler)
       id
     }"""
     //<-- response encoders
@@ -92,7 +92,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     c.Expr[String](obj)
   }
 
-  def send[IN: c.WeakTypeTag]
+  def ask[IN: c.WeakTypeTag]
   (r: c.Expr[IN]): c.Tree = {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
@@ -126,9 +126,9 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"thiz.send($r, responseEncoder, responseDecoder).asInstanceOf[Future[${responses.head}]]"
+        q"thiz.ask($r, responseEncoder, responseDecoder).asInstanceOf[Future[${responses.head}]]"
       else
-        q"thiz.send($r, responseEncoder, responseDecoder)"
+        q"thiz.ask($r, responseEncoder, responseDecoder)"
 
     val obj = q"""{
       val thiz = $thiz
@@ -147,36 +147,6 @@ private[hyperbus] trait HyperBusMacroImplementation {
     //println(obj) // <--
     obj
   }
-
-/*def createResponseDecoder[T: c.WeakTypeTag]: c.Expr[ResponseDecoder] = {
-  val t = weakTypeOf[T]
-  val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
-
-  val decoder = if (t <:< typeOf[DynamicRequest]) {
-    q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicRequest(requestHeader, requestBodyJson)"
-  } else {
-    val to = t.typeSymbol.companion
-    if (to == NoSymbol) {
-      c.abort(c.enclosingPosition, s"$t doesn't have a companion object (it's not a case class)")
-    }
-    // todo: validate method & contentType?
-    q"""
-      val body = eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(requestBodyJson) { deserializer =>
-        deserializer.unbind[$tBody]
-      }
-      $to.${TermName("apply")}(body)
-    """
-  }
-
-  val obj = q"""{
-    (requestHeader: eu.inn.hyperbus.serialization.RequestHeader, requestBodyJson: com.fasterxml.jackson.core.JsonParser) => {
-      ..$decoder
-    }
-  }"""
-  //println(obj)
-  c.Expr[RequestDecoder](obj)
-}
-*/
 
   private def getUniqueResponseBodies(t: c.Type): Seq[c.Type] = {
     getResponses(t).foldLeft(Seq[c.Type]())((seq,el) => {

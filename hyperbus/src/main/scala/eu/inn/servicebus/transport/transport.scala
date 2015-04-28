@@ -10,7 +10,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.Random
 
 trait ClientTransport {
-  def send[OUT,IN](
+  def ask[OUT,IN](
                     topic: String,
                     message: IN,
                     inputEncoder: Encoder[IN],
@@ -21,10 +21,10 @@ trait ClientTransport {
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
 
 trait ServerTransport {
-  def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def unsubscribe(subscriptionId: String)
+  def off(subscriptionId: String)
 }
 
 private [transport] case class Subscription[OUT,IN](handler: (IN) => SubscriptionHandlerResult[OUT])
@@ -36,7 +36,7 @@ class InprocTransport extends ClientTransport with ServerTransport {
   protected val randomGen = new Random()
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  override def send[OUT,IN](
+  override def ask[OUT,IN](
                               topic: String,
                               message: IN,
                               inputEncoder: Encoder[IN],
@@ -79,13 +79,13 @@ class InprocTransport extends ClientTransport with ServerTransport {
     }
   }
 
-  def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     subscriptions.add(topic,groupName,Subscription[OUT,IN](handler))
   }
 
-  def unsubscribe(subscriptionId: String) = {
+  def off(subscriptionId: String) = {
     subscriptions.remove(subscriptionId)
   }
 }

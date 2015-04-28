@@ -12,11 +12,11 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
   "InprocTransport " - {
     "Simple Test" in {
       val t = new InprocTransport
-      t.subscribe[String,String]("a", None, null) { s =>
+      t.on[String,String]("a", None, null) { s =>
         SubscriptionHandlerResult(Future { s.reverse }, null)
       }
 
-      val f: Future[String] = t.send("a", "hey", null, null)
+      val f: Future[String] = t.ask("a", "hey", null, null)
 
       whenReady(f) { s =>
         s should equal ("yeh")
@@ -25,11 +25,11 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "NoTransportRouteException Test" in {
       val t = new InprocTransport
-      t.subscribe[String,String]("notexists", None, null) {s  =>
+      t.on[String,String]("notexists", None, null) {s  =>
         SubscriptionHandlerResult(Future { s.reverse }, null)
       }
 
-      val f: Future[String] = t.send("a", "hey", null, null)
+      val f: Future[String] = t.ask("a", "hey", null, null)
 
       whenReady(f.failed) { e =>
         e shouldBe a [NoTransportRouteException]
@@ -38,7 +38,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Complex Test (Service and Subscribers)" in {
       val t = new InprocTransport
-      t.subscribe[String,String]("a", None, null) { s =>
+      t.on[String,String]("a", None, null) { s =>
         SubscriptionHandlerResult(Future { s.reverse }, null)
       }
 
@@ -51,9 +51,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         }, null)
       }
 
-      t.subscribe("a", Some("group1"), null)(group1Func)
-      t.subscribe("a", Some("group1"), null)(group1Func)
-      t.subscribe("a", Some("group1"), null)(group1Func)
+      t.on("a", Some("group1"), null)(group1Func)
+      t.on("a", Some("group1"), null)(group1Func)
+      t.on("a", Some("group1"), null)(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]
@@ -64,10 +64,10 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         },null)
       }
 
-      t.subscribe("a", Some("group2"), null)(group2Func)
-      t.subscribe("a", Some("group2"), null)(group2Func)
+      t.on("a", Some("group2"), null)(group2Func)
+      t.on("a", Some("group2"), null)(group2Func)
 
-      val f: Future[String] = t.send("a", "hey", null, null)
+      val f: Future[String] = t.ask("a", "hey", null, null)
 
       whenReady(f) { s =>
         s should equal ("yeh")
@@ -96,9 +96,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         null)
       }
 
-      t.subscribe("a", Some("group1"), null)(group1Func)
-      t.subscribe("a", Some("group1"), null)(group1Func)
-      t.subscribe("a", Some("group1"), null)(group1Func)
+      t.on("a", Some("group1"), null)(group1Func)
+      t.on("a", Some("group1"), null)(group1Func)
+      t.on("a", Some("group1"), null)(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]
@@ -110,10 +110,10 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         null)
       }
 
-      t.subscribe("a", Some("group2"), null)(group2Func)
-      t.subscribe("a", Some("group2"), null)(group2Func)
+      t.on("a", Some("group2"), null)(group2Func)
+      t.on("a", Some("group2"), null)(group2Func)
 
-      val f: Future[Unit] = t.send("a", "hey", null, null)
+      val f: Future[Unit] = t.ask("a", "hey", null, null)
 
       whenReady(f) { _ =>
         whenReady(group1promise.future) { _ =>
@@ -131,14 +131,14 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       val t = new InprocTransport
       val receivers = new AtomicInteger(0)
 
-      t.subscribe[String,String]("a", None, null) { s =>
+      t.on[String,String]("a", None, null) { s =>
         SubscriptionHandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
         },null)
       }
 
-      t.subscribe[String,String]("a", None, null) { s =>
+      t.on[String,String]("a", None, null) { s =>
         SubscriptionHandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
@@ -146,13 +146,13 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       }
 
       val f1: Future[String] =
-        t.send("a", "hey", null, null)
+        t.ask("a", "hey", null, null)
 
       val f2: Future[String] =
-        t.send("a", "hey you", null, null)
+        t.ask("a", "hey you", null, null)
 
       val f3: Future[String] =
-        t.send("a", "yo", null, null)
+        t.ask("a", "yo", null, null)
 
       whenReady(f1) { s1 =>
         s1 should equal ("yeh")
@@ -168,31 +168,31 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Unsubscribe Test" in {
       val t = new InprocTransport
-      val id1 = t.subscribe[String,String]("a", None, null) { s =>
+      val id1 = t.on[String,String]("a", None, null) { s =>
         SubscriptionHandlerResult(Future { s.reverse },null)
       }
 
-      val id2 = t.subscribe[String,String]("a", None, null) { s =>
+      val id2 = t.on[String,String]("a", None, null) { s =>
         SubscriptionHandlerResult(Future { s.reverse },null)
       }
 
-      val f1: Future[String] = t.send("a", "hey", null, null)
+      val f1: Future[String] = t.ask("a", "hey", null, null)
 
       whenReady(f1) { s =>
         s should equal ("yeh")
       }
 
-      t.unsubscribe(id1)
+      t.off(id1)
 
-      val f2: Future[String] = t.send("a", "yo", null, null)
+      val f2: Future[String] = t.ask("a", "yo", null, null)
 
       whenReady(f2) { s =>
         s should equal ("oy")
       }
 
-      t.unsubscribe(id2)
+      t.off(id2)
 
-      val f3: Future[String] = t.send("a", "hey", null, null)
+      val f3: Future[String] = t.ask("a", "hey", null, null)
 
       whenReady(f3.failed) { e =>
         e shouldBe a [NoTransportRouteException]

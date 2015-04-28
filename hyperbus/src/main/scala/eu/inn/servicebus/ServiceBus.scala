@@ -11,17 +11,17 @@ import scala.concurrent.Future
 import scala.language.experimental.macros
 
 trait ServiceBusBase {
-  def send[OUT,IN](
+  def ask[OUT,IN](
                     topic: String,
                     message: IN,
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT]
 
-  def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def unsubscribe(subscriptionId: String): Unit
+  def off(subscriptionId: String): Unit
 }
 
 class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerTransport: ServerTransport)
@@ -31,38 +31,38 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
   protected val serverRoutes = new TrieMap[String, ServerTransport]
   protected val subscriptions = new Subscriptions[String]
 
-  def send[OUT,IN](
+  def ask[OUT,IN](
                     topic: String,
                     message: IN
-                    ): Future[OUT] = macro ServiceBusMacro.send[OUT,IN]
+                    ): Future[OUT] = macro ServiceBusMacro.ask[OUT,IN]
 
-  def send[OUT,IN](
+  def ask[OUT,IN](
                     topic: String,
                     message: IN,
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT] = {
-    this.lookupClientTransport(topic).send[OUT,IN](topic,message,inputEncoder,outputDecoder)
+    this.lookupClientTransport(topic).ask[OUT,IN](topic,message,inputEncoder,outputDecoder)
   }
 
-  def subscribe[OUT,IN](topic: String, groupName: Option[String])
-                       (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.subscribe[OUT,IN]
+  def on[OUT,IN](topic: String, groupName: Option[String])
+                       (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT,IN]
 
-  def unsubscribe(subscriptionId: String): Unit = {
+  def off(subscriptionId: String): Unit = {
     subscriptions.getRouteKeyById(subscriptionId) foreach { topic =>
       subscriptions.get(topic) foreach { case (_,subscrSeq) =>
         subscrSeq.find(_.subscriptionId == subscriptionId).foreach {
           underlyingSubscription =>
-            lookupServerTransport(topic).unsubscribe(underlyingSubscription.subscription)
+            lookupServerTransport(topic).off(underlyingSubscription.subscription)
         }
       }
     }
     subscriptions.remove(subscriptionId)
   }
-  def subscribe[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
-    val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[OUT,IN](topic, groupName, inputDecoder)(handler)
+    val underlyingSubscriptionId = lookupServerTransport(topic: String).on[OUT,IN](topic, groupName, inputDecoder)(handler)
 
     subscriptions.add(topic,None,underlyingSubscriptionId)
   }

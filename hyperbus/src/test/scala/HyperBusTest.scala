@@ -17,7 +17,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
   private val buf = new StringBuilder
   def input = buf.toString
   
-  override def send[OUT, IN](topic: String, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = {
+  override def ask[OUT, IN](topic: String, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = {
     val ba = new ByteArrayOutputStream()
     inputEncoder(message, ba)
     buf.append(ba.toString("UTF-8"))
@@ -34,7 +34,7 @@ class ServerTransportTest extends ServerTransport {
   var sInputDecoder: Decoder[Any] = null
   var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
 
-  def subscribe[OUT, IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT, IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
                         (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     sInputDecoder = inputDecoder
@@ -42,7 +42,7 @@ class ServerTransportTest extends ServerTransport {
     ""
   }
 
-  def unsubscribe(subscriptionId: String) = ???
+  def off(subscriptionId: String) = ???
 }
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
@@ -53,7 +53,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = new HyperBus(new ServiceBus(ct,null))
-      val f = hyperBus.send(TestPost1(TestBody1("ha ha")))
+      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
 
       ct.input should equal (
         """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
@@ -67,7 +67,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "Subscribe (serialize)" in {
       val st = new ServerTransportTest()
       val hyperBus = new HyperBus(new ServiceBus(null,st))
-      hyperBus.subscribe[TestPost1](None) { post =>
+      hyperBus.on[TestPost1](None) { post =>
         Future {
           Created(TestCreatedBody("100500"))
         }
