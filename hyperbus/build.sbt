@@ -29,7 +29,8 @@ libraryDependencies ++= Seq(
   "eu.inn" %% "binders-core" % "0.5.12",
   "eu.inn" %% "binders-json" % "0.5.12",
   "org.slf4j" % "slf4j-api" % "1.7.12",
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test"
+  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
+  "org.mockito" % "mockito-all" % "1.10.14" % "test"
 )
 
 val paradiseVersion = "2.1.0-M5"

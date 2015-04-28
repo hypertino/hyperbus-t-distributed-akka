@@ -36,7 +36,7 @@ with DefinedResponse[
     | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
   ]
 
-class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
+class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "Send and Receive" in {
       val tr = new InprocTransport

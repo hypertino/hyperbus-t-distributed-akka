@@ -29,10 +29,4 @@ package object serialization {
   }
 
   def createResponseBodyDecoder[T <: Body]: ResponseBodyDecoder = macro HyperSerializationMacro.createResponseBodyDecoder[T]
-  /*def createDynamicResponseBodyEncoder = {
-    (t: Response[DynamicBody], out: java.io.OutputStream) => {
-      val bodyEncoder = eu.inn.servicebus.serialization.createEncoder[DynamicBody]
-      eu.inn.hyperbus.serialization.impl.Helpers.encodeMessage(t, t.body, bodyEncoder, out)
-    }
-  }*/
 }

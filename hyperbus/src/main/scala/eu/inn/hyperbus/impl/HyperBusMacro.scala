@@ -64,7 +64,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
-      cq"_: $body => eu.inn.hyperbus.serialization.createEncoder[Response[$body]]"
+      cq"_: $body => eu.inn.hyperbus.serialization.createEncoder[Response[$body]](response.asInstanceOf[Response[$body]], outputStream)"
     }
     //println(uniqueBodyResponses)
 
@@ -77,11 +77,10 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val responseEncoder: eu.inn.servicebus.serialization.Encoder[Response[Body]] = (response: Response[Body], outputStream: java.io.OutputStream) => {
         response.body match {
           case ..$bodyCases
-          case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]]
+          case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
           case _ => throw new RuntimeException("todo: common handling need to be fixed")
         }
       }
-
       val handler = (response: $in) => {
         eu.inn.servicebus.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
@@ -145,7 +144,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       $send
     }"""
     //<-- response decoders
-    println(obj) // <--
+    //println(obj) // <--
     obj
   }
 

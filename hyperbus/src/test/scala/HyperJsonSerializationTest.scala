@@ -49,21 +49,5 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
 
       d should equal(new DynamicGet("/test",DynamicBody(Obj(Map("resourceId" -> Text("100500"))))))
     }
-/*
-    "Decode Response" in {
-      val decoder = HyperJsonDecoder.createDecoder[Created[TestCreatedBody]]
-      val s = """{"response":{"status":201},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true,"type":null}}}}"""
-      val is = new ByteArrayInputStream(s.getBytes("UTF8"))
-      val r = decoder.decode(is)
-      //println(s)
-      r should equal(new Created(TestCreatedBody("100500")))
-    }
-*/
-
-//    "Decode" in {
-//      val decoder = HyperJsonDecoder.createDecoder[TestPost1]
-//      val t = decoder.decode("""{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}"}""")
-//      t should equal(TestPost1(TestBody1("ha ha")))
-//    }
   }
 }
