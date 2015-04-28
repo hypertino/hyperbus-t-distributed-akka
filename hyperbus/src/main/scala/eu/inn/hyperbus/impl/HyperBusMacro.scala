@@ -99,7 +99,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val thiz = c.prefix.tree
 
     val responseBodyTypes = getUniqueResponseBodies(in)
-    println(responseBodyTypes)
+
+    responseBodyTypes.groupBy(getContentTypeAnnotation(_) getOrElse "") foreach { kv =>
+      if (kv._2.size > 1) {
+        c.abort(c.enclosingPosition, s"Ambiguous responses for contentType: '${kv._1}': ${kv._2.mkString(",")}")
+      }
+    }
+
     val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
     val normalCases: Seq[c.Tree] = responseBodyTypes.filterNot{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig

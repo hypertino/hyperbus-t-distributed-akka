@@ -140,5 +140,5 @@ trait ! extends Response[Body]
 // --------------- Dynamic ---------------
 
 case class DynamicBody(content: DynamicValue, contentType: Option[String] = None) extends Body with Links{
-  val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map()
+  lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map()
 }

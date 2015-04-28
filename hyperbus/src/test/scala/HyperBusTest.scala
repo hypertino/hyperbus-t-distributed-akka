@@ -1,4 +1,5 @@
 import eu.inn.binders.annotations.fieldName
+import eu.inn.binders.dynamic.Text
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.protocol.annotations.{url, contentType}
@@ -15,6 +16,7 @@ case class TestBody1(resourceData: String) extends Body
 @contentType("application/vnd+test-2.json")
 case class TestBody2(resourceData: Long) extends Body
 
+@contentType("application/vnd+created-body.json")
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
                              StandardLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
@@ -23,11 +25,6 @@ case class TestCreatedBody(resourceId: String,
 @url("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
-
-
-/*with DefinedResponse[
-    | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
-  ]*/
 
 @url("/resources")
 case class TestPost2(body: TestBody2) extends StaticPost(body)
@@ -41,7 +38,7 @@ with DefinedResponse[
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
-    "Send and Receive" in {
+    /*"Send and Receive" in {
       val tr = new InprocTransport
       val hyperBus = new HyperBus(new ServiceBus(tr,tr))
 
@@ -54,13 +51,33 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus.send(TestPost1(TestBody1("ha ha")))
 
       whenReady(f) { r =>
-        /*if (r.status == 201)
-        r match {
-          case c: Created[TestCreatedBody] => println(c)
-          case c: Created[DynamicBody] => println(c)
-        }*/
-        //r should (new Created(TestCreatedBody("100500")))
         r.body should equal(TestCreatedBody("100500"))
+      }
+    }*/
+
+    "Send and Receive multiple responses" in {
+      val tr = new InprocTransport
+      val hyperBus = new HyperBus(new ServiceBus(tr,tr))
+
+      hyperBus.subscribe[TestPost3](None) { post =>
+        Future {
+          if (post.body.resourceData == 1)
+            Created(TestCreatedBody("100500"))
+          else
+            Ok(DynamicBody(Text("another result")))
+        }
+      }
+
+      /*val f = hyperBus.send(TestPost3(TestBody2(1)))
+
+      whenReady(f) { r =>
+        r should equal(Created(TestCreatedBody("100500")))
+      }*/
+
+      val f2 = hyperBus.send(TestPost3(TestBody2(2)))
+
+      whenReady(f2) { r =>
+        r should equal(Ok(DynamicBody(Text("another result"))))
       }
     }
   }

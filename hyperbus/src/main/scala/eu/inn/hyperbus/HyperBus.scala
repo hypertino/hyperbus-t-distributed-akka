@@ -100,6 +100,8 @@ class HyperBus(val underlyingBus: ServiceBus) {
      requestDecoder: RequestDecoder)
     (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
+    // todo: handle service exceptions
+
     val routeKey = getRouteKey(url, groupName)
     val subRouteKey = getSubRouteKey(method, contentType)
 
