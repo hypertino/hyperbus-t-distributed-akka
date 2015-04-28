@@ -38,7 +38,7 @@ with DefinedResponse[
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
-    /*"Send and Receive" in {
+    "Send and Receive" in {
       val tr = new InprocTransport
       val hyperBus = new HyperBus(new ServiceBus(tr,tr))
 
@@ -53,7 +53,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       whenReady(f) { r =>
         r.body should equal(TestCreatedBody("100500"))
       }
-    }*/
+    }
 
     "Send and Receive multiple responses" in {
       val tr = new InprocTransport
@@ -68,11 +68,11 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      /*val f = hyperBus.send(TestPost3(TestBody2(1)))
+      val f = hyperBus.send(TestPost3(TestBody2(1)))
 
       whenReady(f) { r =>
         r should equal(Created(TestCreatedBody("100500")))
-      }*/
+      }
 
       val f2 = hyperBus.send(TestPost3(TestBody2(2)))
 
