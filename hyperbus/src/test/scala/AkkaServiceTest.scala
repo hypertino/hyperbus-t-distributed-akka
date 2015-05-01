@@ -1,5 +1,6 @@
 import akka.actor.{ActorSystem, Actor}
 import akka.util.Timeout
+import eu.inn.hyperbus.akkaservice.annotations.group
 import scala.concurrent.duration._
 import eu.inn.binders.dynamic.Text
 import eu.inn.hyperbus.akkaservice.AkkaHyperService
@@ -21,7 +22,7 @@ class TestActor extends Actor {
 
   def on(testPost1: TestPost1) = {
     Future {
-      new Created(TestCreatedBody("100500"))
+      Created(TestCreatedBody("100500"))
     }
   }
 
@@ -35,6 +36,18 @@ class TestActor extends Actor {
   }
 }
 
+class TestGroupActor extends Actor {
+  def receive = AkkaHyperService.dispatch(this)
+
+  @group("group1")
+  def on(testPost1: TestPost1) = {
+    Future {
+      println("received: " + testPost1)
+      Ok(EmptyBody())
+    }
+  }
+}
+
 class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
   "AkkaHyperService " - {
     "Send and Receive" in {
@@ -42,9 +55,11 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
       val tr = new InprocTransport
       val hyperBus = new HyperBus(new ServiceBus(tr,tr))
       val actorRef = TestActorRef[TestActor]
+      val groupActorRef = TestActorRef[TestGroupActor]
 
       implicit val timeout = Timeout(20 seconds)
       hyperBus.routeTo[TestActor](actorRef)
+      hyperBus.routeTo[TestGroupActor](groupActorRef)
 
       val f = hyperBus ? TestPost1(TestBody1("ha ha"))
 
@@ -53,11 +68,13 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
       }
       system.shutdown()
     }
-/*
+
     "Send and Receive multiple responses" in {
+      implicit lazy val system = ActorSystem()
       val tr = new InprocTransport
       val hyperBus = new HyperBus(new ServiceBus(tr,tr))
       val actorRef = TestActorRef[TestActor]
+      implicit val timeout = Timeout(20 seconds)
       hyperBus.routeTo[TestActor](actorRef)
 
       val f = hyperBus ? TestPost3(TestBody2(1))
@@ -71,6 +88,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
       whenReady(f2) { r =>
         r should equal(Ok(DynamicBody(Text("another result"))))
       }
-    }*/
+      system.shutdown()
+    }
   }
 }

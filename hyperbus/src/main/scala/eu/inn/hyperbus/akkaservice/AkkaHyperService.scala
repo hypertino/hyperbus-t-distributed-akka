@@ -1,14 +1,13 @@
 package eu.inn.hyperbus.akkaservice
 
 import akka.actor.Actor.Receive
-import akka.actor.{Actor, ActorRef}
+import akka.actor.ActorRef
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.protocol.{Body, Response}
+import eu.inn.hyperbus.akkaservice.annotations.group
 
 import scala.concurrent.Future
-import scala.reflect.macros.blackbox.Context
-
 import scala.language.experimental.macros
+import scala.reflect.macros.blackbox.Context
 
 
 object AkkaHyperService {
@@ -89,7 +88,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     }
 
     val typ = weakTypeOf[A]
-    val group = groupName map { s ⇒ q"Some($s)" } getOrElse q"None"
+    val defaultGroup = groupName map { s ⇒ q"Some($s)" } getOrElse q"None"
 
     val subscriptions = onMethods map { m⇒
       val arg = m.paramLists.head.head
@@ -97,6 +96,9 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       val resultType = m.returnType
       //println(s"a: $argType r: $resultType")
       val innerResultType = resultType.typeArgs.head
+      val group = getGroupAnnotation(m).map { s ⇒
+        q"Some($s)"
+      } getOrElse defaultGroup
 
       q"""
         h.on[$argType]($group){ message =>
@@ -112,7 +114,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
         ..$subscriptions
       )
     }"""
-    //println(obj)
+    println(obj)
     obj
   }
 
@@ -163,5 +165,19 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     ).map(_.asInstanceOf[MethodSymbol]).toList
   }
 
-  protected def allImplicits(symbols: List[List[Symbol]]): Boolean = symbols.flatten.filter(!_.isImplicit).isEmpty
+  private def allImplicits(symbols: List[List[Symbol]]): Boolean = symbols.flatten.filter(!_.isImplicit).isEmpty
+
+  private def getGroupAnnotation(symbol: c.Symbol): Option[String] =
+    getStringAnnotation(symbol, c.typeOf[group])
+
+  private def getStringAnnotation(symbol: c.Symbol, atype: c.Type): Option[String] = {
+    symbol.annotations.find { a =>
+      a.tree.tpe <:< atype
+    } map {
+      annotation => annotation.tree.children.tail.head match {
+        case Literal(Constant(s: String)) => Some(s)
+        case _ => None
+      }
+    } flatten
+  }
 }

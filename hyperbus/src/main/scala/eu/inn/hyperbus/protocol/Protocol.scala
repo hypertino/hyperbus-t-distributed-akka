@@ -1,7 +1,7 @@
 package eu.inn.hyperbus.protocol
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.DynamicValue
+import eu.inn.binders.dynamic.{Obj, DynamicValue}
 import eu.inn.hyperbus.protocol.annotations.method
 
 object Status {
@@ -142,3 +142,5 @@ trait ! extends Response[Body]
 case class DynamicBody(content: DynamicValue, contentType: Option[String] = None) extends Body with Links{
   lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map()
 }
+
+case class EmptyBody(contentType: Option[String] = None) extends Body

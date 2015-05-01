@@ -18,6 +18,8 @@ import scala.util.{Try, Random}
 
 import scala.language.experimental.macros
 
+// todo: decide group result type
+
 class HyperBus(val underlyingBus: ServiceBus) {
   protected val subscriptions = new Subscriptions[Subscription]
   protected val randomGen = new Random()
