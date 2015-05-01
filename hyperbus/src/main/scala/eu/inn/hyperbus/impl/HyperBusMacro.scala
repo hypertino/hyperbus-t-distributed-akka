@@ -3,7 +3,6 @@ package eu.inn.hyperbus.impl
 import eu.inn.hyperbus.protocol.annotations.impl.{ContentTypeMarker, UrlMarker}
 import eu.inn.hyperbus.protocol.annotations.method
 import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.serialization._
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
