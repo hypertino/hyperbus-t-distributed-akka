@@ -2,7 +2,7 @@ package eu.inn.hyperbus
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.serialization.impl.HyperSerializationMacro
+import eu.inn.hyperbus.serialization.HyperSerializationMacro
 import eu.inn.servicebus.serialization._
 
 import scala.language.experimental.macros

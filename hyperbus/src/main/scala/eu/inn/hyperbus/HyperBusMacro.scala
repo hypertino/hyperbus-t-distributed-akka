@@ -1,8 +1,8 @@
-package eu.inn.hyperbus.impl
+package eu.inn.hyperbus
 
+import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.protocol.annotations.impl.{ContentTypeMarker, UrlMarker}
 import eu.inn.hyperbus.protocol.annotations.method
-import eu.inn.hyperbus.protocol._
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context

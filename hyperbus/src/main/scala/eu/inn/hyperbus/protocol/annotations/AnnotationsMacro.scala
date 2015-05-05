@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.protocol.annotations.impl
+package eu.inn.hyperbus.protocol.annotations
 
 import scala.reflect.macros.whitebox.Context
 

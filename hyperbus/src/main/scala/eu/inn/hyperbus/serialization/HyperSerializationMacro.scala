@@ -1,8 +1,8 @@
-package eu.inn.hyperbus.serialization.impl
+package eu.inn.hyperbus.serialization
 
 import eu.inn.hyperbus.protocol.{Dynamic, DynamicRequest, Message}
-import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, RequestDecoder}
-import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.serialization.Encoder
+
 import scala.reflect.macros.blackbox.Context
 
 private[hyperbus] object HyperSerializationMacro {

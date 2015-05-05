@@ -1,10 +1,8 @@
 package eu.inn.servicebus
 
-import java.util.concurrent.atomic.AtomicLong
-
-import eu.inn.servicebus.impl.{Subscriptions, ServiceBusMacro}
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import eu.inn.servicebus.transport.{SubscriptionHandlerResult, ClientTransport, ServerTransport}
+import eu.inn.servicebus.util.Subscriptions
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
@@ -59,6 +57,7 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     }
     subscriptions.remove(subscriptionId)
   }
+
   def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 

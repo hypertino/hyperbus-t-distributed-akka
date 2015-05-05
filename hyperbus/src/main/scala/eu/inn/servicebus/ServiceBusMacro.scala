@@ -1,6 +1,4 @@
-package eu.inn.servicebus.impl
-
-import eu.inn.servicebus.transport.SubscriptionHandlerResult
+package eu.inn.servicebus
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context

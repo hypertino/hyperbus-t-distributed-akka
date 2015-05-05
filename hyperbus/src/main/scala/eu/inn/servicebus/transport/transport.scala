@@ -1,9 +1,8 @@
 package eu.inn.servicebus.transport
 
 import java.util.concurrent.atomic.AtomicLong
-
-import eu.inn.servicebus.impl.Subscriptions
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{Future, Promise}

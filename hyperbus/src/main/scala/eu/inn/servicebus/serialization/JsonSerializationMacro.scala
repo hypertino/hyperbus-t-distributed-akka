@@ -1,6 +1,4 @@
-package eu.inn.servicebus.serialization.impl
-
-import eu.inn.servicebus.serialization.{Decoder, Encoder}
+package eu.inn.servicebus.serialization
 
 import scala.reflect.macros.blackbox.Context
 

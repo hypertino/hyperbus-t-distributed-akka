@@ -1,6 +1,7 @@
-package eu.inn.servicebus.impl
+package eu.inn.servicebus.util
 
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.collection.concurrent.TrieMap
 
 case class SubscriptionWithId[T](subscriptionId:String, subscription:T)
@@ -51,13 +52,13 @@ class Subscriptions[T] {
       routeKeyById.get(subscriptionId).foreach {
         routeKey =>
           routes.get(routeKey).foreach { routeSubscribers =>
-            val newTopicSubscribers = routeSubscribers.map { kv =>
+            val newTopicSubscribers = routeSubscribers.flatMap { kv =>
               val newSeq = kv._2.filter(s => s.subscriptionId != subscriptionId)
               if (newSeq.isEmpty)
                 None
               else
                 Some(kv._1, newSeq)
-            }.flatten.toMap
+            }
 
             if (newTopicSubscribers.isEmpty)
               routes.remove(routeKey)

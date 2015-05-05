@@ -2,23 +2,28 @@ package eu.inn.hyperbus
 
 import java.io.InputStream
 
-import eu.inn.hyperbus.impl.HyperBusMacro
 import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.serialization.{ResponseDecoder, RequestDecoder}
 import eu.inn.hyperbus.serialization.impl.Helpers
+import eu.inn.hyperbus.serialization.{RequestDecoder, ResponseDecoder}
 import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.impl.Subscriptions
-import eu.inn.servicebus.serialization.{Encoder, Decoder}
+import eu.inn.servicebus.serialization.Encoder
 import eu.inn.servicebus.transport.SubscriptionHandlerResult
+import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Promise, Future}
-import scala.util.{Try, Random}
-
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
+import scala.util.{Random, Try}
 
-// todo: decide group result type
+/*
+todo:
++ decide group result type
++ annotations like // @WithContentType("application/vnd+identified-user.json"), @WithURI
++ correlationId, sequenceId, replyTo
++ other headers?
++ exception when duplicate subscription
+*/
 
 class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) {
   protected val subscriptions = new Subscriptions[Subscription]
