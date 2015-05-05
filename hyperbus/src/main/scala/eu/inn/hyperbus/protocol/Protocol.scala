@@ -1,12 +1,18 @@
 package eu.inn.hyperbus.protocol
 
+import java.util.UUID
+
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.{Obj, DynamicValue}
+import eu.inn.binders.dynamic.{Number, Obj, Value}
 import eu.inn.hyperbus.protocol.annotations.method
 
 object Status {
   val OK = 200
   val CREATED = 201
+
+  val NOT_FOUND=404
+  val CONFLICT=409
+
   val INTERNAL_ERROR=500
 }
 
@@ -25,6 +31,7 @@ object StandardMethods {
 
 // todo: is this needed?
 object StandardErrors {
+  val INTERNAL_ERROR = "internal_error"
   val HANDLER_NOT_FOUND = "handler_not_found"
 }
 
@@ -78,16 +85,42 @@ case class Created[+B <: CreatedBody](body: B) extends Response[B] with NormalRe
   override def status: Int = Status.CREATED
 }
 
-trait ErrorResponse[+B <: Body] extends Response[B]
+trait ErrorBody extends Body {
+  def code: String
+  def message: String
+  def errorId: String
+  def description: Option[String]
+}
 
-case class InternalError[+B <: Body](body: B) extends Response[B] with ErrorResponse[B] {
+trait ErrorResponse[+B <: ErrorBody] extends Response[B]
+
+trait ServerError[+B <: ErrorBody] extends ErrorResponse[B]
+
+trait ClientError[+B <: ErrorBody] extends ErrorResponse[B]
+
+case class InternalError[+B <: ErrorBody](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
   override def status: Int = Status.INTERNAL_ERROR
 }
 
-case class ErrorBody(error:String,
+case class NotFoundError[+B <: ErrorBody](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.NOT_FOUND
+}
+
+case class ConflictError[+B <: ErrorBody](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.CONFLICT
+}
+
+case class Error(code:String,
                      description:Option[String] = None,
-                     errorId: Option[String] = None,// todo: common mechanism
-                     contentType: Option[String] = None) extends Body
+                     contentType: Option[String] = None,
+                     errorId: String = UUID.randomUUID().toString,
+                     extra: Value = Obj()) extends ErrorBody {
+
+  def message = code + description.map(": " + _).getOrElse("")
+}
 
 /*
 class CreatedResponseBodyStatic(initLocation: Link, otherLinks: Map[String,Link] = Map()) extends  CreatedResponseBody {
@@ -139,8 +172,8 @@ trait ! extends Response[Body]
 
 // --------------- Dynamic ---------------
 
-case class DynamicBody(content: DynamicValue, contentType: Option[String] = None) extends Body with Links{
+case class Dynamic(content: Value, contentType: Option[String] = None) extends Body with Links{
   lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map()
 }
 
-case class EmptyBody(contentType: Option[String] = None) extends Body
+case class Empty(contentType: Option[String] = None) extends Body

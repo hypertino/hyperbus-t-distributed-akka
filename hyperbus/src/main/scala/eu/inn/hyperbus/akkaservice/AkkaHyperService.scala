@@ -165,7 +165,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     ).map(_.asInstanceOf[MethodSymbol]).toList
   }
 
-  private def allImplicits(symbols: List[List[Symbol]]): Boolean = symbols.flatten.filter(!_.isImplicit).isEmpty
+  private def allImplicits(symbols: List[List[Symbol]]): Boolean = !symbols.flatten.exists(!_.isImplicit)
 
   private def getGroupAnnotation(symbol: c.Symbol): Option[String] =
     getStringAnnotation(symbol, c.typeOf[group])
@@ -173,11 +173,11 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   private def getStringAnnotation(symbol: c.Symbol, atype: c.Type): Option[String] = {
     symbol.annotations.find { a =>
       a.tree.tpe <:< atype
-    } map {
+    } flatMap {
       annotation => annotation.tree.children.tail.head match {
         case Literal(Constant(s: String)) => Some(s)
         case _ => None
       }
-    } flatten
+    }
   }
 }

@@ -13,14 +13,14 @@ import eu.inn.servicebus.transport.SubscriptionHandlerResult
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.util.{Try, Random}
 
 import scala.language.experimental.macros
 
 // todo: decide group result type
 
-class HyperBus(val underlyingBus: ServiceBus) {
+class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) {
   protected val subscriptions = new Subscriptions[Subscription]
   protected val randomGen = new Random()
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler)]
@@ -38,13 +38,19 @@ class HyperBus(val underlyingBus: ServiceBus) {
       log.error(s)
 
       val p = Promise[Response[Body]]()
-      p.success(InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s))))
-      SubscriptionHandlerResult(p.future,null) //todo: exception encoder
+      p.success(InternalError(Error(StandardErrors.HANDLER_NOT_FOUND, Some(s)))) // todo: success or failure?
+      SubscriptionHandlerResult(p.future, null) //todo: test exception encoder
     }
 
     def handler(in: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
-      getSubscription(in).map { r =>
-        r.handler(in)
+      getSubscription(in).map { s ⇒
+        val r = s.handler(in)
+
+        val f = r.futureResult.recover {
+          case x: Response[_] ⇒ x
+          case t: Throwable ⇒ InternalError(Error(StandardErrors.INTERNAL_ERROR)) // todo: internal error, log details on server
+        }
+        SubscriptionHandlerResult[Response[Body]](f, r.resultEncoder)
       } getOrElse {
         unhandledRequest(in)
       }

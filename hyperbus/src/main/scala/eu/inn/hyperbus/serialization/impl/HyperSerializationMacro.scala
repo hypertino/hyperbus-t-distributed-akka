@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.serialization.impl
 
-import eu.inn.hyperbus.protocol.{DynamicBody, DynamicRequest, Message}
+import eu.inn.hyperbus.protocol.{Dynamic, DynamicRequest, Message}
 import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, RequestDecoder}
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import scala.reflect.macros.blackbox.Context
@@ -56,7 +56,7 @@ private[hyperbus] object HyperSerializationMacro {
     import c.universe._
     val t = weakTypeOf[T]
 
-    val decoder = if (t <:< typeOf[DynamicBody]) {
+    val decoder = if (t <:< typeOf[Dynamic]) {
       q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicResponseBody(responseHeader, responseBodyJson)"
     } else {
       // todo: validate contentType?

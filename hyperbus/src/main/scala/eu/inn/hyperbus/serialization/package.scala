@@ -18,12 +18,13 @@ package object serialization {
     (responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
       //todo: response visitor
       //todo: responsDecoder merge with responseBodyDecoder
+      // todo: Generic Errors and Responses
 
       val body = bodyDecoder(responseHeader, responseBodyJson)
       responseHeader.status match {
         case Status.OK => Ok(body)
         case Status.CREATED => Created(body.asInstanceOf[CreatedBody])
-        case Status.INTERNAL_ERROR => InternalError(body)
+        case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBody])
       }
     }
   }

@@ -33,7 +33,7 @@ with DefinedResponse[Created[TestCreatedBody]]
 @url("/resources")
 case class TestPost3(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[
-    | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
+    | [Ok[Dynamic], | [Created[TestCreatedBody], !]]
   ]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
@@ -64,7 +64,13 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
           if (post.body.resourceData == 1)
             Created(TestCreatedBody("100500"))
           else
-            Ok(DynamicBody(Text("another result")))
+          if (post.body.resourceData == -1)
+            throw new ConflictError(Error("failed"))
+          else
+          if (post.body.resourceData == -2)
+            ConflictError(Error("failed"))
+          else
+            Ok(Dynamic(Text("another result")))
         }
       }
 
@@ -77,7 +83,19 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       val f2 = hyperBus ? TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result"))))
+        r should equal(Ok(Dynamic(Text("another result"))))
+      }
+
+      val f3 = hyperBus ? TestPost3(TestBody2(-1))
+
+      whenReady(f3.failed) { r =>
+        r shouldBe a [ConflictError[Error]]
+      }
+
+      val f4 = hyperBus ? TestPost3(TestBody2(-2))
+
+      whenReady(f4.failed) { r =>
+        r shouldBe a [ConflictError[Error]]
       }
     }
   }

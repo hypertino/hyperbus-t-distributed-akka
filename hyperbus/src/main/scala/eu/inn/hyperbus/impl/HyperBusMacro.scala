@@ -59,7 +59,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       c.abort(c.enclosingPosition, s"@method annotation is not defined.}")
     }
 
-    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
+    val dynamicBodyTypeSig = typeOf[Dynamic].typeSymbol.typeSignature
     val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
@@ -76,7 +76,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val responseEncoder: eu.inn.servicebus.serialization.Encoder[Response[Body]] = (response: Response[Body], outputStream: java.io.OutputStream) => {
         response.body match {
           case ..$bodyCases
-          case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
+          case _: Dynamic => eu.inn.hyperbus.serialization.createEncoder[Response[Dynamic]](response.asInstanceOf[Response[Dynamic]], outputStream)
           case _ => throw new RuntimeException("todo: common handling need to be fixed")
         }
       }
@@ -104,7 +104,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
 
-    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
+    val dynamicBodyTypeSig = typeOf[Dynamic].typeSymbol.typeSignature
     val normalCases: Seq[c.Tree] = responseBodyTypes.filterNot{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
@@ -125,13 +125,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"thiz.ask($r, responseEncoder, responseDecoder).asInstanceOf[Future[${responses.head}]]"
+        q"thiz.ask($r, requestEncoder, responseDecoder).asInstanceOf[Future[${responses.head}]]"
       else
-        q"thiz.ask($r, responseEncoder, responseDecoder)"
+        q"thiz.ask($r, requestEncoder, responseDecoder)"
 
     val obj = q"""{
       val thiz = $thiz
-      val responseEncoder = eu.inn.hyperbus.serialization.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
+      val requestEncoder = eu.inn.hyperbus.serialization.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
       val responseDecoder = eu.inn.hyperbus.serialization.createResponseDecoder {
         (responseHeader:  eu.inn.hyperbus.serialization.ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
           val decoder = responseHeader.contentType match {
@@ -196,11 +196,11 @@ private[hyperbus] trait HyperBusMacroImplementation {
   private def getStringAnnotation(symbol: c.Symbol, atype: c.Type): Option[String] = {
     symbol.annotations.find { a =>
       a.tree.tpe <:< atype
-    } map {
+    } flatMap {
       annotation => annotation.tree.children.tail.head match {
         case Literal(Constant(s: String)) => Some(s)
         case _ => None
       }
-    } flatten
+    }
   }
 }

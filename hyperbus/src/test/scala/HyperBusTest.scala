@@ -15,7 +15,7 @@ import scala.concurrent.{Promise, Future}
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val buf = new StringBuilder
-  def input = buf.toString
+  def input = buf.toString()
   
   override def ask[OUT, IN](topic: String, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = {
     val ba = new ByteArrayOutputStream()
@@ -86,6 +86,32 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
+        )
+      }
+    }
+
+    "Subscribe (serialize exception)" in {
+      val st = new ServerTransportTest()
+      val hyperBus = new HyperBus(new ServiceBus(null,st))
+      hyperBus.on[TestPost1](None) { post =>
+        Future {
+          throw new ConflictError(Error("failed", errorId = "abcde12345"))
+        }
+      }
+
+      val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+      val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
+      val msg = st.sInputDecoder(ba)
+      msg should equal(TestPost1(TestBody1("ha ha")))
+
+      val hres = st.sHandler(msg)
+      whenReady(hres.futureResult) { r =>
+        r should equal(Created(TestCreatedBody("100500")))
+        val ba = new ByteArrayOutputStream()
+        hres.resultEncoder(r, ba)
+        val s = ba.toString("UTF-8")
+        s should equal(
+          """{"response":{"status":409},"body":{"code":"failed"}}"""
         )
       }
     }

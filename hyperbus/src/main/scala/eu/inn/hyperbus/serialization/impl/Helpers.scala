@@ -3,7 +3,7 @@ package eu.inn.hyperbus.serialization.impl
 import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 
 import com.fasterxml.jackson.core.{JsonParser, JsonToken, JsonFactory}
-import eu.inn.binders.dynamic.DynamicValue
+import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.serialization.{DecodeException, ResponseHeader, RequestHeader}
 import eu.inn.servicebus.serialization.{Encoder}
@@ -94,7 +94,7 @@ object Helpers {
 
   def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
     val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      DynamicBody(deserializer.unbind[DynamicValue], requestHeader.contentType)
+      Dynamic(deserializer.unbind[Value], requestHeader.contentType)
     }
 
     requestHeader.method match {
@@ -107,9 +107,9 @@ object Helpers {
     }
   }
 
-  def decodeDynamicResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): DynamicBody = {
+  def decodeDynamicResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): Dynamic = {
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      DynamicBody(deserializer.unbind[DynamicValue], responseHeader.contentType)
+      Dynamic(deserializer.unbind[Value], responseHeader.contentType)
     }
   }
 

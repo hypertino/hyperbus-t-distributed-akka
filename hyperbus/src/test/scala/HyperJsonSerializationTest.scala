@@ -1,7 +1,7 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.binders.dynamic.{Text, Obj}
-import eu.inn.hyperbus.protocol.{DynamicBody, DynamicGet, Created}
+import eu.inn.hyperbus.protocol.{Dynamic, DynamicGet, Created}
 import eu.inn.hyperbus.serialization.impl.Helpers
 import org.scalatest.{Matchers, FreeSpec}
 
@@ -47,7 +47,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
         Helpers.decodeDynamicRequest(rh, is2)
       }
 
-      d should equal(new DynamicGet("/test",DynamicBody(Obj(Map("resourceId" -> Text("100500"))))))
+      d should equal(new DynamicGet("/test",Dynamic(Obj(Map("resourceId" -> Text("100500"))))))
     }
   }
 }
