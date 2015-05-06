@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.experimental.macros
+import scala.util.control.NonFatal
 import scala.util.{Random, Try}
 
 /*
@@ -26,6 +27,7 @@ todo:
 + other headers?
 + exception when duplicate subscription
 + encode -> serialize
++ test serialize/deserialize exceptions
 
 low priority:
   + lostResponse response log details
@@ -95,13 +97,19 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
 
     def decoder(inputStream: InputStream): Request[Body] = {
-      // todo: handle deserialization errors
-      Helpers.decodeRequestWith(inputStream) { (requestHeader, requestBodyJson) =>
-        getSubscription(requestHeader.method, requestHeader.contentType) map { subscription =>
-          subscription.requestDecoder(requestHeader, requestBodyJson)
-        } getOrElse {
-          decodeDynamicRequest(requestHeader, requestBodyJson)
+      try {
+        Helpers.decodeRequestWith(inputStream) { (requestHeader, requestBodyJson) =>
+          getSubscription(requestHeader.method, requestHeader.contentType) map { subscription =>
+            subscription.requestDecoder(requestHeader, requestBodyJson)
+          } getOrElse {
+            HyperBusUtils.decodeDynamicRequest(requestHeader, requestBodyJson)
+          }
         }
+      }
+      catch {
+        case NonFatal(e) =>
+          log.error("Can't decode request", e)
+          throw e
       }
     }
   }
@@ -129,8 +137,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
          groupName: Option[String],
          requestDecoder: RequestDecoder)
         (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String = {
-    // todo: handle service exceptions
-
     val routeKey = getRouteKey(url, groupName)
     val subRouteKey = getSubRouteKey(method, contentType)
 
@@ -181,25 +187,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
-  protected def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
-    val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      DynamicBody(deserializer.unbind[Value], requestHeader.contentType)
-    }
-
-    requestHeader.method match {
-      case StandardMethods.GET => DynamicGet(requestHeader.url, body)
-      case StandardMethods.POST => DynamicPost(requestHeader.url, body)
-      case StandardMethods.PUT => DynamicPut(requestHeader.url, body)
-      case StandardMethods.DELETE => DynamicDelete(requestHeader.url, body)
-      case StandardMethods.PATCH => DynamicPatch(requestHeader.url, body)
-      case _ => {
-        val s = s"Unknown method: '${requestHeader.method}'" //todo: save more details (messageId)
-        log.error(s)
-        throw new DecodeException(s)
-      }
-    }
-  }
-
   protected def defaultResponseBodyDecoder(responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser): Body = {
     val decoder =
       if (responseHeader.status >= 400 && responseHeader.status <= 599)
@@ -212,22 +199,12 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def responseDecoder(responseHeader: ResponseHeader,
                      responseBodyJson: com.fasterxml.jackson.core.JsonParser,
                      bodyDecoder: PartialFunction[ResponseHeader,ResponseBodyDecoder]): Response[Body] = {
-    //todo: response visitor
-    //todo: responsDecoder merge with responseBodyDecoder
-    // todo: Generic Errors and Responses
-
     val body =
       if (bodyDecoder.isDefinedAt(responseHeader))
         bodyDecoder(responseHeader)(responseHeader,responseBodyJson)
       else
         defaultResponseBodyDecoder(responseHeader,responseBodyJson)
-
-    responseHeader.status match {
-      case Status.OK => Ok(body)
-      case Status.CREATED => Created(body.asInstanceOf[CreatedBody])
-      case Status.CONFLICT => Conflict(body.asInstanceOf[ErrorBodyTrait])
-      case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBodyTrait])
-    }
+    HyperBusUtils.createResponse(responseHeader, body)
   }
 
   def safeLogError(msg: String, request: Request[Body], routeKey: String, error: Throwable = null): String = {
@@ -251,7 +228,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
-  protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode: {}", response)
+  protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode response: {}", response)
 
   protected def getRouteKey(url: String, groupName: Option[String]) =
     groupName.map { url + "#" + _ } getOrElse url
