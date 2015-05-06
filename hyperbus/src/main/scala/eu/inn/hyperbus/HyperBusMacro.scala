@@ -70,22 +70,19 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
-      import eu.inn.hyperbus.protocol._
+      import eu.inn.{hyperbus=>hb}
+      import eu.inn.{servicebus=>sb}
+      import hb.protocol._
       val thiz = $thiz
-      val requestDecoder = eu.inn.hyperbus.serialization.createRequestDecoder[$in]
-      val responseEncoder: eu.inn.servicebus.serialization.Encoder[Response[Body]] = (response: Response[Body], outputStream: java.io.OutputStream) => {
+      val requestDecoder = hb.serialization.createRequestDecoder[$in]
+      val responseEncoder = (response: Response[Body], outputStream: java.io.OutputStream) => {
         response.body match {
           case ..$bodyCases
-          case _: ErrorBody => eu.inn.hyperbus.serialization.createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
-          case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
-          case _ => throw new RuntimeException("todo: common handling need to be fixed")
+          case _ => thiz.defaultResponseEncoder(response.asInstanceOf[Response[ErrorBody]], outputStream)
         }
       }
-      val handler = (response: $in) => {
-        eu.inn.servicebus.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
-      }
-      val id = thiz.on($url, $method, $contentType, $groupName, requestDecoder)(handler)
-      id
+      val handler = (response: $in) => sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
+      thiz.on($url, $method, $contentType, $groupName, requestDecoder)(handler)
     }"""
     //<-- response encoders
     //println(obj)
@@ -131,18 +128,14 @@ private[hyperbus] trait HyperBusMacroImplementation {
         q"thiz.ask($r, requestEncoder, responseDecoder)"
 
     val obj = q"""{
+      import eu.inn.hyperbus.{serialization=>hsr}
       val thiz = $thiz
-      val requestEncoder = eu.inn.hyperbus.serialization.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
-      val responseDecoder = eu.inn.hyperbus.serialization.createResponseDecoder {
-        (responseHeader:  eu.inn.hyperbus.serialization.ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
+      val requestEncoder = hsr.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
+      val responseDecoder = thiz.defaultResponseDecoder {
+        (responseHeader:  hsr.ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
           val decoder = responseHeader.contentType match {
             case ..$bodyCases
-            case _ => {
-              if (responseHeader.status >= 400 && responseHeader.status <= 599)
-                eu.inn.hyperbus.serialization.createResponseBodyDecoder[ErrorBody]
-              else
-                eu.inn.hyperbus.serialization.createResponseBodyDecoder[DynamicBody]
-            }
+            case _ => thiz.defaultResponseBodyDecoder(responseHeader)
           }
           decoder(responseHeader, responseBodyJson)
         }

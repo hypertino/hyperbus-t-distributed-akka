@@ -4,7 +4,7 @@ import java.io.InputStream
 
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.serialization.impl.Helpers
-import eu.inn.hyperbus.serialization.{RequestDecoder, ResponseDecoder}
+import eu.inn.hyperbus.serialization._
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization.Encoder
 import eu.inn.servicebus.transport.SubscriptionHandlerResult
@@ -22,12 +22,41 @@ todo:
 + correlationId, sequenceId, replyTo
 + other headers?
 + exception when duplicate subscription
+
+
+low priority:
+  + lostResponse response log details
 */
 
-class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) {
+trait HyperBusBase {
+  def ask (r: Request[Body],
+           requestEncoder: Encoder[Request[Body]],
+           responseDecoder: ResponseDecoder): Future[Response[Body]]
+
+  def on[OUT <: Response[_ <: Body], IN <: Request[_ <: Body]]
+    (url: String,
+     method: String,
+     contentType: Option[String],
+     groupName: Option[String],
+     requestDecoder: RequestDecoder)
+    (handler: (IN) => SubscriptionHandlerResult[OUT]): String
+
+  def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit
+  /*
+    def defaultResponseDecoder(responseHeader: ResponseHeader,
+                             responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                             bodyDecoder: ResponseBodyDecoder): Response[Body]
+
+   */
+  def defaultResponseDecoder(bodyDecoder: ResponseBodyDecoder): ResponseDecoder
+  def defaultResponseBodyDecoder(responseHeader: ResponseHeader): ResponseBodyDecoder
+}
+
+class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusBase {
   protected val subscriptions = new Subscriptions[Subscription]
   protected val randomGen = new Random()
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler)]
+  protected val log = LoggerFactory.getLogger(this.getClass)
 
   protected case class Subscription(
                                      handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]],
@@ -150,11 +179,49 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
+  def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit = {
+    response.body match {
+      case _: ErrorBody => eu.inn.hyperbus.serialization.createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
+      case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
+      case _ => lostResponse(response)
+    }
+  }
+
+  def defaultResponseBodyDecoder(responseHeader: ResponseHeader/*, allowDynamicBody: Boolean*/): ResponseBodyDecoder = {
+    (responseHeader:  ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
+      val decoder = responseHeader.status match {
+        case _ =>
+          if (responseHeader.status >= 400 && responseHeader.status <= 599)
+            eu.inn.hyperbus.serialization.createResponseBodyDecoder[ErrorBody]
+          else
+          //if (allowDynamicBody)
+            eu.inn.hyperbus.serialization.createResponseBodyDecoder[DynamicBody]
+      }
+      decoder(responseHeader,responseBodyJson)
+    }
+  }
+
+  def defaultResponseDecoder(bodyDecoder: ResponseBodyDecoder): ResponseDecoder = {
+    (responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
+      //todo: response visitor
+      //todo: responsDecoder merge with responseBodyDecoder
+      // todo: Generic Errors and Responses
+
+      val body = bodyDecoder(responseHeader, responseBodyJson)
+      responseHeader.status match {
+        case Status.OK => Ok(body)
+        case Status.CREATED => Created(body.asInstanceOf[CreatedBody])
+        case Status.CONFLICT => ConflictError(body.asInstanceOf[ErrorBodyTrait])
+        case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBodyTrait])
+      }
+    }
+  }
+
+  protected def lostResponse(response: Response[Body]) = log.error("Can't serialize: {}", response)
+
   protected def getRouteKey(url: String, groupName: Option[String]) =
     groupName.map { url + "#" + _ } getOrElse url
 
   protected def getSubRouteKey(method: String, contentType: Option[String]) =
     contentType map (c => method + ":" + c) getOrElse method
-
-  protected val log = LoggerFactory.getLogger(this.getClass)
 }
