@@ -2,16 +2,15 @@ import sbt._
 import Keys._
 
 object Build extends sbt.Build {
+  lazy val paradiseVersionRoot = "2.1.0-M5"
 
   override lazy val settings =
     super.settings ++ Seq(
       organization := "eu.inn",
-      version      := "1.0-SNAPSHOT",
+      version      := "0.0.1",
       scalaVersion := "2.11.6",
 
       scalacOptions ++= Seq(
-        "-language:postfixOps",
-        "-language:implicitConversions",
         "-feature",
         "-deprecation",
         "-unchecked",
@@ -26,11 +25,14 @@ object Build extends sbt.Build {
         "-encoding", "UTF-8",
         "-Xlint:unchecked",
         "-Xlint:deprecation"
-      )
+      ),
+
+      addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersionRoot cross CrossVersion.full)
     )
 
-    //lazy val hyperbusMacro = project.in(file("hyperbus-macro"))
-    lazy val hyperbus    = project.in(file("hyperbus"))
-    lazy val forgameStatusMonitor = project.in(file("status-monitor")) dependsOn hyperbus
-    lazy val rootX = project.in(file(".")) aggregate (hyperbus, forgameStatusMonitor)
+    lazy val `Hyper-Project-Root` = project.in(file(".")) aggregate (servicebus, `hyperbus-inner`, hyperbus, `hyperbus-akka`)
+    lazy val servicebus = project.in(file("servicebus"))
+    lazy val `hyperbus-inner` = project.in(file("hyperbus-inner")) dependsOn servicebus
+    lazy val hyperbus = project.in(file("hyperbus")) dependsOn `hyperbus-inner`
+    lazy val `hyperbus-akka` = project.in(file("hyperbus-akka")) dependsOn hyperbus
 }
