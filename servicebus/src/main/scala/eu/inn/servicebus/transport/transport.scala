@@ -62,16 +62,12 @@ class InprocTransport extends ClientTransport with ServerTransport {
       }
 
       if (result == null) {
-        val p = Promise[Unit]()
-        p.success(Unit)
-        result = p.future.asInstanceOf[Future[OUT]]
+        result = Future.successful({}.asInstanceOf[OUT])
       }
     }
 
     if (result == null) {
-      val p = Promise[OUT]()
-      p.failure(new NoTransportRouteException(s"Route to '$topic' isn't found"))
-      p.future
+      Future.failed[OUT](new NoTransportRouteException(s"Route to '$topic' isn't found"))
     }
     else {
       result

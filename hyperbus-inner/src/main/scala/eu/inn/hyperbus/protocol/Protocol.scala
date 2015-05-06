@@ -102,12 +102,12 @@ case class InternalError[+B <: ErrorBodyTrait](body: B)
   override def status: Int = Status.INTERNAL_ERROR
 }
 
-case class NotFoundError[+B <: ErrorBodyTrait](body: B)
+case class NotFound[+B <: ErrorBodyTrait](body: B)
   extends RuntimeException(body.message) with Response[B] with ClientError[B] {
   override def status: Int = Status.NOT_FOUND
 }
 
-case class ConflictError[+B <: ErrorBodyTrait](body: B)
+case class Conflict[+B <: ErrorBodyTrait](body: B)
   extends RuntimeException(body.message) with Response[B] with ClientError[B] {
   override def status: Int = Status.CONFLICT
 }

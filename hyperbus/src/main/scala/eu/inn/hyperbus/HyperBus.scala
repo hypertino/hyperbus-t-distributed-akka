@@ -3,8 +3,8 @@ package eu.inn.hyperbus
 import java.io.InputStream
 
 import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.hyperbus.serialization._
+import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization.Encoder
 import eu.inn.servicebus.transport.SubscriptionHandlerResult
@@ -12,7 +12,7 @@ import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.experimental.macros
 import scala.util.{Random, Try}
 
@@ -22,7 +22,7 @@ todo:
 + correlationId, sequenceId, replyTo
 + other headers?
 + exception when duplicate subscription
-
++ encode -> serialize
 
 low priority:
   + lostResponse response log details
@@ -56,33 +56,21 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   protected val log = LoggerFactory.getLogger(this.getClass)
 
   protected case class Subscription(
-                                     handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]],
-                                     requestDecoder: RequestDecoder )
+                                   handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]],
+                                   requestDecoder: RequestDecoder )
 
 
   protected class UnderlyingHandler(routeKey: String) {
-
-    def unhandledRequest(request: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
-      val s = "Unhandled request " + safe(()=>request.method) + routeKey +
-        safe(()=>request.body.contentType.map("@"+_).getOrElse(""))
-      log.error(s)
-
-      val p = Promise[Response[Body]]()
-      p.success(InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s))))
-      SubscriptionHandlerResult(p.future, null) //todo: test exception encoder
-    }
-
     def handler(in: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
       getSubscription(in).map { s ⇒
         val r = s.handler(in)
-
-        val f = r.futureResult.recover {
-          case x: Response[_] ⇒ x
-          case t: Throwable ⇒ InternalError(ErrorBody(StandardErrors.INTERNAL_ERROR)) // todo: internal error, log details on server
+        val f = r.futureResult.recoverWith {
+          case x: Response[_] ⇒ Future.successful(x)
+          case t: Throwable ⇒ unhandledException(routeKey,in, t)
         }
-        SubscriptionHandlerResult[Response[Body]](f, r.resultEncoder)
+        SubscriptionHandlerResult(f, r.resultEncoder)
       } getOrElse {
-        unhandledRequest(in)
+        SubscriptionHandlerResult(unhandledRequest(routeKey, in), defaultResponseEncoder)
       }
     }
 
@@ -113,7 +101,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         }
       }
     }
-    def safe(t:() => String): String = Try(t()).getOrElse("???")
   }
 
   def ?[IN <: Request[Body]](r: IN): Future[Response[Body]] = macro HyperBusMacro.ask[IN]
@@ -216,8 +203,29 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     responseHeader.status match {
       case Status.OK => Ok(body)
       case Status.CREATED => Created(body.asInstanceOf[CreatedBody])
-      case Status.CONFLICT => ConflictError(body.asInstanceOf[ErrorBodyTrait])
+      case Status.CONFLICT => Conflict(body.asInstanceOf[ErrorBodyTrait])
       case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBodyTrait])
+    }
+  }
+
+  def safeLogError(msg: String, request: Request[Body], routeKey: String, error: Throwable = null): String = {
+    val s = msg + " " + safe(()=>request.method) + routeKey +
+      safe(()=>request.body.contentType.map("@"+_).getOrElse(""))
+    log.error(s, error)
+    s
+  }
+
+  def unhandledRequest(routeKey: String, request: Request[Body]): Future[Response[Body]] = {
+    val s = safeLogError("Unhandled request", request, routeKey)
+    Future.successful {
+      InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s)))
+    }
+  }
+
+  def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Future[Response[Body]] = {
+    val s = safeLogError("Unhandled exception", request, routeKey)
+    Future.successful {
+      InternalError(ErrorBody(StandardErrors.INTERNAL_ERROR, Some(s)))
     }
   }
 
@@ -228,4 +236,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   protected def getSubRouteKey(method: String, contentType: Option[String]) =
     contentType map (c => method + ":" + c) getOrElse method
+
+  protected def safe(t:() => String): String = Try(t()).getOrElse("???")
 }

@@ -1,9 +1,11 @@
+import java.util.UUID
+
 import eu.inn.binders.annotations.fieldName
 import akka.actor.{ActorSystem, Actor}
 import akka.util.Timeout
 import eu.inn.hyperbus.akkaservice.annotations.group
 import scala.concurrent.duration._
-import eu.inn.binders.dynamic.Text
+import eu.inn.binders.dynamic.{Null, Value, Text}
 import eu.inn.hyperbus.akkaservice.AkkaHyperService
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.HyperBus
@@ -30,6 +32,14 @@ case class TestCreatedBody(resourceId: String,
                              StandardLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody with NoContentType
 
+@contentType("application/vnd+test-error-body.json")
+case class TestErrorBody(code:String,
+                     description:Option[String] = None,
+                     errorId: String = UUID.randomUUID().toString) extends ErrorBodyTrait {
+  def message = code + description.map(": " + _).getOrElse("")
+}
+
+
 @url("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
@@ -41,7 +51,7 @@ with DefinedResponse[Created[TestCreatedBody]]
 @url("/resources")
 case class TestPost3(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[
-    | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
+    | [Ok[DynamicBody], | [Created[TestCreatedBody], | [NotFound[TestErrorBody], !]]]
   ]
 
 class TestActor extends Actor {
@@ -59,10 +69,13 @@ class TestActor extends Actor {
         Created(TestCreatedBody("100500"))
       else
       if (testPost3.body.resourceData == -1)
-        throw new ConflictError(ErrorBody("failed"))
+        throw new Conflict(ErrorBody("failed"))
       else
       if (testPost3.body.resourceData == -2)
-        ConflictError(ErrorBody("failed"))
+        Conflict(ErrorBody("failed"))
+      else
+      if (testPost3.body.resourceData == -3)
+        NotFound(TestErrorBody("not_found"))
       else
         Ok(DynamicBody(Text("another result")))
     }
@@ -124,13 +137,20 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
       val f3 = hyperBus ? TestPost3(TestBody2(-1))
 
       whenReady(f3.failed) { r =>
-        r shouldBe a [ConflictError[_]]
+        r shouldBe a [Conflict[_]]
       }
 
       val f4 = hyperBus ? TestPost3(TestBody2(-2))
 
       whenReady(f4.failed) { r =>
-        r shouldBe a [ConflictError[_]]
+        r shouldBe a [Conflict[_]]
+      }
+
+      val f5 = hyperBus ? TestPost3(TestBody2(-3))
+
+      whenReady(f5.failed) { r =>
+        r shouldBe a [NotFound[_]]
+        r.asInstanceOf[Response[_]].body shouldBe a [TestErrorBody]
       }
       system.shutdown()
     }

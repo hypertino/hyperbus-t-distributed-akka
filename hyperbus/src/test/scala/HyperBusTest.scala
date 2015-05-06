@@ -1,17 +1,15 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.Text
-import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.protocol.annotations.{url, contentType}
-import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport.{SubscriptionHandlerResult, ServerTransport, ClientTransport, InprocTransport}
+import eu.inn.hyperbus.protocol._
 import eu.inn.servicebus.ServiceBus
+import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.transport.{ClientTransport, ServerTransport, SubscriptionHandlerResult}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{Matchers, FreeSpec}
+import org.scalatest.{FreeSpec, Matchers}
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.Future
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val buf = new StringBuilder
@@ -24,9 +22,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
 
     val os = new ByteArrayInputStream(output.getBytes("UTF-8"))
     val out = outputDecoder(os)
-    val p: Promise[OUT] = Promise()
-    p.success(out)
-    p.future
+    Future.successful(out)
   }
 }
 
@@ -44,8 +40,6 @@ class ServerTransportTest extends ServerTransport {
 
   def off(subscriptionId: String) = ???
 }
-
-// todo: add error test with content-type
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
@@ -79,7 +73,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       whenReady(f.failed) { r =>
-        r should equal (ConflictError(ErrorBody("failed",errorId="abcde12345")))
+        r should equal (Conflict(ErrorBody("failed",errorId="abcde12345")))
       }
     }
 
@@ -114,7 +108,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = new HyperBus(new ServiceBus(null,st))
       hyperBus.on[TestPost1](None) { post =>
         Future {
-          throw new ConflictError(ErrorBody("failed", errorId = "abcde12345"))
+          throw new Conflict(ErrorBody("failed", errorId = "abcde12345"))
         }
       }
 
@@ -125,7 +119,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val hres = st.sHandler(msg)
       whenReady(hres.futureResult) { r =>
-        r shouldBe a [ConflictError[_]]
+        r shouldBe a [Conflict[_]]
         val ba = new ByteArrayOutputStream()
         hres.resultEncoder(r, ba)
         val s = ba.toString("UTF-8")
