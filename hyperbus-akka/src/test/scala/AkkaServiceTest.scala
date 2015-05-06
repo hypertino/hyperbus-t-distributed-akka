@@ -1,3 +1,4 @@
+import eu.inn.binders.annotations.fieldName
 import akka.actor.{ActorSystem, Actor}
 import akka.util.Timeout
 import eu.inn.hyperbus.akkaservice.annotations.group
@@ -16,6 +17,32 @@ import scala.concurrent.Future
 import eu.inn.hyperbus.akkaservice._
 
 import akka.testkit.TestActorRef
+
+@contentType("application/vnd+test-1.json")
+case class TestBody1(resourceData: String) extends Body
+
+@contentType("application/vnd+test-2.json")
+case class TestBody2(resourceData: Long) extends Body
+
+@contentType("application/vnd+created-body.json")
+case class TestCreatedBody(resourceId: String,
+                           @fieldName("_links") links: Body.LinksMap = Map(
+                             StandardLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
+  extends CreatedBody with NoContentType
+
+@url("/resources")
+case class TestPost1(body: TestBody1) extends StaticPost(body)
+with DefinedResponse[Created[TestCreatedBody]]
+
+@url("/resources")
+case class TestPost2(body: TestBody2) extends StaticPost(body)
+with DefinedResponse[Created[TestCreatedBody]]
+
+@url("/resources")
+case class TestPost3(body: TestBody2) extends StaticPost(body)
+with DefinedResponse[
+    | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
+  ]
 
 class TestActor extends Actor {
   def receive = AkkaHyperService.dispatch(this)
