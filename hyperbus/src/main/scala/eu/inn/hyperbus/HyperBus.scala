@@ -2,6 +2,9 @@ package eu.inn.hyperbus
 
 import java.io.InputStream
 
+import com.fasterxml.jackson.core.JsonParser
+import eu.inn.binders.dynamic.Value
+import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
@@ -97,7 +100,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         getSubscription(requestHeader.method, requestHeader.contentType) map { subscription =>
           subscription.requestDecoder(requestHeader, requestBodyJson)
         } getOrElse {
-          Helpers.decodeDynamicRequest(requestHeader, requestBodyJson)
+          decodeDynamicRequest(requestHeader, requestBodyJson)
         }
       }
     }
@@ -175,6 +178,25 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       case _: ErrorBody => eu.inn.hyperbus.serialization.createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
       case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
       case _ => responseEncoderNotFound(response)
+    }
+  }
+
+  protected def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
+    val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
+      DynamicBody(deserializer.unbind[Value], requestHeader.contentType)
+    }
+
+    requestHeader.method match {
+      case StandardMethods.GET => DynamicGet(requestHeader.url, body)
+      case StandardMethods.POST => DynamicPost(requestHeader.url, body)
+      case StandardMethods.PUT => DynamicPut(requestHeader.url, body)
+      case StandardMethods.DELETE => DynamicDelete(requestHeader.url, body)
+      case StandardMethods.PATCH => DynamicPatch(requestHeader.url, body)
+      case _ => {
+        val s = s"Unknown method: '${requestHeader.method}'" //todo: save more details (messageId)
+        log.error(s)
+        throw new DecodeException(s)
+      }
     }
   }
 

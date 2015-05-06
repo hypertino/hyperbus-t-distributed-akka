@@ -30,7 +30,6 @@ object Helpers {
   }
 
   def decodeRequestWith[B <: Body](inputStream: InputStream)(decoder: (RequestHeader, JsonParser) => Request[B]): Request[B] = {
-
     val jf = new JsonFactory()
     val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
     val factory = SerializerFactory.findFactory()
@@ -89,21 +88,6 @@ object Helpers {
       result
     } finally {
       jp.close()
-    }
-  }
-
-  def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
-    val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      DynamicBody(deserializer.unbind[Value], requestHeader.contentType)
-    }
-
-    requestHeader.method match {
-      case StandardMethods.GET => DynamicGet(requestHeader.url, body)
-      case StandardMethods.POST => DynamicPost(requestHeader.url, body)
-      case StandardMethods.PUT => DynamicPut(requestHeader.url, body)
-      case StandardMethods.DELETE => DynamicDelete(requestHeader.url, body)
-      case StandardMethods.PATCH => DynamicPatch(requestHeader.url, body)
-      case _ => throw new RuntimeException(s"Unknown method: '${requestHeader.method}'") //todo: exception class and save more details
     }
   }
 
