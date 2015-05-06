@@ -33,23 +33,20 @@ trait HyperBusBase {
            requestEncoder: Encoder[Request[Body]],
            responseDecoder: ResponseDecoder): Future[Response[Body]]
 
-  def on[OUT <: Response[_ <: Body], IN <: Request[_ <: Body]]
-    (url: String,
-     method: String,
-     contentType: Option[String],
-     groupName: Option[String],
-     requestDecoder: RequestDecoder)
-    (handler: (IN) => SubscriptionHandlerResult[OUT]): String
+  def on(url: String,
+         method: String,
+         contentType: Option[String],
+         groupName: Option[String],
+         requestDecoder: RequestDecoder)
+        (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String
 
-  def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit
-  /*
-    def defaultResponseDecoder(responseHeader: ResponseHeader,
-                             responseBodyJson: com.fasterxml.jackson.core.JsonParser,
-                             bodyDecoder: ResponseBodyDecoder): Response[Body]
+  def responseEncoder(response: Response[Body],
+                      outputStream: java.io.OutputStream,
+                      bodyEncoder: PartialFunction[Response[Body],ResponseEncoder]): Unit
 
-   */
-  def defaultResponseDecoder(bodyDecoder: ResponseBodyDecoder): ResponseDecoder
-  def defaultResponseBodyDecoder(responseHeader: ResponseHeader): ResponseBodyDecoder
+  def responseDecoder(responseHeader: ResponseHeader,
+                     responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                     bodyDecoder: PartialFunction[ResponseHeader,ResponseBodyDecoder]): Response[Body]
 }
 
 class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusBase {
@@ -136,14 +133,12 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def on[IN <: Request[_ <: Body]] (groupName: Option[String] = None)
                                      (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.on[IN]
 
-  def on[OUT <: Response[_ <: Body], IN <: Request[_ <: Body]]
-  (url: String,
-     method: String,
-     contentType: Option[String],
-     groupName: Option[String],
-     requestDecoder: RequestDecoder)
-    (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
-
+  def on(url: String,
+         method: String,
+         contentType: Option[String],
+         groupName: Option[String],
+         requestDecoder: RequestDecoder)
+        (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String = {
     // todo: handle service exceptions
 
     val routeKey = getRouteKey(url, groupName)
@@ -179,45 +174,54 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
-  def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit = {
+  def responseEncoder(response: Response[Body],
+                      outputStream: java.io.OutputStream,
+                      bodyEncoder: PartialFunction[Response[Body],ResponseEncoder]): Unit = {
+    if (bodyEncoder.isDefinedAt(response))
+      bodyEncoder(response)(response, outputStream)
+    else
+      defaultResponseEncoder(response, outputStream)
+  }
+
+  protected def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit = {
     response.body match {
       case _: ErrorBody => eu.inn.hyperbus.serialization.createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
       case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
-      case _ => lostResponse(response)
+      case _ => responseEncoderNotFound(response)
     }
   }
 
-  def defaultResponseBodyDecoder(responseHeader: ResponseHeader/*, allowDynamicBody: Boolean*/): ResponseBodyDecoder = {
-    (responseHeader:  ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
-      val decoder = responseHeader.status match {
-        case _ =>
-          if (responseHeader.status >= 400 && responseHeader.status <= 599)
-            eu.inn.hyperbus.serialization.createResponseBodyDecoder[ErrorBody]
-          else
-          //if (allowDynamicBody)
-            eu.inn.hyperbus.serialization.createResponseBodyDecoder[DynamicBody]
-      }
-      decoder(responseHeader,responseBodyJson)
+  protected def defaultResponseBodyDecoder(responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser): Body = {
+    val decoder =
+      if (responseHeader.status >= 400 && responseHeader.status <= 599)
+        eu.inn.hyperbus.serialization.createResponseBodyDecoder[ErrorBody]
+      else
+        eu.inn.hyperbus.serialization.createResponseBodyDecoder[DynamicBody]
+    decoder(responseHeader,responseBodyJson)
+  }
+
+  def responseDecoder(responseHeader: ResponseHeader,
+                     responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                     bodyDecoder: PartialFunction[ResponseHeader,ResponseBodyDecoder]): Response[Body] = {
+    //todo: response visitor
+    //todo: responsDecoder merge with responseBodyDecoder
+    // todo: Generic Errors and Responses
+
+    val body =
+      if (bodyDecoder.isDefinedAt(responseHeader))
+        bodyDecoder(responseHeader)(responseHeader,responseBodyJson)
+      else
+        defaultResponseBodyDecoder(responseHeader,responseBodyJson)
+
+    responseHeader.status match {
+      case Status.OK => Ok(body)
+      case Status.CREATED => Created(body.asInstanceOf[CreatedBody])
+      case Status.CONFLICT => ConflictError(body.asInstanceOf[ErrorBodyTrait])
+      case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBodyTrait])
     }
   }
 
-  def defaultResponseDecoder(bodyDecoder: ResponseBodyDecoder): ResponseDecoder = {
-    (responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
-      //todo: response visitor
-      //todo: responsDecoder merge with responseBodyDecoder
-      // todo: Generic Errors and Responses
-
-      val body = bodyDecoder(responseHeader, responseBodyJson)
-      responseHeader.status match {
-        case Status.OK => Ok(body)
-        case Status.CREATED => Created(body.asInstanceOf[CreatedBody])
-        case Status.CONFLICT => ConflictError(body.asInstanceOf[ErrorBodyTrait])
-        case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBodyTrait])
-      }
-    }
-  }
-
-  protected def lostResponse(response: Response[Body]) = log.error("Can't serialize: {}", response)
+  protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode: {}", response)
 
   protected def getRouteKey(url: String, groupName: Option[String]) =
     groupName.map { url + "#" + _ } getOrElse url

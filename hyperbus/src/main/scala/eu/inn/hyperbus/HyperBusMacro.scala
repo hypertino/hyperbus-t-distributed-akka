@@ -63,34 +63,33 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
-      cq"_: $body => eu.inn.hyperbus.serialization.createEncoder[Response[$body]](response.asInstanceOf[Response[$body]], outputStream)"
+      cq"_: $body => hbs.createEncoder[Response[$body]].asInstanceOf[hbs.ResponseEncoder]"
     }
-    //println(uniqueBodyResponses)
 
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
-      import eu.inn.{hyperbus=>hb}
+      import eu.inn.hyperbus.protocol._
+      import eu.inn.hyperbus.{serialization=>hbs}
       import eu.inn.{servicebus=>sb}
-      import hb.protocol._
       val thiz = $thiz
-      val requestDecoder = hb.serialization.createRequestDecoder[$in]
-      val responseEncoder = (response: Response[Body], outputStream: java.io.OutputStream) => {
-        response.body match {
+      val requestDecoder = hbs.createRequestDecoder[$in]
+      val responseEncoder = thiz.responseEncoder(
+        _: Response[Body],
+        _: java.io.OutputStream,
+        _.body match {
           case ..$bodyCases
-          case _ => thiz.defaultResponseEncoder(response.asInstanceOf[Response[ErrorBody]], outputStream)
         }
+      )
+      thiz.on($url, $method, $contentType, $groupName, requestDecoder) { case (response: $in) =>
+        sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
-      val handler = (response: $in) => sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
-      thiz.on($url, $method, $contentType, $groupName, requestDecoder)(handler)
     }"""
-    //<-- response encoders
     //println(obj)
     c.Expr[String](obj)
   }
 
-  def ask[IN: c.WeakTypeTag]
-  (r: c.Expr[IN]): c.Tree = {
+  def ask[IN: c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
@@ -102,23 +101,10 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
 
-    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
-    val normalCases: Seq[c.Tree] = responseBodyTypes.filterNot{
-      _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
-    } map { body =>
+    val bodyCases: Seq[c.Tree] = responseBodyTypes map { body =>
       val ta = getContentTypeAnnotation(body)
       cq"$ta => eu.inn.hyperbus.serialization.createResponseBodyDecoder[$body]"
     }
-
-    /*val dynamicCase = responseBodyTypes.find{
-      _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
-    }.map { body =>
-      cq"_ => eu.inn.hyperbus.serialization.createResponseBodyDecoder[$body]"
-    }*/
-
-    // todo: add fallback response handler
-
-    val bodyCases = normalCases// ++ dynamicCase
 
     val responses = getResponses(in)
     val send =
@@ -131,19 +117,16 @@ private[hyperbus] trait HyperBusMacroImplementation {
       import eu.inn.hyperbus.{serialization=>hsr}
       val thiz = $thiz
       val requestEncoder = hsr.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
-      val responseDecoder = thiz.defaultResponseDecoder {
-        (responseHeader:  hsr.ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
-          val decoder = responseHeader.contentType match {
-            case ..$bodyCases
-            case _ => thiz.defaultResponseBodyDecoder(responseHeader)
-          }
-          decoder(responseHeader, responseBodyJson)
+      val responseDecoder = thiz.responseDecoder(
+        _: hsr.ResponseHeader,
+        _: com.fasterxml.jackson.core.JsonParser,
+        _.contentType match {
+          case ..$bodyCases
         }
-      }
+      )
       $send
     }"""
-    //<-- response decoders
-    //println(obj) // <--
+    //println(obj)
     obj
   }
 
