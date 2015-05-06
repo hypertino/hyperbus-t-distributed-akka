@@ -94,7 +94,7 @@ object Helpers {
 
   def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
     val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      Dynamic(deserializer.unbind[Value], requestHeader.contentType)
+      DynamicBody(deserializer.unbind[Value], requestHeader.contentType)
     }
 
     requestHeader.method match {
@@ -107,9 +107,15 @@ object Helpers {
     }
   }
 
-  def decodeDynamicResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): Dynamic = {
+  def decodeDynamicResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): DynamicBody = {
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      Dynamic(deserializer.unbind[Value], responseHeader.contentType)
+      DynamicBody(deserializer.unbind[Value], responseHeader.contentType)
+    }
+  }
+
+  def decodeErrorResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): ErrorBody = {
+    SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
+      deserializer.unbind[ErrorBody]
     }
   }
 

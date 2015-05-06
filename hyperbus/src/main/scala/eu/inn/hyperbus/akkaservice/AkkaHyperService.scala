@@ -114,7 +114,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
         ..$subscriptions
       )
     }"""
-    println(obj)
+    // println(obj)
     obj
   }
 
@@ -135,7 +135,6 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       //println(s"a: $argType r: $resultType")
       val innerResultType = resultType.typeArgs.head
 
-      //todo: handler errors
       cq"""
         message: $argType => $methodName(message) pipeTo sender
       """
@@ -147,7 +146,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
         case ..$cases
       }
     }"""
-    println(obj)
+    // println(obj)
     obj
   }
 

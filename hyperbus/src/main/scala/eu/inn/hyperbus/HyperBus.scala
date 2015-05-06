@@ -19,7 +19,6 @@ import scala.util.{Random, Try}
 /*
 todo:
 + decide group result type
-+ annotations like // @WithContentType("application/vnd+identified-user.json"), @WithURI
 + correlationId, sequenceId, replyTo
 + other headers?
 + exception when duplicate subscription
@@ -43,7 +42,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       log.error(s)
 
       val p = Promise[Response[Body]]()
-      p.success(InternalError(Error(StandardErrors.HANDLER_NOT_FOUND, Some(s)))) // todo: success or failure?
+      p.success(InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s))))
       SubscriptionHandlerResult(p.future, null) //todo: test exception encoder
     }
 
@@ -53,7 +52,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
         val f = r.futureResult.recover {
           case x: Response[_] ⇒ x
-          case t: Throwable ⇒ InternalError(Error(StandardErrors.INTERNAL_ERROR)) // todo: internal error, log details on server
+          case t: Throwable ⇒ InternalError(ErrorBody(StandardErrors.INTERNAL_ERROR)) // todo: internal error, log details on server
         }
         SubscriptionHandlerResult[Response[Body]](f, r.resultEncoder)
       } getOrElse {
@@ -99,7 +98,10 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       responseDecoder: ResponseDecoder): Future[Response[Body]] = {
 
     val outputDecoder = Helpers.decodeResponseWith(_:InputStream)(responseDecoder)
-    underlyingBus.ask[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder)
+    underlyingBus.ask[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder) map {
+      case throwable: Throwable ⇒ throw throwable
+      case r: Response[Body] ⇒ r
+    }
   }
 
   def on[IN <: Request[_ <: Body]] (groupName: Option[String] = None)

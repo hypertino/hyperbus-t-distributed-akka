@@ -45,6 +45,8 @@ class ServerTransportTest extends ServerTransport {
   def off(subscriptionId: String) = ???
 }
 
+// todo: add error test with content-type
+
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "Send (serialize)" in {
@@ -61,6 +63,23 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       whenReady(f) { r =>
         r.body should equal(TestCreatedBody("100500"))
+      }
+    }
+
+    "Send (serialize exception)" in {
+      val ct = new ClientTransportTest(
+        """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
+      )
+
+      val hyperBus = new HyperBus(new ServiceBus(ct,null))
+      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
+
+      ct.input should equal (
+        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+      )
+
+      whenReady(f.failed) { r =>
+        r should equal (ConflictError(ErrorBody("failed",errorId="abcde12345")))
       }
     }
 
@@ -95,7 +114,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = new HyperBus(new ServiceBus(null,st))
       hyperBus.on[TestPost1](None) { post =>
         Future {
-          throw new ConflictError(Error("failed", errorId = "abcde12345"))
+          throw new ConflictError(ErrorBody("failed", errorId = "abcde12345"))
         }
       }
 
@@ -106,12 +125,12 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val hres = st.sHandler(msg)
       whenReady(hres.futureResult) { r =>
-        r should equal(Created(TestCreatedBody("100500")))
+        r shouldBe a [ConflictError[_]]
         val ba = new ByteArrayOutputStream()
         hres.resultEncoder(r, ba)
         val s = ba.toString("UTF-8")
         s should equal(
-          """{"response":{"status":409},"body":{"code":"failed"}}"""
+          """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
         )
       }
     }

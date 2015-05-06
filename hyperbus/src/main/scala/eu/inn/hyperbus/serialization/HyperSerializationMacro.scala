@@ -1,12 +1,11 @@
 package eu.inn.hyperbus.serialization
 
-import eu.inn.hyperbus.protocol.{Dynamic, DynamicRequest, Message}
+import eu.inn.hyperbus.protocol.{ErrorBody, DynamicBody, DynamicRequest, Message}
 import eu.inn.servicebus.serialization.Encoder
 
 import scala.reflect.macros.blackbox.Context
 
 private[hyperbus] object HyperSerializationMacro {
-  // todo: is this really needed?
   def createEncoder[T: c.WeakTypeTag](c: Context): c.Expr[Encoder[T]] = {
     import c.universe._
     val t = weakTypeOf[T]
@@ -56,16 +55,21 @@ private[hyperbus] object HyperSerializationMacro {
     import c.universe._
     val t = weakTypeOf[T]
 
-    val decoder = if (t <:< typeOf[Dynamic]) {
-      q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicResponseBody(responseHeader, responseBodyJson)"
-    } else {
-      // todo: validate contentType?
-      q"""
-        eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(responseBodyJson) { deserializer =>
-          deserializer.unbind[$t]
-        }
-      """
-    }
+    val decoder =
+      if (t <:< typeOf[DynamicBody]) {
+        q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicResponseBody(responseHeader, responseBodyJson)"
+      }
+      else if (t <:< typeOf[ErrorBody]) {
+        q"eu.inn.hyperbus.serialization.impl.Helpers.decodeErrorResponseBody(responseHeader, responseBodyJson)"
+      }
+      else {
+        // todo: validate contentType?
+        q"""
+          eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(responseBodyJson) { deserializer =>
+            deserializer.unbind[$t]
+          }
+        """
+      }
 
     val obj = q"""{
       (responseHeader: eu.inn.hyperbus.serialization.ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {

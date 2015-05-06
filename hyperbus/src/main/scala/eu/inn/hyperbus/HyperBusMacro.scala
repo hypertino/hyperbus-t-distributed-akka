@@ -59,7 +59,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       c.abort(c.enclosingPosition, s"@method annotation is not defined.}")
     }
 
-    val dynamicBodyTypeSig = typeOf[Dynamic].typeSymbol.typeSignature
+    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
     val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
@@ -76,7 +76,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val responseEncoder: eu.inn.servicebus.serialization.Encoder[Response[Body]] = (response: Response[Body], outputStream: java.io.OutputStream) => {
         response.body match {
           case ..$bodyCases
-          case _: Dynamic => eu.inn.hyperbus.serialization.createEncoder[Response[Dynamic]](response.asInstanceOf[Response[Dynamic]], outputStream)
+          case _: ErrorBody => eu.inn.hyperbus.serialization.createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
+          case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
           case _ => throw new RuntimeException("todo: common handling need to be fixed")
         }
       }
@@ -104,7 +105,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
 
-    val dynamicBodyTypeSig = typeOf[Dynamic].typeSymbol.typeSignature
+    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
     val normalCases: Seq[c.Tree] = responseBodyTypes.filterNot{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
@@ -112,15 +113,15 @@ private[hyperbus] trait HyperBusMacroImplementation {
       cq"$ta => eu.inn.hyperbus.serialization.createResponseBodyDecoder[$body]"
     }
 
-    val dynamicCase = responseBodyTypes.find{
+    /*val dynamicCase = responseBodyTypes.find{
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     }.map { body =>
       cq"_ => eu.inn.hyperbus.serialization.createResponseBodyDecoder[$body]"
-    }
+    }*/
 
     // todo: add fallback response handler
 
-    val bodyCases = normalCases ++ dynamicCase
+    val bodyCases = normalCases// ++ dynamicCase
 
     val responses = getResponses(in)
     val send =
@@ -136,6 +137,12 @@ private[hyperbus] trait HyperBusMacroImplementation {
         (responseHeader:  eu.inn.hyperbus.serialization.ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser) => {
           val decoder = responseHeader.contentType match {
             case ..$bodyCases
+            case _ => {
+              if (responseHeader.status >= 400 && responseHeader.status <= 599)
+                eu.inn.hyperbus.serialization.createResponseBodyDecoder[ErrorBody]
+              else
+                eu.inn.hyperbus.serialization.createResponseBodyDecoder[DynamicBody]
+            }
           }
           decoder(responseHeader, responseBodyJson)
         }

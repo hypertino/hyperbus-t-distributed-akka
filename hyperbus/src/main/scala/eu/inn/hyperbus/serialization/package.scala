@@ -24,7 +24,8 @@ package object serialization {
       responseHeader.status match {
         case Status.OK => Ok(body)
         case Status.CREATED => Created(body.asInstanceOf[CreatedBody])
-        case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBody])
+        case Status.CONFLICT => ConflictError(body.asInstanceOf[ErrorBodyTrait])
+        case Status.INTERNAL_ERROR => InternalError(body.asInstanceOf[ErrorBodyTrait])
       }
     }
   }
