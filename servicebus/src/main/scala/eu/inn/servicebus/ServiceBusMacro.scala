@@ -55,8 +55,8 @@ private[servicebus] object ServiceBusMacro {
     val in = weakTypeOf[IN]
 
     val obj = q"""{
-      val encoder = eu.inn.servicebus.serialization.createEncoder[$out]
       val decoder = eu.inn.servicebus.serialization.createDecoder[$in]
+      val encoder = eu.inn.servicebus.serialization.createEncoder[$out]
       val thiz = $thiz
       val handler = $handler
       val id = thiz.on[$out,$in]($topic,decoder){

@@ -12,19 +12,19 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
       val tr = new InprocTransport
       val serviceBus = new ServiceBus(tr,tr)
 
-      val id = serviceBus.on[String,String]("topic", None) { s =>
+      val id = serviceBus.on[String,Int]("topic", None) { s =>
         Future {
-          s.reverse
+          s.toString.reverse
         }
       }
 
-      val f: Future[String] = serviceBus.ask[String,String]("topic", "hey")
+      val f: Future[String] = serviceBus.ask[String,Int]("topic", 12345)
 
       whenReady(f) { s =>
-        s should equal ("yeh")
+        s should equal ("54321")
         serviceBus.off(id)
 
-        val f2: Future[String] = serviceBus.ask[String,String]("topic", "hey")
+        val f2: Future[String] = serviceBus.ask[String,Int]("topic", 1)
         whenReady(f2.failed) { e =>
           e shouldBe a [NoTransportRouteException]
         }
