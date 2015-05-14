@@ -1,7 +1,7 @@
 package eu.inn.servicebus
 
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport.{SubscriptionHandlerResult, ClientTransport, ServerTransport}
+import eu.inn.servicebus.transport._
 import eu.inn.servicebus.util.Subscriptions
 
 import scala.collection.concurrent.TrieMap
@@ -16,8 +16,17 @@ trait ServiceBusBase {
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT]
 
-  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def publish[IN](
+                   topic: String,
+                   message: IN,
+                   inputEncoder: Encoder[IN]
+                   ): Future[PublishResult]
+
+  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
+
+  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+                   (handler: (IN) => SubscriptionHandlerResult[Unit]): String
 
   def off(subscriptionId: String): Unit
 }
@@ -34,6 +43,11 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                     message: IN
                     ): Future[OUT] = macro ServiceBusMacro.ask[OUT,IN]
 
+  def publish[IN](
+                   topic: String,
+                   message: IN
+                   ): Future[PublishResult] = macro ServiceBusMacro.publish[IN]
+
   def ask[OUT,IN](
                     topic: String,
                     message: IN,
@@ -43,8 +57,19 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     this.lookupClientTransport(topic).ask[OUT,IN](topic,message,inputEncoder,outputDecoder)
   }
 
-  def on[OUT,IN](topic: String, groupName: Option[String])
-                       (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT,IN]
+  def publish[IN](
+                   topic: String,
+                   message: IN,
+                   inputEncoder: Encoder[IN]
+                   ): Future[PublishResult] = {
+    this.lookupClientTransport(topic).publish[IN](topic,message,inputEncoder)
+  }
+
+  def on[OUT,IN](topic: String)
+                (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT,IN]
+
+  def subscribe[IN](topic: String, groupName: String, position: SeekPosition)
+                (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]
 
   def off(subscriptionId: String): Unit = {
     subscriptions.getRouteKeyById(subscriptionId) foreach { topic =>
@@ -58,11 +83,16 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     subscriptions.remove(subscriptionId)
   }
 
-  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
-    val underlyingSubscriptionId = lookupServerTransport(topic: String).on[OUT,IN](topic, groupName, inputDecoder)(handler)
+    val underlyingSubscriptionId = lookupServerTransport(topic: String).on[OUT,IN](topic, inputDecoder)(handler)
+    subscriptions.add(topic,None,underlyingSubscriptionId)
+  }
 
+  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+                   (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
+    val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[IN](topic, groupName, position, inputDecoder)(handler)
     subscriptions.add(topic,None,underlyingSubscriptionId)
   }
 

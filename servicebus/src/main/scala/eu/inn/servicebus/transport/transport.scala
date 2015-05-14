@@ -1,12 +1,17 @@
 package eu.inn.servicebus.transport
 
 import java.util.concurrent.atomic.AtomicLong
+
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
+
+trait PublishResult {
+  def messageId: String
+}
 
 trait ClientTransport {
   def ask[OUT,IN](
@@ -15,13 +20,28 @@ trait ClientTransport {
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT]
+  def publish[IN](
+                   topic: String,
+                   message: IN,
+                   inputEncoder: Encoder[IN]
+                   ): Future[PublishResult]
 }
+
+trait SeekPosition
+case object FirstMessage extends SeekPosition
+case object LastMessage extends SeekPosition
+case class ExactMessage (messageId: String) extends SeekPosition
 
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
 
 trait ServerTransport {
-  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
+
+  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+                (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
+
+  def seek(subscriptionId: String, position: SeekPosition)
 
   def off(subscriptionId: String)
 }
@@ -30,10 +50,11 @@ private [transport] case class Subscription[OUT,IN](handler: (IN) => Subscriptio
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 
-class InprocTransport extends ClientTransport with ServerTransport {
+class InprocTransport(implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport {
   protected val subscriptions = new Subscriptions[Subscription[_,_]]
   protected val randomGen = new Random()
   protected val log = LoggerFactory.getLogger(this.getClass)
+  protected val currentMessageId = new AtomicLong(System.currentTimeMillis())
 
   override def ask[OUT,IN](
                               topic: String,
@@ -74,11 +95,29 @@ class InprocTransport extends ClientTransport with ServerTransport {
     }
   }
 
-  def on[OUT,IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
-                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
-
-    subscriptions.add(topic,groupName,Subscription[OUT,IN](handler))
+  def publish[IN](
+                   topic: String,
+                   message: IN,
+                   inputEncoder: Encoder[IN]
+                   ): Future[PublishResult] = {
+    ask[Any,IN](topic, message, inputEncoder, null) map { x =>
+      new PublishResult {
+        override def messageId: String = currentMessageId.incrementAndGet().toHexString
+      }
+    }
   }
+
+  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
+                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
+    subscriptions.add(topic,None,Subscription[OUT,IN](handler))
+  }
+
+  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+                (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
+    subscriptions.add(topic,Some(groupName),Subscription[Unit,IN](handler))
+  }
+
+  def seek(subscriptionId: String, position: SeekPosition) = ???
 
   def off(subscriptionId: String) = {
     subscriptions.remove(subscriptionId)

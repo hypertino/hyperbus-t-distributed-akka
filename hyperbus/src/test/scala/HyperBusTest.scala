@@ -4,7 +4,7 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.protocol._
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport.{ClientTransport, ServerTransport, SubscriptionHandlerResult}
+import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -24,13 +24,21 @@ class ClientTransportTest(output: String) extends ClientTransport {
     val out = outputDecoder(os)
     Future.successful(out)
   }
+
+  override def publish[IN](topic: String, message: IN, inputEncoder: Encoder[IN]): Future[PublishResult] = {
+    ask[Any,IN](topic, message, inputEncoder, null) map { x =>
+      new PublishResult {
+        override def messageId: String = "1"
+      }
+    }
+  }
 }
 
 class ServerTransportTest extends ServerTransport {
   var sInputDecoder: Decoder[Any] = null
   var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
 
-  def on[OUT, IN](topic: String, groupName: Option[String], inputDecoder: Decoder[IN])
+  def on[OUT, IN](topic: String, groupName: Option[String], position: SeekPosition, inputDecoder: Decoder[IN])
                         (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     sInputDecoder = inputDecoder
@@ -39,6 +47,8 @@ class ServerTransportTest extends ServerTransport {
   }
 
   def off(subscriptionId: String) = ???
+
+  override def seek(subscriptionId: String, position: SeekPosition): Unit = ???
 }
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
