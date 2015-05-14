@@ -11,13 +11,12 @@ private[hyperbus] object HyperBusMacro {
 
   def on[IN: c.WeakTypeTag]
   (c: Context)
-  (groupName: c.Expr[Option[String]])
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.on[IN](groupName)(handler)
+    bundle.on[IN](handler)
   }
 
   def ask[IN: c.WeakTypeTag]
@@ -36,7 +35,6 @@ private[hyperbus] trait HyperBusMacroImplementation {
   import c.universe._
 
   def on[IN: c.WeakTypeTag]
-  (groupName: c.Expr[Option[String]])
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
@@ -81,7 +79,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
           case ..$bodyCases
         }
       )
-      thiz.on($url, $method, $contentType, $groupName, requestDecoder) { case (response: $in) =>
+      thiz.on($url, $method, $contentType, requestDecoder) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
     }"""

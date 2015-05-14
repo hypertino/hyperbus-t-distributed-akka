@@ -38,7 +38,7 @@ class ServerTransportTest extends ServerTransport {
   var sInputDecoder: Decoder[Any] = null
   var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
 
-  def on[OUT, IN](topic: String, groupName: Option[String], position: SeekPosition, inputDecoder: Decoder[IN])
+  def on[OUT, IN](topic: String, inputDecoder: Decoder[IN])
                         (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     sInputDecoder = inputDecoder
@@ -48,7 +48,9 @@ class ServerTransportTest extends ServerTransport {
 
   def off(subscriptionId: String) = ???
 
-  override def seek(subscriptionId: String, position: SeekPosition): Unit = ???
+  def seek(subscriptionId: String, position: SeekPosition): Unit = ???
+
+  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])(handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = ??? //todo: test this
 }
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
@@ -90,7 +92,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "Subscribe (serialize)" in {
       val st = new ServerTransportTest()
       val hyperBus = new HyperBus(new ServiceBus(null,st))
-      hyperBus.on[TestPost1](None) { post =>
+      hyperBus.on[TestPost1] { post =>
         Future {
           Created(TestCreatedBody("100500"))
         }
@@ -116,7 +118,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "Subscribe (serialize exception)" in {
       val st = new ServerTransportTest()
       val hyperBus = new HyperBus(new ServiceBus(null,st))
-      hyperBus.on[TestPost1](None) { post =>
+      hyperBus.on[TestPost1] { post =>
         Future {
           throw new Conflict(ErrorBody("failed", errorId = "abcde12345"))
         }

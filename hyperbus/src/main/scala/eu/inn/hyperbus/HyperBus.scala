@@ -67,40 +67,17 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler)]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  protected case class Subscription(
-                                   handler: (Request[Body]) => SubscriptionHandlerResult[Any],
-                                   requestDecoder: RequestDecoder )
+  protected trait Subscription {
+    def requestDecoder: RequestDecoder
+  }
+  protected case class RequestReplySubscription(
+                                   handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]],
+                                   requestDecoder: RequestDecoder ) extends Subscription
+  protected case class PubSubSubscription(
+                                     handler: (Request[Body]) => SubscriptionHandlerResult[Unit],
+                                     requestDecoder: RequestDecoder ) extends Subscription
 
-
-  protected class UnderlyingHandler(routeKey: String) {
-    def handler(in: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
-      getSubscription(in).map { s ⇒
-        val r = s.handler(in)
-        val f = r.futureResult.recoverWith {
-          case x: Response[_] ⇒ Future.successful(x)
-          case t: Throwable ⇒ unhandledException(routeKey,in, t)
-        }
-        SubscriptionHandlerResult(f, r.resultEncoder)
-      } getOrElse {
-        SubscriptionHandlerResult(unhandledRequest(routeKey, in), defaultResponseEncoder)
-      }
-    }
-
-    def subscriptionHandler(in: Request[Body]): SubscriptionHandlerResult[Unit] = {
-      getSubscription(in).map { s ⇒
-        val r = s.handler(in)
-        val f = r.futureResult.recoverWith {
-          case t: Throwable ⇒
-            safeLogError("Unhandled exception", in, routeKey)
-            Future.successful({})
-        }
-        SubscriptionHandlerResult(f, r.resultEncoder)
-      } getOrElse {
-        safeLogError("Unhandled request", in, routeKey)
-        SubscriptionHandlerResult[Unit](Future.successful({}), null)
-      }
-    }
-
+  protected abstract class UnderlyingHandler(routeKey: String) {
     protected def getSubscription(in: Request[Body]): Option[Subscription] = getSubscription(in.method, in.body.contentType)
 
     protected def getSubscription(method:String, contentType: Option[String]): Option[Subscription] = {
@@ -136,6 +113,33 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
+  protected class UnderlyingRequestReplyHandler(routeKey: String) extends UnderlyingHandler(routeKey) {
+    def handler(in: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
+      getSubscription(in).map {
+        case s: RequestReplySubscription ⇒
+          val r = s.handler(in)
+          val f = r.futureResult.recoverWith {
+            case x: Response[_] ⇒ Future.successful(x)
+            case t: Throwable ⇒ unhandledException(routeKey,in, t)
+          }
+          SubscriptionHandlerResult(f, r.resultEncoder)
+      } getOrElse {
+        SubscriptionHandlerResult(unhandledRequest(routeKey, in), defaultResponseEncoder)
+      }
+    }
+  }
+
+  protected class UnderlyingPubSubHandler(routeKey: String) extends UnderlyingHandler(routeKey) {
+    def handler(in: Request[Body]): SubscriptionHandlerResult[Unit] = {
+      getSubscription(in).map {
+        case s: PubSubSubscription ⇒
+          s.handler(in)
+      } getOrElse {
+        SubscriptionHandlerResult(unhandledPublication(routeKey, in), null)
+      }
+    }
+  }
+
   def ?[IN <: Request[Body]](r: IN): Future[Response[Body]] = macro HyperBusMacro.ask[IN]
 
   def ask
@@ -155,8 +159,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     underlyingBus.publish[Request[Body]](r.url, r, requestEncoder)
   }
 
-  def on[IN <: Request[_ <: Body]] (groupName: Option[String] = None)
-                                     (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.on[IN]
+  def on[IN <: Request[_ <: Body]](handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.on[IN]
 
   def on(url: String,
          method: String,
@@ -170,11 +173,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       val r = subscriptions.add(
         routeKey,
         Some(subRouteKey),
-        Subscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Any]], requestDecoder)
+        RequestReplySubscription(handler, requestDecoder)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
-        val uh = new UnderlyingHandler(routeKey)
+        val uh = new UnderlyingRequestReplyHandler(routeKey)
         val uid = underlyingBus.on(url, uh.decoder)(uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
@@ -196,11 +199,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       val r = subscriptions.add(
         routeKey,
         Some(subRouteKey),
-        Subscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Any]], requestDecoder)
+        PubSubSubscription(handler, requestDecoder)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
-        val uh = new UnderlyingHandler(routeKey)
+        val uh = new UnderlyingPubSubHandler(routeKey)
         val uid = underlyingBus.subscribe(url, groupName, position, uh.decoder)(uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
@@ -271,6 +274,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     Future.successful {
       InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s)))
     }
+  }
+
+  def unhandledPublication(routeKey: String, request: Request[Body]): Future[Unit] = {
+    val s = safeLogError("Unhandled request", request, routeKey)
+    Future.successful{}
   }
 
   def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Future[Response[Body]] = {

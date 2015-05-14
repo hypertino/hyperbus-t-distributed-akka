@@ -96,12 +96,12 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       val resultType = m.returnType
       //println(s"a: $argType r: $resultType")
       val innerResultType = resultType.typeArgs.head
-      val group = getGroupAnnotation(m).map { s ⇒
+      /*val group = getGroupAnnotation(m).map { s ⇒
         q"Some($s)"
-      } getOrElse defaultGroup
+      } getOrElse defaultGroup*/
 
       q"""
-        h.on[$argType]($group){ message =>
+        h.on[$argType]{ message =>
           akka.pattern.ask(a, message).mapTo[$innerResultType]
         }
       """

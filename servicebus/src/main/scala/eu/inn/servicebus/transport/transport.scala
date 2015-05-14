@@ -30,6 +30,7 @@ trait ClientTransport {
 trait SeekPosition
 case object FirstMessage extends SeekPosition
 case object LastMessage extends SeekPosition
+case object DefaultPosition extends SeekPosition
 case class ExactMessage (messageId: String) extends SeekPosition
 
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
