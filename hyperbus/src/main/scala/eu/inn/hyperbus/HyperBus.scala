@@ -2,15 +2,12 @@ package eu.inn.hyperbus
 
 import java.io.InputStream
 
-import com.fasterxml.jackson.core.JsonParser
-import eu.inn.binders.dynamic.Value
-import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.serialization.Encoder
-import eu.inn.servicebus.transport.SubscriptionHandlerResult
+import eu.inn.servicebus.serialization._
+import eu.inn.servicebus.transport.{PublishResult, SeekPosition, SubscriptionHandlerResult}
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -38,12 +35,22 @@ trait HyperBusBase {
            requestEncoder: Encoder[Request[Body]],
            responseDecoder: ResponseDecoder): Future[Response[Body]]
 
+  def publish(r: Request[Body],
+             requestEncoder: Encoder[Request[Body]]): Future[PublishResult]
+
   def on(url: String,
          method: String,
          contentType: Option[String],
-         groupName: Option[String],
          requestDecoder: RequestDecoder)
         (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String
+
+  def subscribe(url: String,
+                method: String,
+                contentType: Option[String],
+                groupName: String,
+                position: SeekPosition,
+                requestDecoder: RequestDecoder)
+               (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String
 
   def responseEncoder(response: Response[Body],
                       outputStream: java.io.OutputStream,
@@ -61,7 +68,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   protected val log = LoggerFactory.getLogger(this.getClass)
 
   protected case class Subscription(
-                                   handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]],
+                                   handler: (Request[Body]) => SubscriptionHandlerResult[Any],
                                    requestDecoder: RequestDecoder )
 
 
@@ -76,6 +83,21 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         SubscriptionHandlerResult(f, r.resultEncoder)
       } getOrElse {
         SubscriptionHandlerResult(unhandledRequest(routeKey, in), defaultResponseEncoder)
+      }
+    }
+
+    def subscriptionHandler(in: Request[Body]): SubscriptionHandlerResult[Unit] = {
+      getSubscription(in).map { s ⇒
+        val r = s.handler(in)
+        val f = r.futureResult.recoverWith {
+          case t: Throwable ⇒
+            safeLogError("Unhandled exception", in, routeKey)
+            Future.successful({})
+        }
+        SubscriptionHandlerResult(f, r.resultEncoder)
+      } getOrElse {
+        safeLogError("Unhandled request", in, routeKey)
+        SubscriptionHandlerResult[Unit](Future.successful({}), null)
       }
     }
 
@@ -128,28 +150,58 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
+  def publish(r: Request[Body],
+              requestEncoder: Encoder[Request[Body]]): Future[PublishResult] = {
+    underlyingBus.publish[Request[Body]](r.url, r, requestEncoder)
+  }
+
   def on[IN <: Request[_ <: Body]] (groupName: Option[String] = None)
                                      (handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.on[IN]
 
   def on(url: String,
          method: String,
          contentType: Option[String],
-         groupName: Option[String],
          requestDecoder: RequestDecoder)
         (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String = {
-    val routeKey = getRouteKey(url, groupName)
+    val routeKey = getRouteKey(url, None)
     val subRouteKey = getSubRouteKey(method, contentType)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
         routeKey,
         Some(subRouteKey),
-        Subscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Response[Body]]], requestDecoder)
+        Subscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Any]], requestDecoder)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingHandler(routeKey)
-        val uid = underlyingBus.on(url, groupName, uh.decoder)(uh.handler)
+        val uid = underlyingBus.on(url, uh.decoder)(uh.handler)
+        underlyingSubscriptions += routeKey -> (uid, uh)
+      }
+      r
+    }
+  }
+
+  def subscribe(url: String,
+                method: String,
+                contentType: Option[String],
+                groupName: String,
+                position: SeekPosition,
+                requestDecoder: RequestDecoder)
+               (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String = {
+    val routeKey = getRouteKey(url, Some(groupName))
+    val subRouteKey = getSubRouteKey(method, contentType)
+
+    underlyingSubscriptions.synchronized {
+      val r = subscriptions.add(
+        routeKey,
+        Some(subRouteKey),
+        Subscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Any]], requestDecoder)
+      )
+
+      if (!underlyingSubscriptions.contains(routeKey)) {
+        val uh = new UnderlyingHandler(routeKey)
+        val uid = underlyingBus.subscribe(url, groupName, position, uh.decoder)(uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
