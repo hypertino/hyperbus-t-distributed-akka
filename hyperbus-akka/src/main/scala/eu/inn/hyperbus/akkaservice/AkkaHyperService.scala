@@ -13,8 +13,6 @@ import scala.reflect.macros.blackbox.Context
 object AkkaHyperService {
   def route[A](hyperBus: HyperBus, actorRef: ActorRef): List[String] = macro AkkaHyperServiceMacro.route[A]
 
-  def route[A](hyperBus: HyperBus, actorRef: ActorRef, groupName: String): List[String] = macro AkkaHyperServiceMacro.routeWithGroup[A]
-
   def dispatch[A](actor: A): Receive = macro AkkaHyperServiceMacro.dispatch[A]
 }
 
@@ -31,17 +29,6 @@ private[akkaservice] object AkkaHyperServiceMacro {
     c.Expr[List[String]](r)
   }
 
-  def routeWithGroup[A: c.WeakTypeTag]
-  (c: Context)
-  (hyperBus: c.Expr[HyperBus], actorRef: c.Expr[ActorRef], groupName: c.Expr[String]): c.Expr[List[String]] = {
-    val c0: c.type = c
-    val bundle = new {
-      val c: c0.type = c0
-    } with AkkaHyperServiceImplementation
-    val r = bundle.route[A](hyperBus.tree, actorRef.tree, Some(groupName.tree))
-    c.Expr[List[String]](r)
-  }
-
   def routeTo[A: c.WeakTypeTag]
   (c: Context)
   (actorRef: c.Expr[ActorRef]): c.Expr[List[String]] = {
@@ -49,17 +36,6 @@ private[akkaservice] object AkkaHyperServiceMacro {
     val r = q"""{
       val t = ${c.prefix.tree}
       AkkaHyperService.route[${weakTypeOf[A]}](t.hyperBus, $actorRef)
-    }"""
-    c.Expr[List[String]](r)
-  }
-
-  def routeWithGroupTo[A: c.WeakTypeTag]
-  (c: Context)
-  (actorRef: c.Expr[ActorRef], groupName: c.Expr[String]): c.Expr[List[String]] = {
-    import c.universe._
-    val r = q"""{
-      val t = ${c.prefix.tree}
-      AkkaHyperService.route[${weakTypeOf[A]}](t.hyperBus, $actorRef, $groupName)
     }"""
     c.Expr[List[String]](r)
   }
@@ -81,30 +57,33 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
   import c.universe._
 
-  def route[A: c.WeakTypeTag] (hyperBus: c.Tree, actorRef: c.Tree, groupName: Option[c.Tree] = None): c.Tree = {
+  def route[A: c.WeakTypeTag] (hyperBus: c.Tree, actorRef: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
-      c.abort(c.enclosingPosition, s"No suitable 'on' method is defined in ${weakTypeOf[A]}")
+      c.abort(c.enclosingPosition, s"No suitable 'on' or 'subscribe' method is defined in ${weakTypeOf[A]}")
     }
 
     val typ = weakTypeOf[A]
-    val defaultGroup = groupName map { s ⇒ q"Some($s)" } getOrElse q"None"
+    //val defaultGroup = groupName map { s ⇒ q"Some($s)" } getOrElse q"None"
 
     val subscriptions = onMethods map { m⇒
       val arg = m.paramLists.head.head
       val argType = arg.typeSignatureIn(typ)
-      val resultType = m.returnType
-      //println(s"a: $argType r: $resultType")
-      val innerResultType = resultType.typeArgs.head
-      /*val group = getGroupAnnotation(m).map { s ⇒
-        q"Some($s)"
-      } getOrElse defaultGroup*/
-
-      q"""
-        h.on[$argType]{ message =>
-          akka.pattern.ask(a, message).mapTo[$innerResultType]
-        }
-      """
+      getGroupAnnotation(m).map { groupName ⇒
+        q"""
+          h.subscribe[$argType]($groupName, eu.inn.servicebus.transport.DefaultPosition){ message =>
+            akka.pattern.ask(a, message).mapTo[Unit]
+          }
+        """
+      } getOrElse {
+        val resultType = m.returnType
+        val innerResultType = resultType.typeArgs.head
+        q"""
+          h.on[$argType]{ message =>
+            akka.pattern.ask(a, message).mapTo[$innerResultType]
+          }
+        """
+      }
     }
 
     val obj = q"""{
@@ -122,7 +101,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   def dispatch[A: c.WeakTypeTag] (actor: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
-      c.abort(c.enclosingPosition, s"No suitable 'on' method is defined in ${weakTypeOf[A]}")
+      c.abort(c.enclosingPosition, s"No suitable 'on' or 'subscribe' method is defined in ${weakTypeOf[A]}")
     }
 
     val typ = weakTypeOf[A]
@@ -153,7 +132,8 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   protected def extractOnMethods[A: c.WeakTypeTag]: List[MethodSymbol] = {
     val fts = weakTypeOf[Future[_]].typeSymbol.typeSignature
     weakTypeOf[A].members.filter(member => member.isMethod &&
-      member.name.decodedName.toString.startsWith("on") &&
+      (member.name.decodedName.toString.startsWith("on") ||
+        member.name.decodedName.toString.startsWith("subscribe")) &&
       member.isPublic && {
       val m = member.asInstanceOf[MethodSymbol]
       //println("method: " + member.name.decoded + " params: " + m.paramss)

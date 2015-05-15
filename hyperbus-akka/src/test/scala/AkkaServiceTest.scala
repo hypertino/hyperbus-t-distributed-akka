@@ -55,15 +55,18 @@ with DefinedResponse[
   ]
 
 class TestActor extends Actor {
+  var count = 0
   def receive = AkkaHyperService.dispatch(this)
 
   def on(testPost1: TestPost1) = {
+    count += 1
     Future {
       Created(TestCreatedBody("100500"))
     }
   }
 
   def on(testPost3: TestPost3) = {
+    count += 1
     Future {
       if (testPost3.body.resourceData == 1)
         Created(TestCreatedBody("100500"))
@@ -83,13 +86,13 @@ class TestActor extends Actor {
 }
 
 class TestGroupActor extends Actor {
+  var count = 0
   def receive = AkkaHyperService.dispatch(this)
 
   @group("group1")
-  def on(testPost1: TestPost1) = {
-    Future {
-      Ok(EmptyBody())
-    }
+  def subscribe(testPost1: TestPost1) = {
+    count += 1
+    Future.successful {}
   }
 }
 
@@ -106,10 +109,19 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
       hyperBus.routeTo[TestActor](actorRef)
       hyperBus.routeTo[TestGroupActor](groupActorRef)
 
-      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
+      val f1 = hyperBus ? TestPost1(TestBody1("ha ha"))
 
-      whenReady(f) { r =>
+      whenReady(f1) { r =>
         r.body should equal(TestCreatedBody("100500"))
+        actorRef.underlyingActor.count should equal(1)
+        groupActorRef.underlyingActor.count should equal(1)
+      }
+
+      val f2 = hyperBus ! TestPost1(TestBody1("ha ha"))
+
+      whenReady(f2) { r =>
+        actorRef.underlyingActor.count should equal(2)
+        groupActorRef.underlyingActor.count should equal(2)
       }
       system.shutdown()
     }

@@ -7,7 +7,7 @@ import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{PublishResult, SeekPosition, SubscriptionHandlerResult}
+import eu.inn.servicebus.transport.{DefaultPosition, PublishResult, SeekPosition, SubscriptionHandlerResult}
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -154,6 +154,8 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
+  def ![IN <: Request[Body]](r: IN): Future[PublishResult] = macro HyperBusMacro.publish[IN]
+
   def publish(r: Request[Body],
               requestEncoder: Encoder[Request[Body]]): Future[PublishResult] = {
     underlyingBus.publish[Request[Body]](r.url, r, requestEncoder)
@@ -210,6 +212,9 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       r
     }
   }
+
+  def subscribe[IN <: Request[_ <: Body]](groupName: String, position: SeekPosition)
+                                         (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
   def off(subscriptionId: String): Unit = {
     underlyingSubscriptions.synchronized {

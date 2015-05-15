@@ -50,7 +50,14 @@ class ServerTransportTest extends ServerTransport {
 
   def seek(subscriptionId: String, position: SeekPosition): Unit = ???
 
-  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])(handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = ??? //todo: test this
+  //todo: test this
+  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+                   (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
+
+    sInputDecoder = inputDecoder
+    sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
+    ""
+  }
 }
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
