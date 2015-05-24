@@ -20,7 +20,7 @@ private [hyperbus] object HyperBusUtils {
 
   def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
     val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      DynamicBody(deserializer.unbind[Value], requestHeader.contentType)
+      DefaultDynamicBody(deserializer.unbind[Value], requestHeader.contentType)
     }
     requestHeader.method match {
       case StandardMethods.GET => DynamicGet(requestHeader.url, body)

@@ -70,7 +70,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
           if (post.body.resourceData == -2)
             Conflict(ErrorBody("failed"))
           else
-            Ok(DynamicBody(Text("another result")))
+            Ok(DefaultDynamicBody(Text("another result")))
         }
       }
 
@@ -83,7 +83,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       val f2 = hyperBus ? TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result"))))
+        r should equal(Ok(DefaultDynamicBody(Text("another result"))))
       }
 
       val f3 = hyperBus ? TestPost3(TestBody2(-1))

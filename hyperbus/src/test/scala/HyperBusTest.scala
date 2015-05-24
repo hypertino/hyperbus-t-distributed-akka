@@ -28,7 +28,6 @@ class ClientTransportTest(output: String) extends ClientTransport {
   override def publish[IN](topic: String, message: IN, inputEncoder: Encoder[IN]): Future[PublishResult] = {
     ask[Any,IN](topic, message, inputEncoder, null) map { x =>
       new PublishResult {
-        override def messageId: String = "1"
       }
     }
   }

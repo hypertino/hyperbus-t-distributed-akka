@@ -93,7 +93,12 @@ object Helpers {
 
   def decodeDynamicResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): DynamicBody = {
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      DynamicBody(deserializer.unbind[Value], responseHeader.contentType)
+      val v = deserializer.unbind[Value]
+      responseHeader.status match {
+        case Status.CREATED => CreatedDynamicBody(v, responseHeader.contentType)
+        case _ => DefaultDynamicBody(v, responseHeader.contentType)
+      }
+
     }
   }
 

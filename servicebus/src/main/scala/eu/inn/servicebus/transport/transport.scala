@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
 
 trait PublishResult {
-  def messageId: String
+//  def messageId: String
 }
 
 trait ClientTransport {
@@ -95,7 +95,7 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
                    ): Future[PublishResult] = {
     ask[Any,IN](topic, message, inputEncoder, null) map { x =>
       new PublishResult {
-        override def messageId: String = currentMessageId.incrementAndGet().toHexString
+        def messageId: String = currentMessageId.incrementAndGet().toHexString // todo: is this really needed?
       }
     }
   }

@@ -136,8 +136,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
 
-    val bodyCases: Seq[c.Tree] = responseBodyTypes map { body =>
+    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
+    val bodyCases: Seq[c.Tree] = responseBodyTypes.filterNot{
+      _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
+    } map { body =>
       val ta = getContentTypeAnnotation(body)
+      if (ta.isEmpty)
+        c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
       cq"$ta => eu.inn.hyperbus.serialization.createResponseBodyDecoder[$body]"
     }
 

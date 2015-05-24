@@ -240,7 +240,8 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   protected def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit = {
     response.body match {
       case _: ErrorBody => eu.inn.hyperbus.serialization.createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
-      case _: DynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
+      case _: CreatedDynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[CreatedDynamicBody]](response.asInstanceOf[Response[CreatedDynamicBody]], outputStream)
+      case _: DefaultDynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DefaultDynamicBody]](response.asInstanceOf[Response[DefaultDynamicBody]], outputStream)
       case _ => responseEncoderNotFound(response)
     }
   }

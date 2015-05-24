@@ -169,8 +169,13 @@ trait ! extends Response[Body]
 
 // --------------- Dynamic ---------------
 
-case class DynamicBody(content: Value, contentType: Option[String] = None) extends Body with Links{
+trait DynamicBody extends Body with Links{
+  def content: Value
   lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map()
 }
+
+case class DefaultDynamicBody(content: Value, contentType: Option[String] = None) extends DynamicBody
+
+case class CreatedDynamicBody(content: Value, contentType: Option[String] = None) extends DynamicBody with CreatedBody
 
 case class EmptyBody(contentType: Option[String] = None) extends Body

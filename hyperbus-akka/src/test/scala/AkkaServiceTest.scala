@@ -80,7 +80,7 @@ class TestActor extends Actor {
       if (testPost3.body.resourceData == -3)
         NotFound(TestErrorBody("not_found"))
       else
-        Ok(DynamicBody(Text("another result")))
+        Ok(DefaultDynamicBody(Text("another result")))
     }
   }
 }
@@ -143,7 +143,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
       val f2 = hyperBus ? TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result"))))
+        r should equal(Ok(DefaultDynamicBody(Text("another result"))))
       }
 
       val f3 = hyperBus ? TestPost3(TestBody2(-1))
