@@ -25,7 +25,7 @@ trait ServiceBusBase {
   def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String
 
   def off(subscriptionId: String): Unit
@@ -68,7 +68,7 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
   def on[OUT,IN](topic: String)
                 (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT,IN]
 
-  def subscribe[IN](topic: String, groupName: String, position: SeekPosition)
+  def subscribe[IN](topic: String, groupName: String)
                 (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]
 
   def off(subscriptionId: String): Unit = {
@@ -90,9 +90,9 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     subscriptions.add(topic,None,underlyingSubscriptionId)
   }
 
-  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
-    val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[IN](topic, groupName, position, inputDecoder)(handler)
+    val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[IN](topic, groupName, inputDecoder)(handler)
     subscriptions.add(topic,None,underlyingSubscriptionId)
   }
 

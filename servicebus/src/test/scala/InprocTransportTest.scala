@@ -51,9 +51,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         }, null)
       }
 
-      t.subscribe("a", "group1", DefaultPosition, null)(group1Func)
-      t.subscribe("a", "group1", DefaultPosition, null)(group1Func)
-      t.subscribe("a", "group1", DefaultPosition, null)(group1Func)
+      t.subscribe("a", "group1", null)(group1Func)
+      t.subscribe("a", "group1", null)(group1Func)
+      t.subscribe("a", "group1", null)(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]
@@ -64,8 +64,8 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         },null)
       }
 
-      t.subscribe("a", "group2", DefaultPosition, null)(group2Func)
-      t.subscribe("a", "group2", DefaultPosition, null)(group2Func)
+      t.subscribe("a", "group2", null)(group2Func)
+      t.subscribe("a", "group2", null)(group2Func)
 
       val f: Future[String] = t.ask("a", "hey", null, null)
 
@@ -96,9 +96,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         null)
       }
 
-      t.subscribe("a", "group1", DefaultPosition, null)(group1Func)
-      t.subscribe("a", "group1", DefaultPosition, null)(group1Func)
-      t.subscribe("a", "group1", DefaultPosition, null)(group1Func)
+      t.subscribe("a", "group1", null)(group1Func)
+      t.subscribe("a", "group1", null)(group1Func)
+      t.subscribe("a", "group1", null)(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]
@@ -110,8 +110,8 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         null)
       }
 
-      t.subscribe("a", "group2", DefaultPosition, null)(group2Func)
-      t.subscribe("a", "group2", DefaultPosition, null)(group2Func)
+      t.subscribe("a", "group2", null)(group2Func)
+      t.subscribe("a", "group2", null)(group2Func)
 
       val f: Future[Unit] = t.ask("a", "hey", null, null)
 

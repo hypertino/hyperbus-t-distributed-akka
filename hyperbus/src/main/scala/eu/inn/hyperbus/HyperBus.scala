@@ -7,7 +7,7 @@ import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{DefaultPosition, PublishResult, SeekPosition, SubscriptionHandlerResult}
+import eu.inn.servicebus.transport.{PublishResult, SubscriptionHandlerResult}
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -48,7 +48,6 @@ trait HyperBusBase {
                 method: String,
                 contentType: Option[String],
                 groupName: String,
-                position: SeekPosition,
                 requestDecoder: RequestDecoder)
                (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String
 
@@ -191,7 +190,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
                 method: String,
                 contentType: Option[String],
                 groupName: String,
-                position: SeekPosition,
                 requestDecoder: RequestDecoder)
                (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String = {
     val routeKey = getRouteKey(url, Some(groupName))
@@ -206,14 +204,14 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler(routeKey)
-        val uid = underlyingBus.subscribe(url, groupName, position, uh.decoder)(uh.handler)
+        val uid = underlyingBus.subscribe(url, groupName, uh.decoder)(uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
     }
   }
 
-  def subscribe[IN <: Request[_ <: Body]](groupName: String, position: SeekPosition)
+  def subscribe[IN <: Request[_ <: Body]](groupName: String)
                                          (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
   def off(subscriptionId: String): Unit = {

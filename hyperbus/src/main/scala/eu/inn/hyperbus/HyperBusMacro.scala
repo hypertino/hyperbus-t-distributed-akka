@@ -3,7 +3,6 @@ package eu.inn.hyperbus
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.protocol.annotations.impl.{ContentTypeMarker, UrlMarker}
 import eu.inn.hyperbus.protocol.annotations.method
-import eu.inn.servicebus.transport.SeekPosition
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
@@ -22,13 +21,13 @@ private[hyperbus] object HyperBusMacro {
 
   def subscribe[IN: c.WeakTypeTag]
   (c: Context)
-  (groupName: c.Expr[String], position: c.Expr[SeekPosition])
+  (groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.subscribe[IN](groupName, position)(handler)
+    bundle.subscribe[IN](groupName)(handler)
   }
 
   def ask[IN: c.WeakTypeTag]
@@ -99,7 +98,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   def subscribe[IN: c.WeakTypeTag]
-  (groupName: c.Expr[String], position: c.Expr[SeekPosition])
+  (groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val thiz = c.prefix.tree
 
@@ -117,7 +116,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       import eu.inn.{servicebus=>sb}
       val thiz = $thiz
       val requestDecoder = hbs.createRequestDecoder[$in]
-      thiz.subscribe($url, $method, $contentType, $groupName, $position, requestDecoder) { case (response: $in) =>
+      thiz.subscribe($url, $method, $contentType, $groupName, requestDecoder) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Unit]($handler(response),null)
       }
     }"""

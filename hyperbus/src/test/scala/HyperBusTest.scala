@@ -48,10 +48,8 @@ class ServerTransportTest extends ServerTransport {
 
   def off(subscriptionId: String) = ???
 
-  def seek(subscriptionId: String, position: SeekPosition): Unit = ???
-
   //todo: test this
-  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
                    (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
 
     sInputDecoder = inputDecoder

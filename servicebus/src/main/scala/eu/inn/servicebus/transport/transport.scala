@@ -27,22 +27,14 @@ trait ClientTransport {
                    ): Future[PublishResult]
 }
 
-trait SeekPosition
-case object FirstMessage extends SeekPosition
-case object LastMessage extends SeekPosition
-case object DefaultPosition extends SeekPosition
-case class ExactMessage (messageId: String) extends SeekPosition
-
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
 
 trait ServerTransport {
   def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
                 (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
-
-  def seek(subscriptionId: String, position: SeekPosition)
 
   def off(subscriptionId: String)
 }
@@ -113,12 +105,10 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
     subscriptions.add(topic,None,Subscription[OUT,IN](handler))
   }
 
-  def subscribe[IN](topic: String, groupName: String, position: SeekPosition, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
                 (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
     subscriptions.add(topic,Some(groupName),Subscription[Unit,IN](handler))
   }
-
-  def seek(subscriptionId: String, position: SeekPosition) = ???
 
   def off(subscriptionId: String) = {
     subscriptions.remove(subscriptionId)

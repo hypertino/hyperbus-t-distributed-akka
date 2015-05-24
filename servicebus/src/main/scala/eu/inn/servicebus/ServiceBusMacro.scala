@@ -1,6 +1,6 @@
 package eu.inn.servicebus
 
-import eu.inn.servicebus.transport.{SeekPosition, PublishResult}
+import eu.inn.servicebus.transport.{PublishResult}
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
@@ -70,7 +70,7 @@ private[servicebus] object ServiceBusMacro {
 
   def subscribe[IN: c.WeakTypeTag]
   (c: Context)
-  (topic: c.Expr[String], groupName: c.Expr[String], position: c.Expr[SeekPosition])
+  (topic: c.Expr[String], groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
 
     import c.universe._
@@ -83,7 +83,7 @@ private[servicebus] object ServiceBusMacro {
       val decoder = eu.inn.servicebus.serialization.createDecoder[$in]
       val thiz = $thiz
       val handler = $handler
-      val id = thiz.subscribe[$in]($topic,$groupName,$position,decoder){
+      val id = thiz.subscribe[$in]($topic,$groupName,decoder){
         (in:$in) => eu.inn.servicebus.transport.SubscriptionHandlerResult(handler(in), null)
       }
       id

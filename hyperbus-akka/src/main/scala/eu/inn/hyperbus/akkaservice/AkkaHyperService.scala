@@ -71,7 +71,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       val argType = arg.typeSignatureIn(typ)
       getGroupAnnotation(m).map { groupName ⇒
         q"""
-          h.subscribe[$argType]($groupName, eu.inn.servicebus.transport.DefaultPosition){ message =>
+          h.subscribe[$argType]($groupName){ message =>
             akka.pattern.ask(a, message).mapTo[Unit]
           }
         """
