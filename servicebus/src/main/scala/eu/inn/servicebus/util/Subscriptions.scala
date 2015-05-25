@@ -6,66 +6,54 @@ import scala.collection.concurrent.TrieMap
 
 case class SubscriptionWithId[T](subscriptionId:String, subscription:T)
 
+
 class Subscriptions[T] {
-  type SubscriptionMap = Map[String,IndexedSeq[SubscriptionWithId[T]]]
-  protected val routes = new TrieMap[String, SubscriptionMap]
+
+  case class SubscriptionMap(subRoutes: Map[String,IndexedSeq[SubscriptionWithId[T]]]) extends ComplexElement[SubscriptionMap, String] {
+    override def upsert(upsertPart: SubscriptionMap): SubscriptionMap = SubscriptionMap(
+      subRoutes ++ upsertPart.subRoutes map {
+        case(k,v) => k -> subRoutes.get(k).map {
+          existing => existing ++ v
+        }.getOrElse {
+          v
+        }
+      }
+    )
+    override def remove(removeSubscriptionId: String): SubscriptionMap = SubscriptionMap(
+      subRoutes.flatMap {
+        case (k,v) =>
+          val newV = v.filterNot(_.subscriptionId == removeSubscriptionId)
+          if (newV.isEmpty)
+            None
+          else
+            Some(k -> newV)
+      }
+    )
+    override def isEmpty: Boolean = subRoutes.isEmpty
+  }
+
+  protected val routes = new ComplexTrieMap[String,String,SubscriptionMap]
   protected val routeKeyById = new TrieMap[String, String]
   protected val indexGen = new AtomicLong(0)
 
-  def get(routeKey: String) : SubscriptionMap = routes.getOrElse(routeKey, Map())
+  def get(routeKey: String) : SubscriptionMap = routes.getOrElse(routeKey, SubscriptionMap(Map()))
   def getRouteKeyById(subscriptionId:String) = routeKeyById.get(subscriptionId)
 
   def add(routeKey: String, subRouteKey: Option[String], subscription:T): String = {
     val subscriptionId = indexGen.incrementAndGet().toHexString
     val subscriberSeq = IndexedSeq(SubscriptionWithId(subscriptionId, subscription))
     val subRouteKeyStr = subRouteKey.getOrElse("")
-    this.synchronized {
-      val prev = routes.putIfAbsent(
-        routeKey, Map(subRouteKeyStr -> subscriberSeq)
-      )
-      prev.map { existing =>
-        val map =
-          if (existing.contains(subRouteKeyStr)) {
-            existing.map {
-              kv => {
-                (kv._1,
-                if (kv._1 == subRouteKeyStr) {
-                  kv._2 ++ subscriberSeq
-                } else {
-                  kv._2
-                })
-              }
-            }
-          }
-          else {
-            existing + (subRouteKeyStr -> subscriberSeq)
-          }
-        routes.put(routeKey, map)
-      }
-    }
+    val s = SubscriptionMap(Map(subRouteKeyStr -> subscriberSeq))
+    routes.upsert(routeKey, s)
     routeKeyById += subscriptionId -> routeKey
     subscriptionId
   }
 
   def remove(subscriptionId: String) = {
-    this.synchronized {
-      routeKeyById.get(subscriptionId).foreach {
-        routeKey =>
-          routes.get(routeKey).foreach { routeSubscribers =>
-            val newTopicSubscribers = routeSubscribers.flatMap { kv =>
-              val newSeq = kv._2.filter(s => s.subscriptionId != subscriptionId)
-              if (newSeq.isEmpty)
-                None
-              else
-                Some(kv._1, newSeq)
-            }
-
-            if (newTopicSubscribers.isEmpty)
-              routes.remove(routeKey)
-            else
-              routes.put(routeKey, newTopicSubscribers)
-          }
-      }
+    routeKeyById.get(subscriptionId).foreach {
+      routeKey =>
+        routes.remove(routeKey, subscriptionId)
+        routeKeyById.remove(subscriptionId)
     }
   }
 }

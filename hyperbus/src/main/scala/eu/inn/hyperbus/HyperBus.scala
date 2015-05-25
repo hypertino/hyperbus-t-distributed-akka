@@ -82,8 +82,8 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     protected def getSubscription(method:String, contentType: Option[String]): Option[Subscription] = {
       val subRouteKey = getSubRouteKey(method, contentType)
 
-      subscriptions.get(routeKey).get(subRouteKey).orElse{
-        subscriptions.get(routeKey).get(getSubRouteKey(method, None))
+      subscriptions.get(routeKey).subRoutes.get(subRouteKey).orElse{
+        subscriptions.get(routeKey).subRoutes.get(getSubRouteKey(method, None))
       } map { subscrSeq =>
         val idx = if (subscrSeq.size > 1) {
           randomGen.nextInt(subscrSeq.size)
@@ -217,7 +217,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def off(subscriptionId: String): Unit = {
     underlyingSubscriptions.synchronized {
       subscriptions.getRouteKeyById(subscriptionId) foreach { routeKey =>
-        val cnt = subscriptions.get(routeKey).foldLeft(0){ (c, x) =>
+        val cnt = subscriptions.get(routeKey).subRoutes.foldLeft(0){ (c, x) =>
           c + x._2.size
         }
         if (cnt <= 1) {

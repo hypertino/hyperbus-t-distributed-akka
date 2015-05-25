@@ -22,13 +22,13 @@ case class Topic(url: String,partitionArgs: Map[String,PartitionArg])
 
 trait ClientTransport {
   def ask[OUT,IN](
-                    topic: Topic,
+                    topic: String,
                     message: IN,
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT]
   def publish[IN](
-                   topic: Topic,
+                   topic: String,
                    message: IN,
                    inputEncoder: Encoder[IN]
                    ): Future[PublishResult]
@@ -37,10 +37,10 @@ trait ClientTransport {
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
 
 trait ServerTransport {
-  def on[OUT,IN](topic: Topic, inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: Topic, groupName: String, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
                 (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
@@ -57,14 +57,14 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
   protected val currentMessageId = new AtomicLong(System.currentTimeMillis())
 
   override def ask[OUT,IN](
-                              topic: Topic,
+                              topic: String,
                               message: IN,
                               inputEncoder: Encoder[IN],
                               outputDecoder: Decoder[OUT]
                               ): Future[OUT] = {
     var result: Future[OUT] = null
 
-    subscriptions.get(topic) foreach { case (groupName,subscrSeq) =>
+    subscriptions.get(topic).subRoutes foreach { case (groupName,subscrSeq) =>
       val idx = if (subscrSeq.size > 1) {
         randomGen.nextInt(subscrSeq.size)
       } else {
@@ -102,7 +102,7 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
                    ): Future[PublishResult] = {
     ask[Any,IN](topic, message, inputEncoder, null) map { x =>
       new PublishResult {
-        def messageId: String = currentMessageId.incrementAndGet().toHexString // todo: is this really needed?
+        def messageId: String = currentMessageId.incrementAndGet().toHexString // todo is this really needed?
       }
     }
   }

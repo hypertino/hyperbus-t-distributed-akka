@@ -2,32 +2,37 @@ package eu.inn.servicebus.util
 
 import scala.collection.concurrent.TrieMap
 
-trait ComplexElement[ME] extends AnyVal {
+trait ComplexElement[ME, REMOVE] {
   def upsert(upsertPart: ME): ME
-  def remove(removePart: ME): ME
+  def remove(removePart: REMOVE): ME
   def isEmpty: Boolean
 }
 
-class ComplexTrieMap[K, V <: ComplexElement[V]] {
+class ComplexTrieMap[K, REMOVE, V <: ComplexElement[V, REMOVE]] {
   protected val map = new TrieMap[K,V]
 
   def get(key: K): Option[V] = map.get(key)
-  def upsert(key: K, value: V): V = {
-    _applyOn(key, value, _.upsert(value)).get
-  }
 
-  def remove(key: K, value: V): Unit = {
-    _applyOn(key, value, _.remove(value))
-  }
+  def getOrElse(key: K, default: => V): V = map.getOrElse(key, default)
 
-  protected def _applyOn(key: K, value: V, f: Function1[V,V]): Option[V] = {
+  def upsert(key: K, value: V): Unit = {
     this.synchronized {
-      map.putIfAbsent(key, value).flatMap { existing =>
-        val n = f(existing)
-        if (n.isEmpty)
+      map.putIfAbsent(key, value).map { existing =>
+        val n = existing.upsert(value)
+        val x = map.put(key, n)
+        x
+      }
+    }
+  }
+
+  def remove(key: K, value: REMOVE): Unit = {
+    this.synchronized {
+      map.get(key).map { existing =>
+        val nv = existing.remove(value)
+        if (nv.isEmpty)
           map.remove(key)
         else
-          map.put(key, n)
+          map.put(key, nv)
       }
     }
   }

@@ -73,7 +73,7 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
 
   def off(subscriptionId: String): Unit = {
     subscriptions.getRouteKeyById(subscriptionId) foreach { topic =>
-      subscriptions.get(topic) foreach { case (_,subscrSeq) =>
+      subscriptions.get(topic).subRoutes foreach { case (_,subscrSeq) =>
         subscrSeq.find(_.subscriptionId == subscriptionId).foreach {
           underlyingSubscription =>
             lookupServerTransport(topic).off(underlyingSubscription.subscription)
