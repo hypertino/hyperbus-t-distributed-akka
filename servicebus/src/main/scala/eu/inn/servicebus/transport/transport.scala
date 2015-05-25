@@ -10,18 +10,25 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
 
 trait PublishResult {
-//  def messageId: String
 }
+
+trait PartitionArg
+case object AnyValue extends PartitionArg
+case class ExactValue(value: String) extends PartitionArg
+// case class ExactPartition(partition: String) extends PartitionArg -- kafka?
+// case class RegExValue(regex: String) extends PartitionValue
+
+case class Topic(url: String,partitionArgs: Map[String,PartitionArg])
 
 trait ClientTransport {
   def ask[OUT,IN](
-                    topic: String,
+                    topic: Topic,
                     message: IN,
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT]
   def publish[IN](
-                   topic: String,
+                   topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
                    ): Future[PublishResult]
@@ -30,10 +37,10 @@ trait ClientTransport {
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
 
 trait ServerTransport {
-  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: Topic, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: Topic, groupName: String, inputDecoder: Decoder[IN])
                 (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
@@ -50,7 +57,7 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
   protected val currentMessageId = new AtomicLong(System.currentTimeMillis())
 
   override def ask[OUT,IN](
-                              topic: String,
+                              topic: Topic,
                               message: IN,
                               inputEncoder: Encoder[IN],
                               outputDecoder: Decoder[OUT]
