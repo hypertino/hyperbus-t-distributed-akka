@@ -3,7 +3,7 @@ package eu.inn.servicebus.transport
 import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.util.Subscriptions
+import eu.inn.servicebus.util.{SubscriptionKey, Subscriptions}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -12,9 +12,19 @@ import scala.util.Random
 trait PublishResult {
 }
 
-trait PartitionArg
-case object AnyValue extends PartitionArg
-case class ExactValue(value: String) extends PartitionArg
+trait PartitionArg {
+  def matchArg(arg: PartitionArg): Boolean
+}
+case object AnyValue extends PartitionArg {
+  def matchArg(arg: PartitionArg) = true
+}
+case class ExactValue(value: String) extends PartitionArg {
+  def matchArg(arg: PartitionArg) = arg match {
+    case ExactValue(argValue) ⇒ argValue == value
+    case AnyValue ⇒ true
+    case _ ⇒ false
+  }
+}
 // case class ExactPartition(partition: String) extends PartitionArg -- kafka?
 // case class RegExValue(regex: String) extends PartitionValue
 
@@ -22,13 +32,13 @@ case class Topic(url: String,partitionArgs: Map[String,PartitionArg])
 
 trait ClientTransport {
   def ask[OUT,IN](
-                    topic: String,
+                    topic: Topic,
                     message: IN,
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT]
   def publish[IN](
-                   topic: String,
+                   topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
                    ): Future[PublishResult]
@@ -37,10 +47,10 @@ trait ClientTransport {
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT],resultEncoder:Encoder[OUT])
 
 trait ServerTransport {
-  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: Topic, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: Topic, groupName: String, inputDecoder: Decoder[IN])
                 (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
@@ -57,34 +67,35 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
   protected val currentMessageId = new AtomicLong(System.currentTimeMillis())
 
   override def ask[OUT,IN](
-                              topic: String,
+                              topic: Topic,
                               message: IN,
                               inputEncoder: Encoder[IN],
                               outputDecoder: Decoder[OUT]
                               ): Future[OUT] = {
     var result: Future[OUT] = null
 
-    subscriptions.get(topic).subRoutes foreach { case (groupName,subscrSeq) =>
-      val idx = if (subscrSeq.size > 1) {
-        randomGen.nextInt(subscrSeq.size)
-      } else {
-        0
-      }
+    subscriptions.get(topic.url).subRoutes filter(_._1.matchArgs(topic.partitionArgs)) foreach {
+      case (subscriptionKey,subscrSeq) =>
+        val idx = if (subscrSeq.size > 1) {
+          randomGen.nextInt(subscrSeq.size)
+        } else {
+          0
+        }
 
-      if (groupName.isEmpty) { // default subscription (groupName="") returns reply
-        val subscriber = subscrSeq(idx).subscription.asInstanceOf[Subscription[OUT,IN]]
-        result = subscriber.handler(message).futureResult
-      } else {
-        val subscriber = subscrSeq(idx).subscription.asInstanceOf[Subscription[Unit,IN]]
-        subscriber.handler(message)
-      }
-      if (log.isTraceEnabled) {
-        log.trace(s"Message ($message) is delivered to ${subscrSeq(idx).subscriptionId}@$groupName}")
-      }
+        if (subscriptionKey.groupName.isEmpty) { // default subscription (groupName="") returns reply
+          val subscriber = subscrSeq(idx).subscription.asInstanceOf[Subscription[OUT,IN]]
+          result = subscriber.handler(message).futureResult
+        } else {
+          val subscriber = subscrSeq(idx).subscription.asInstanceOf[Subscription[Unit,IN]]
+          subscriber.handler(message)
+        }
+        if (log.isTraceEnabled) {
+          log.trace(s"Message ($message) is delivered to ${subscrSeq(idx).subscriptionId}@$subscriptionKey}")
+        }
 
-      if (result == null) {
-        result = Future.successful({}.asInstanceOf[OUT])
-      }
+        if (result == null) {
+          result = Future.successful({}.asInstanceOf[OUT])
+        }
     }
 
     if (result == null) {
@@ -96,7 +107,7 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
   }
 
   def publish[IN](
-                   topic: String,
+                   topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
                    ): Future[PublishResult] = {
@@ -107,14 +118,14 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
     }
   }
 
-  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
+  def on[OUT,IN](topic: Topic, inputDecoder: Decoder[IN])
                        (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
-    subscriptions.add(topic,None,Subscription[OUT,IN](handler))
+    subscriptions.add(topic.url,SubscriptionKey(None, topic.partitionArgs),Subscription[OUT,IN](handler))
   }
 
-  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: Topic, groupName: String, inputDecoder: Decoder[IN])
                 (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
-    subscriptions.add(topic,Some(groupName),Subscription[Unit,IN](handler))
+    subscriptions.add(topic.url,SubscriptionKey(Some(groupName), topic.partitionArgs),Subscription[Unit,IN](handler))
   }
 
   def off(subscriptionId: String) = {

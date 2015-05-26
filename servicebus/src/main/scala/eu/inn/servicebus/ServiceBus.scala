@@ -1,8 +1,10 @@
 package eu.inn.servicebus
 
-import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import java.util.concurrent.atomic.AtomicLong
+
+import eu.inn.servicebus.serialization.{PartitionArgsExtractor, Decoder, Encoder}
 import eu.inn.servicebus.transport._
-import eu.inn.servicebus.util.Subscriptions
+import eu.inn.servicebus.util.{SubscriptionKey, Subscriptions}
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
@@ -10,23 +12,26 @@ import scala.language.experimental.macros
 
 trait ServiceBusBase {
   def ask[OUT,IN](
-                    topic: String,
+                    topic: Topic,
                     message: IN,
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
                     ): Future[OUT]
 
   def publish[IN](
-                   topic: String,
+                   topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
                    ): Future[PublishResult]
 
-  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
-                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String
+  def on[OUT,IN](topic: Topic, inputDecoder: Decoder[IN],
+                 partitionArgsExtractor: PartitionArgsExtractor[IN])
+                (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
-                   (handler: (IN) => SubscriptionHandlerResult[Unit]): String
+  def subscribe[IN](topic: Topic, groupName: String,
+                    inputDecoder: Decoder[IN],
+                    partitionArgsExtractor: PartitionArgsExtractor[IN])
+                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String
 
   def off(subscriptionId: String): Unit
 }
@@ -36,20 +41,21 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
 
   protected val clientRoutes = new TrieMap[String, ClientTransport]
   protected val serverRoutes = new TrieMap[String, ServerTransport]
-  protected val subscriptions = new Subscriptions[String]
+  protected val subscriptions = new TrieMap[String, (Topic, String)]
+  protected val idCounter = new AtomicLong(0)
 
   def ask[OUT,IN](
-                    topic: String,
+                    topicUrl: String,
                     message: IN
                     ): Future[OUT] = macro ServiceBusMacro.ask[OUT,IN]
 
   def publish[IN](
-                   topic: String,
+                   topicUrl: String,
                    message: IN
                    ): Future[PublishResult] = macro ServiceBusMacro.publish[IN]
 
   def ask[OUT,IN](
-                    topic: String,
+                    topic: Topic,
                     message: IN,
                     inputEncoder: Encoder[IN],
                     outputDecoder: Decoder[OUT]
@@ -58,47 +64,50 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
   }
 
   def publish[IN](
-                   topic: String,
+                   topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
                    ): Future[PublishResult] = {
     this.lookupClientTransport(topic).publish[IN](topic,message,inputEncoder)
   }
 
-  def on[OUT,IN](topic: String)
+  def on[OUT,IN](topicUrl: String)
                 (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT,IN]
 
-  def subscribe[IN](topic: String, groupName: String)
+  def subscribe[IN](topicUrl: String, groupName: String)
                 (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]
 
   def off(subscriptionId: String): Unit = {
-    subscriptions.getRouteKeyById(subscriptionId) foreach { topic =>
-      subscriptions.get(topic).subRoutes foreach { case (_,subscrSeq) =>
-        subscrSeq.find(_.subscriptionId == subscriptionId).foreach {
-          underlyingSubscription =>
-            lookupServerTransport(topic).off(underlyingSubscription.subscription)
-        }
-      }
-    }
+    subscriptions.get(subscriptionId).foreach(s ⇒ lookupServerTransport(s._1).off(s._2))
     subscriptions.remove(subscriptionId)
   }
 
-  def on[OUT,IN](topic: String, inputDecoder: Decoder[IN])
-                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
+  def on[OUT,IN](topic: Topic,
+                 inputDecoder: Decoder[IN],
+                 partitionArgsExtractor: PartitionArgsExtractor[IN])
+                (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
-    val underlyingSubscriptionId = lookupServerTransport(topic: String).on[OUT,IN](topic, inputDecoder)(handler)
-    subscriptions.add(topic,None,underlyingSubscriptionId)
+    val underlyingSubscriptionId = lookupServerTransport(topic).on[OUT,IN](topic, inputDecoder)(handler)
+    addSubscriptionLink(topic, underlyingSubscriptionId)
   }
 
-  def subscribe[IN](topic: String, groupName: String, inputDecoder: Decoder[IN])
+  def subscribe[IN](topic: Topic,
+                    groupName: String,
+                    inputDecoder: Decoder[IN],
+                    partitionArgsExtractor: PartitionArgsExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
-    val underlyingSubscriptionId = lookupServerTransport(topic: String).subscribe[IN](topic, groupName, inputDecoder)(handler)
-    subscriptions.add(topic,None,underlyingSubscriptionId)
+    val underlyingSubscriptionId = lookupServerTransport(topic).subscribe[IN](topic, groupName, inputDecoder)(handler)
+    addSubscriptionLink(topic, underlyingSubscriptionId)
   }
 
-  protected def lookupServerTransport(topic: String): ServerTransport =
-    serverRoutes.getOrElse(topic, defaultServerTransport)
+  protected def addSubscriptionLink(topic: Topic, underlyingSubscriptionId: String) = {
+    val subscriptionId = idCounter.incrementAndGet().toHexString
+    subscriptions.put(subscriptionId, (topic, underlyingSubscriptionId))
+    subscriptionId
+  }
+  protected def lookupServerTransport(topic: Topic): ServerTransport =
+    serverRoutes.getOrElse(topic.url, defaultServerTransport)
 
-  protected def lookupClientTransport(topic: String): ClientTransport =
-    clientRoutes.getOrElse(topic, defaultClientTransport)
+  protected def lookupClientTransport(topic: Topic): ClientTransport =
+    clientRoutes.getOrElse(topic.url, defaultClientTransport)
 }
