@@ -3,7 +3,10 @@ package eu.inn.hyperbus
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.protocol.annotations.impl.{ContentTypeMarker, UrlMarker}
 import eu.inn.hyperbus.protocol.annotations.method
+import eu.inn.servicebus.serialization._
+import eu.inn.servicebus.transport.PartitionArgs
 
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
 
@@ -61,9 +64,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val thiz = c.prefix.tree
 
     val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(in) getOrElse {
-      c.abort(c.enclosingPosition, s"@url annotation is not defined for $in.}")
-    }
+    val url = getUrlAnnotation(in)
 
     val (method: String, bodySymbol) = getMethodAndBody(in)
 
@@ -82,6 +83,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       import eu.inn.{servicebus=>sb}
       val thiz = $thiz
       val requestDecoder = hbs.createRequestDecoder[$in]
+      val extractor = ${defineExtractor[IN](url)}
       val responseEncoder = thiz.responseEncoder(
         _: Response[Body],
         _: java.io.OutputStream,
@@ -89,7 +91,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
           case ..$bodyCases
         }
       )
-      thiz.on($url, $method, $contentType, requestDecoder) { case (response: $in) =>
+      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
+      thiz.on(topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
     }"""
@@ -103,9 +106,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val thiz = c.prefix.tree
 
     val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(in) getOrElse {
-      c.abort(c.enclosingPosition, s"@url annotation is not defined for $in.}")
-    }
+    val url = getUrlAnnotation(in)
 
     val (method: String, bodySymbol) = getMethodAndBody(in)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
@@ -116,7 +117,9 @@ private[hyperbus] trait HyperBusMacroImplementation {
       import eu.inn.{servicebus=>sb}
       val thiz = $thiz
       val requestDecoder = hbs.createRequestDecoder[$in]
-      thiz.subscribe($url, $method, $contentType, $groupName, requestDecoder) { case (response: $in) =>
+      val extractor = ${defineExtractor[IN](url)}
+      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
+      thiz.subscribe(topic, $method, $contentType, $groupName, requestDecoder, extractor) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Unit]($handler(response),null)
       }
     }"""
@@ -128,6 +131,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
+    val url = getUrlAnnotation(in)
     val responseBodyTypes = getUniqueResponseBodies(in)
 
     responseBodyTypes.groupBy(getContentTypeAnnotation(_) getOrElse "") foreach { kv =>
@@ -149,16 +153,17 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"thiz.ask($r, requestEncoder, responseDecoder).asInstanceOf[Future[${responses.head}]]"
+        q"thiz.ask($r, requestEncoder, extractor, responseDecoder).asInstanceOf[Future[${responses.head}]]"
       else
-        q"thiz.ask($r, requestEncoder, responseDecoder)"
+        q"thiz.ask($r, requestEncoder, extractor, responseDecoder)"
 
     val obj = q"""{
-      import eu.inn.hyperbus.{serialization=>hsr}
+      import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hsr.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
+      val requestEncoder = hbs.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
+      val extractor = ${defineExtractor[IN](url)}
       val responseDecoder = thiz.responseDecoder(
-        _: hsr.ResponseHeader,
+        _: hbs.ResponseHeader,
         _: com.fasterxml.jackson.core.JsonParser,
         _.contentType match {
           case ..$bodyCases
@@ -172,13 +177,15 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
   def publish[IN: c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
     val in = weakTypeOf[IN]
+    val url = getUrlAnnotation(in)
     val thiz = c.prefix.tree
 
     val obj = q"""{
-      import eu.inn.hyperbus.{serialization=>hsr}
+      import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hsr.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
-      thiz.publish($r, requestEncoder)
+      val requestEncoder = hbs.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
+      val extractor = ${defineExtractor[IN](url)}
+      thiz.publish($r, requestEncoder, extractor)
     }"""
     //println(obj)
     obj
@@ -235,8 +242,10 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
   }
 
-  private def getUrlAnnotation(t: c.Type): Option[String] =
-    getStringAnnotation(t.typeSymbol, c.typeOf[UrlMarker])
+  private def getUrlAnnotation(t: c.Type): String =
+    getStringAnnotation(t.typeSymbol, c.typeOf[UrlMarker]).getOrElse {
+      c.abort(c.enclosingPosition, s"@url annotation is not defined for $t.}")
+    }
 
   private def getContentTypeAnnotation(t: c.Type): Option[String] =
     getStringAnnotation(t.typeSymbol, c.typeOf[ContentTypeMarker])
@@ -254,4 +263,27 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
   }
+
+  def defineExtractor[T: c.WeakTypeTag](url: String): c.Expr[PartitionArgsExtractor[Request[Body]]] = {
+    import c.universe._
+
+    // todo: test urls with args
+    val t = weakTypeOf[T] // todo, compile time check instead of asInstanceOf?
+    val lst = impl.Helpers.parseUrl(url).map { arg ⇒
+      q"rt.${TermName(arg)}"
+    }
+
+    val obj = q"""{
+      (r:Request[Body]) => {
+        val rt = r.asInstanceOf[$t]
+        eu.inn.servicebus.transport.PartitionArgs(Map(
+          ..$lst
+        ))
+      }
+    }"""
+
+    c.Expr[PartitionArgsExtractor[Request[Body]]](obj)
+  }
+
+
 }

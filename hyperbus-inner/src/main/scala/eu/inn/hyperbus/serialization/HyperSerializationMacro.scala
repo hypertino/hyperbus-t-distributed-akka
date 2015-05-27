@@ -1,7 +1,7 @@
 package eu.inn.hyperbus.serialization
 
 import eu.inn.hyperbus.protocol.{ErrorBody, DynamicBody, DynamicRequest, Message}
-import eu.inn.servicebus.serialization.Encoder
+import eu.inn.servicebus.serialization._
 
 import scala.reflect.macros.blackbox.Context
 

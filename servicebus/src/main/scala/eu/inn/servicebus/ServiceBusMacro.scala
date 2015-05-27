@@ -1,12 +1,13 @@
 package eu.inn.servicebus
 
-import eu.inn.servicebus.transport.{PublishResult}
+import eu.inn.servicebus.serialization._
+import eu.inn.servicebus.transport.{Topic, PublishResult}
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
 
 private[servicebus] object ServiceBusMacro {
-  def ask[OUT: c.WeakTypeTag, IN: c.WeakTypeTag](c: Context)(topic: c.Expr[String],
+  def ask[OUT: c.WeakTypeTag, IN: c.WeakTypeTag](c: Context)(topic: c.Expr[Topic],
                                                               message: c.Expr[IN]): c.Expr[Future[OUT]] = {
     import c.universe._
 
@@ -26,7 +27,7 @@ private[servicebus] object ServiceBusMacro {
   }
 
   def publish[IN: c.WeakTypeTag](c: Context)
-                                (topic: c.Expr[String],message: c.Expr[IN]): c.Expr[Future[PublishResult]] = {
+                                (topic: c.Expr[Topic],message: c.Expr[IN]): c.Expr[Future[PublishResult]] = {
     import c.universe._
 
     val thiz = c.prefix.tree
@@ -44,7 +45,7 @@ private[servicebus] object ServiceBusMacro {
 
   def on[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]
     (c: Context)
-    (topic: c.Expr[String])
+    (topic: c.Expr[Topic], partitionArgsExtractor: c.Expr[PartitionArgsExtractor[IN]])
     (handler: c.Expr[(IN) => Future[OUT]]): c.Expr[String] = {
 
     import c.universe._
@@ -59,7 +60,7 @@ private[servicebus] object ServiceBusMacro {
       val encoder = eu.inn.servicebus.serialization.createEncoder[$out]
       val thiz = $thiz
       val handler = $handler
-      val id = thiz.on[$out,$in]($topic,decoder){
+      val id = thiz.on[$out,$in]($topic,decoder,$partitionArgsExtractor){
         (in:$in) => eu.inn.servicebus.transport.SubscriptionHandlerResult(handler(in), encoder)
       }
       id
@@ -70,7 +71,7 @@ private[servicebus] object ServiceBusMacro {
 
   def subscribe[IN: c.WeakTypeTag]
   (c: Context)
-  (topic: c.Expr[String], groupName: c.Expr[String])
+  (topic: c.Expr[Topic], groupName: c.Expr[String], partitionArgsExtractor: c.Expr[PartitionArgsExtractor[IN]])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
 
     import c.universe._
@@ -83,7 +84,7 @@ private[servicebus] object ServiceBusMacro {
       val decoder = eu.inn.servicebus.serialization.createDecoder[$in]
       val thiz = $thiz
       val handler = $handler
-      val id = thiz.subscribe[$in]($topic,$groupName,decoder){
+      val id = thiz.subscribe[$in]($topic,$groupName,decoder,$partitionArgsExtractor){
         (in:$in) => eu.inn.servicebus.transport.SubscriptionHandlerResult(handler(in), null)
       }
       id

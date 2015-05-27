@@ -7,8 +7,8 @@ import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{PublishResult, SubscriptionHandlerResult}
-import eu.inn.servicebus.util.Subscriptions
+import eu.inn.servicebus.transport.{Topic, PublishResult, SubscriptionHandlerResult}
+import eu.inn.servicebus.util.{Subscriptions}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -33,22 +33,26 @@ low priority:
 trait HyperBusBase {
   def ask (r: Request[Body],
            requestEncoder: Encoder[Request[Body]],
+           partitionArgsExtractor: PartitionArgsExtractor[Request[Body]],
            responseDecoder: ResponseDecoder): Future[Response[Body]]
 
   def publish(r: Request[Body],
-             requestEncoder: Encoder[Request[Body]]): Future[PublishResult]
+              requestEncoder: Encoder[Request[Body]],
+              partitionArgsExtractor: PartitionArgsExtractor[Request[Body]]): Future[PublishResult]
 
-  def on(url: String,
+  def on(topic: Topic,
          method: String,
          contentType: Option[String],
-         requestDecoder: RequestDecoder)
+         requestDecoder: RequestDecoder,
+         partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
         (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String
 
-  def subscribe(url: String,
+  def subscribe(topic: Topic,
                 method: String,
                 contentType: Option[String],
                 groupName: String,
-                requestDecoder: RequestDecoder)
+                requestDecoder: RequestDecoder,
+                partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
                (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String
 
   def responseEncoder(response: Response[Body],
@@ -61,8 +65,7 @@ trait HyperBusBase {
 }
 
 class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusBase {
-  protected val subscriptions = new Subscriptions[Subscription]
-  protected val randomGen = new Random()
+  protected val subscriptions = new Subscriptions[SubKey,Subscription]
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler)]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
@@ -76,21 +79,16 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
                                      handler: (Request[Body]) => SubscriptionHandlerResult[Unit],
                                      requestDecoder: RequestDecoder ) extends Subscription
 
+  protected case class SubKey(method: String, contentType: Option[String])
+
   protected abstract class UnderlyingHandler(routeKey: String) {
     protected def getSubscription(in: Request[Body]): Option[Subscription] = getSubscription(in.method, in.body.contentType)
 
     protected def getSubscription(method:String, contentType: Option[String]): Option[Subscription] = {
-      val subRouteKey = getSubRouteKey(method, contentType)
-
-      subscriptions.get(routeKey).subRoutes.get(subRouteKey).orElse{
-        subscriptions.get(routeKey).subRoutes.get(getSubRouteKey(method, None))
-      } map { subscrSeq =>
-        val idx = if (subscrSeq.size > 1) {
-          randomGen.nextInt(subscrSeq.size)
-        } else {
-          0
-        }
-        subscrSeq(idx).subscription
+      subscriptions.get(routeKey).subRoutes.get(SubKey(method, contentType)).orElse{  // at first try exact match
+        subscriptions.get(routeKey).subRoutes.get(SubKey(method, None))               // at second without contentType
+      } map { subscriptionList =>
+        subscriptionList.getRandomSubscription
       }
     }
 
@@ -143,11 +141,14 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   def ask
     (r: Request[Body],
-      requestEncoder: Encoder[Request[Body]],
-      responseDecoder: ResponseDecoder): Future[Response[Body]] = {
+     requestEncoder: Encoder[Request[Body]],
+     partitionArgsExtractor: PartitionArgsExtractor[Request[Body]],
+     responseDecoder: ResponseDecoder): Future[Response[Body]] = {
 
     val outputDecoder = Helpers.decodeResponseWith(_:InputStream)(responseDecoder)
-    underlyingBus.ask[Response[Body], Request[Body]](r.url, r, requestEncoder, outputDecoder) map {
+    val args = partitionArgsExtractor(r)
+    val topic = Topic(r.url, args)
+    underlyingBus.ask[Response[Body], Request[Body]](topic, r, requestEncoder, outputDecoder) map {
       case throwable: Throwable ⇒ throw throwable
       case r: Response[Body] ⇒ r
     }
@@ -156,55 +157,58 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def ![IN <: Request[Body]](r: IN): Future[PublishResult] = macro HyperBusMacro.publish[IN]
 
   def publish(r: Request[Body],
-              requestEncoder: Encoder[Request[Body]]): Future[PublishResult] = {
-    underlyingBus.publish[Request[Body]](r.url, r, requestEncoder)
+              requestEncoder: Encoder[Request[Body]],
+              partitionArgsExtractor: PartitionArgsExtractor[Request[Body]]): Future[PublishResult] = {
+    val args = partitionArgsExtractor(r)
+    val topic = Topic(r.url, args)
+    underlyingBus.publish[Request[Body]](topic, r, requestEncoder)
   }
 
   def on[IN <: Request[_ <: Body]](handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.on[IN]
 
-  def on(url: String,
+  def on(topic: Topic,
          method: String,
          contentType: Option[String],
-         requestDecoder: RequestDecoder)
+         requestDecoder: RequestDecoder,
+         partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
         (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String = {
-    val routeKey = getRouteKey(url, None)
-    val subRouteKey = getSubRouteKey(method, contentType)
+    val routeKey = getRouteKey(topic.url, None)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
         routeKey,
-        Some(subRouteKey),
+        SubKey(method, contentType),
         RequestReplySubscription(handler, requestDecoder)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingRequestReplyHandler(routeKey)
-        val uid = underlyingBus.on(url, uh.decoder)(uh.handler)
+        val uid = underlyingBus.on(topic, uh.decoder, partitionArgsExtractor)(uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
     }
   }
 
-  def subscribe(url: String,
+  def subscribe(topic: Topic,
                 method: String,
                 contentType: Option[String],
                 groupName: String,
-                requestDecoder: RequestDecoder)
+                requestDecoder: RequestDecoder,
+                partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
                (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String = {
-    val routeKey = getRouteKey(url, Some(groupName))
-    val subRouteKey = getSubRouteKey(method, contentType)
+    val routeKey = getRouteKey(topic.url, Some(groupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
         routeKey,
-        Some(subRouteKey),
+        SubKey(method, contentType),
         PubSubSubscription(handler, requestDecoder)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler(routeKey)
-        val uid = underlyingBus.subscribe(url, groupName, uh.decoder)(uh.handler)
+        val uid = underlyingBus.subscribe(topic, groupName, uh.decoder, partitionArgsExtractor)(uh.handler)
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
@@ -296,9 +300,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   protected def getRouteKey(url: String, groupName: Option[String]) =
     groupName.map { url + "#" + _ } getOrElse url
-
-  protected def getSubRouteKey(method: String, contentType: Option[String]) =
-    contentType map (c => method + ":" + c) getOrElse method
 
   protected def safe(t:() => String): String = Try(t()).getOrElse("???")
 }

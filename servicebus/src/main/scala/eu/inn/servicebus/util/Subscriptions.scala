@@ -1,29 +1,38 @@
 package eu.inn.servicebus.util
 
 import java.util.concurrent.atomic.AtomicLong
-
 import eu.inn.servicebus.transport.{AnyValue, PartitionArg}
-
 import scala.collection.concurrent.TrieMap
+import scala.util.Random
 
 case class SubscriptionWithId[T](subscriptionId:String, subscription:T)
 
-case class SubscriptionKey(groupName: Option[String], partitionArgs: Map[String,PartitionArg]) {
+class SubscriptionList[T] (private val seq: IndexedSeq[SubscriptionWithId[T]]) {
+  def this(init: SubscriptionWithId[T]) = this(IndexedSeq[SubscriptionWithId[T]](init))
 
-  def matchArgs(args: Map[String, PartitionArg]): Boolean = {
-    partitionArgs.map { case (k, v) ⇒
-      args.get(k).map { av ⇒
-        av.matchArg(v)
-      } getOrElse {
-        v == AnyValue
-      }
-    }.forall(r => r)
+  def ++ (other: SubscriptionList[T]): SubscriptionList[T] = {
+    new SubscriptionList(seq ++ other.seq)
   }
+
+  def isEmpty = seq.isEmpty
+
+  def filterNot(p: SubscriptionWithId[T] => Boolean) = new SubscriptionList(seq.filterNot(p))
+
+  def size = seq.size
+
+  def getRandomSubscription: T = if (seq.size > 1)
+    seq(SubscriptionList.getNextRandomInt(seq.size)).subscription
+  else
+    seq.head.subscription
 }
 
-class Subscriptions[T] {
+object SubscriptionList {
+  protected val randomGen = new Random()
+  private [util] def getNextRandomInt(max: Int) = randomGen.nextInt(max)
+}
 
-  case class SubscriptionMap(subRoutes: Map[SubscriptionKey,IndexedSeq[SubscriptionWithId[T]]]) extends ComplexElement[SubscriptionMap, String] {
+class Subscriptions[K,T] {
+  case class SubscriptionMap(subRoutes: Map[K,SubscriptionList[T]]) extends ComplexElement[SubscriptionMap, String] {
     override def upsert(upsertPart: SubscriptionMap): SubscriptionMap = SubscriptionMap(
       subRoutes ++ upsertPart.subRoutes map {
         case(k,v) => k -> subRoutes.get(k).map {
@@ -53,10 +62,10 @@ class Subscriptions[T] {
   def get(routeKey: String) : SubscriptionMap = routes.getOrElse(routeKey, SubscriptionMap(Map()))
   def getRouteKeyById(subscriptionId:String) = routeKeyById.get(subscriptionId)
 
-  def add(routeKey: String, subRouteKey: SubscriptionKey, subscription:T): String = {
+  def add(routeKey: String, subKey: K, subscription:T): String = {
     val subscriptionId = idCounter.incrementAndGet().toHexString
-    val subscriberSeq = IndexedSeq(SubscriptionWithId(subscriptionId, subscription))
-    val s = SubscriptionMap(Map(subRouteKey -> subscriberSeq))
+    val subscriptionValue = new SubscriptionList(SubscriptionWithId(subscriptionId, subscription))
+    val s = SubscriptionMap(Map(subKey -> subscriptionValue))
     routes.upsert(routeKey, s)
     routeKeyById += subscriptionId -> routeKey
     subscriptionId

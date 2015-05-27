@@ -4,7 +4,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.servicebus.serialization.{PartitionArgsExtractor, Decoder, Encoder}
 import eu.inn.servicebus.transport._
-import eu.inn.servicebus.util.{SubscriptionKey, Subscriptions}
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
@@ -45,12 +44,12 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
   protected val idCounter = new AtomicLong(0)
 
   def ask[OUT,IN](
-                    topicUrl: String,
+                   topic: Topic,
                     message: IN
                     ): Future[OUT] = macro ServiceBusMacro.ask[OUT,IN]
 
   def publish[IN](
-                   topicUrl: String,
+                   topic: Topic,
                    message: IN
                    ): Future[PublishResult] = macro ServiceBusMacro.publish[IN]
 
@@ -71,10 +70,10 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     this.lookupClientTransport(topic).publish[IN](topic,message,inputEncoder)
   }
 
-  def on[OUT,IN](topicUrl: String)
+  def on[OUT,IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
                 (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT,IN]
 
-  def subscribe[IN](topicUrl: String, groupName: String)
+  def subscribe[IN](topic: Topic, groupName: String, partitionArgsExtractor: PartitionArgsExtractor[IN])
                 (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]
 
   def off(subscriptionId: String): Unit = {
@@ -87,7 +86,11 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                  partitionArgsExtractor: PartitionArgsExtractor[IN])
                 (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
-    val underlyingSubscriptionId = lookupServerTransport(topic).on[OUT,IN](topic, inputDecoder)(handler)
+    val underlyingSubscriptionId = lookupServerTransport(topic).on[OUT,IN](
+      topic,
+      inputDecoder,
+      partitionArgsExtractor)(handler)
+
     addSubscriptionLink(topic, underlyingSubscriptionId)
   }
 
@@ -96,7 +99,11 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
                     inputDecoder: Decoder[IN],
                     partitionArgsExtractor: PartitionArgsExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
-    val underlyingSubscriptionId = lookupServerTransport(topic).subscribe[IN](topic, groupName, inputDecoder)(handler)
+    val underlyingSubscriptionId = lookupServerTransport(topic).subscribe[IN](
+      topic,
+      groupName,
+      inputDecoder,
+      partitionArgsExtractor)(handler)
     addSubscriptionLink(topic, underlyingSubscriptionId)
   }
 
