@@ -1,3 +1,5 @@
+import java.io.OutputStream
+
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{PartitionArgs, Topic, NoTransportRouteException, InprocTransport}
 import eu.inn.servicebus.ServiceBus

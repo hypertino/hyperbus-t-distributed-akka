@@ -31,29 +31,29 @@ low priority:
 */
 
 trait HyperBusBase {
-  def ask (r: Request[Body],
-           requestEncoder: Encoder[Request[Body]],
-           partitionArgsExtractor: PartitionArgsExtractor[Request[Body]],
-           responseDecoder: ResponseDecoder): Future[Response[Body]]
+  def ask[RESP <: Response[Body], REQ <: Request[Body]] (r: REQ,
+           requestEncoder: Encoder[REQ],
+           partitionArgsExtractor: PartitionArgsExtractor[REQ],
+           responseDecoder: ResponseDecoder): Future[RESP]
 
-  def publish(r: Request[Body],
-              requestEncoder: Encoder[Request[Body]],
-              partitionArgsExtractor: PartitionArgsExtractor[Request[Body]]): Future[PublishResult]
+  def publish[REQ <: Request[Body]](r: REQ,
+              requestEncoder: Encoder[REQ],
+              partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[PublishResult]
 
-  def on(topic: Topic,
+  def on[RESP<: Response[Body], REQ <: Request[Body]](topic: Topic,
          method: String,
          contentType: Option[String],
          requestDecoder: RequestDecoder,
-         partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
-        (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String
+         partitionArgsExtractor: PartitionArgsExtractor[REQ])
+        (handler: (REQ) => SubscriptionHandlerResult[RESP]): String
 
-  def subscribe(topic: Topic,
+  def subscribe[REQ <: Request[Body]](topic: Topic,
                 method: String,
                 contentType: Option[String],
                 groupName: String,
                 requestDecoder: RequestDecoder,
-                partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
-               (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String
+                partitionArgsExtractor: PartitionArgsExtractor[REQ])
+               (handler: (REQ) => SubscriptionHandlerResult[Unit]): String
 
   def responseEncoder(response: Response[Body],
                       outputStream: java.io.OutputStream,
@@ -65,30 +65,31 @@ trait HyperBusBase {
 }
 
 class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusBase {
-  protected val subscriptions = new Subscriptions[SubKey,Subscription]
+  protected val subscriptions = new Subscriptions[SubKey,Subscription[_]]
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler)]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  protected trait Subscription {
+  protected trait Subscription[REQ <: Request[Body]] {
     def requestDecoder: RequestDecoder
   }
-  protected case class RequestReplySubscription(
-                                   handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]],
-                                   requestDecoder: RequestDecoder ) extends Subscription
-  protected case class PubSubSubscription(
-                                     handler: (Request[Body]) => SubscriptionHandlerResult[Unit],
-                                     requestDecoder: RequestDecoder ) extends Subscription
+  protected case class RequestReplySubscription[RESP <: Response[Body], REQ <: Request[Body]](
+                                   handler: (REQ) => SubscriptionHandlerResult[RESP],
+                                   requestDecoder: RequestDecoder ) extends Subscription[REQ]
+
+  protected case class PubSubSubscription[REQ <: Request[Body]](
+                                     handler: (REQ) => SubscriptionHandlerResult[Unit],
+                                     requestDecoder: RequestDecoder ) extends Subscription[REQ]
 
   protected case class SubKey(method: String, contentType: Option[String])
 
-  protected abstract class UnderlyingHandler(routeKey: String) {
-    protected def getSubscription(in: Request[Body]): Option[Subscription] = getSubscription(in.method, in.body.contentType)
+  protected abstract class UnderlyingHandler[REQ <: Request[Body]](routeKey: String) {
+    protected def getSubscription(in: REQ): Option[Subscription[REQ]] = getSubscription(in.method, in.body.contentType)
 
-    protected def getSubscription(method:String, contentType: Option[String]): Option[Subscription] = {
+    protected def getSubscription(method:String, contentType: Option[String]): Option[Subscription[REQ]] = {
       subscriptions.get(routeKey).subRoutes.get(SubKey(method, contentType)).orElse{  // at first try exact match
         subscriptions.get(routeKey).subRoutes.get(SubKey(method, None))               // at second without contentType
       } map { subscriptionList =>
-        subscriptionList.getRandomSubscription
+        subscriptionList.getRandomSubscription.asInstanceOf[Subscription[REQ]]
       }
     }
 
@@ -110,10 +111,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
-  protected class UnderlyingRequestReplyHandler(routeKey: String) extends UnderlyingHandler(routeKey) {
-    def handler(in: Request[Body]): SubscriptionHandlerResult[Response[Body]] = {
+  protected class UnderlyingRequestReplyHandler[RESP <: Response[Body], REQ <: Request[Body]](routeKey: String)
+    extends UnderlyingHandler[REQ](routeKey) {
+    def handler(in: REQ): SubscriptionHandlerResult[RESP] = {
       getSubscription(in).map {
-        case s: RequestReplySubscription ⇒
+        case s: RequestReplySubscription[RESP,REQ] ⇒
           val r = s.handler(in)
           val f = r.futureResult.recoverWith {
             case x: Response[_] ⇒ Future.successful(x)
@@ -139,76 +141,80 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   def ?[IN <: Request[Body]](r: IN): Future[Response[Body]] = macro HyperBusMacro.ask[IN]
 
-  def ask
-    (r: Request[Body],
-     requestEncoder: Encoder[Request[Body]],
-     partitionArgsExtractor: PartitionArgsExtractor[Request[Body]],
-     responseDecoder: ResponseDecoder): Future[Response[Body]] = {
+  def ask[OUT <: Response[Body], IN <: Request[Body]] (r: IN,
+                                                       requestEncoder: Encoder[IN],
+                                                       partitionArgsExtractor: PartitionArgsExtractor[IN],
+                                                       responseDecoder: ResponseDecoder): Future[OUT] = {
 
     val outputDecoder = Helpers.decodeResponseWith(_:InputStream)(responseDecoder)
     val args = partitionArgsExtractor(r)
     val topic = Topic(r.url, args)
-    underlyingBus.ask[Response[Body], Request[Body]](topic, r, requestEncoder, outputDecoder) map {
+    underlyingBus.ask[OUT,IN](topic, r, requestEncoder, outputDecoder.asInstanceOf[Decoder[OUT]]) map {
       case throwable: Throwable ⇒ throw throwable
-      case r: Response[Body] ⇒ r
+      case other ⇒ other
     }
   }
 
   def ![IN <: Request[Body]](r: IN): Future[PublishResult] = macro HyperBusMacro.publish[IN]
 
-  def publish(r: Request[Body],
-              requestEncoder: Encoder[Request[Body]],
-              partitionArgsExtractor: PartitionArgsExtractor[Request[Body]]): Future[PublishResult] = {
+  def publish[IN <: Request[Body]](r: IN,
+                                   requestEncoder: Encoder[IN],
+                                   partitionArgsExtractor: PartitionArgsExtractor[IN]): Future[PublishResult] = {
     val args = partitionArgsExtractor(r)
     val topic = Topic(r.url, args)
-    underlyingBus.publish[Request[Body]](topic, r, requestEncoder)
+    underlyingBus.publish[IN](topic, r, requestEncoder)
   }
 
   def on[IN <: Request[_ <: Body]](handler: (IN) => Future[Response[Body]]): String = macro HyperBusMacro.on[IN]
 
-  def on(topic: Topic,
-         method: String,
-         contentType: Option[String],
-         requestDecoder: RequestDecoder,
-         partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
-        (handler: (Request[Body]) => SubscriptionHandlerResult[Response[Body]]): String = {
+  def on[RESP<: Response[Body], REQ <: Request[Body]](topic: Topic,
+                                                      method: String,
+                                                      contentType: Option[String],
+                                                      requestDecoder: RequestDecoder,
+                                                      partitionArgsExtractor: PartitionArgsExtractor[REQ])
+                                                     (handler: (REQ) => SubscriptionHandlerResult[RESP]): String = {
     val routeKey = getRouteKey(topic.url, None)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
         routeKey,
         SubKey(method, contentType),
-        RequestReplySubscription(handler, requestDecoder)
+        RequestReplySubscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Response[Body]]], requestDecoder)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingRequestReplyHandler(routeKey)
-        val uid = underlyingBus.on(topic, uh.decoder, partitionArgsExtractor)(uh.handler)
+        val d: Decoder[Request[Body]] = uh.decoder
+        val h: (Request[Body]) => SubscriptionHandlerResult[Response[Body]] = uh.handler
+        val uid = underlyingBus.on[RESP,REQ](topic, d.asInstanceOf[(InputStream) ⇒ REQ], partitionArgsExtractor)(h.asInstanceOf[(REQ) => SubscriptionHandlerResult[RESP]])
+
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
     }
   }
 
-  def subscribe(topic: Topic,
-                method: String,
-                contentType: Option[String],
-                groupName: String,
-                requestDecoder: RequestDecoder,
-                partitionArgsExtractor: PartitionArgsExtractor[Request[Body]])
-               (handler: (Request[Body]) => SubscriptionHandlerResult[Unit]): String = {
+  def subscribe[REQ <: Request[Body]](topic: Topic,
+                                      method: String,
+                                      contentType: Option[String],
+                                      groupName: String,
+                                      requestDecoder: RequestDecoder,
+                                      partitionArgsExtractor: PartitionArgsExtractor[REQ])
+                                     (handler: (REQ) => SubscriptionHandlerResult[Unit]): String = {
     val routeKey = getRouteKey(topic.url, Some(groupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
         routeKey,
         SubKey(method, contentType),
-        PubSubSubscription(handler, requestDecoder)
+        PubSubSubscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Unit]], requestDecoder)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler(routeKey)
-        val uid = underlyingBus.subscribe(topic, groupName, uh.decoder, partitionArgsExtractor)(uh.handler)
+        val d: Decoder[Request[Body]] = uh.decoder
+        val h: (Request[Body]) => SubscriptionHandlerResult[Unit] = uh.handler
+        val uid = underlyingBus.subscribe[REQ](topic, groupName, d.asInstanceOf[(InputStream) ⇒ REQ], partitionArgsExtractor.asInstanceOf)(h.asInstanceOf[(REQ) => SubscriptionHandlerResult[Unit]])
         underlyingSubscriptions += routeKey -> (uid, uh)
       }
       r
