@@ -10,12 +10,12 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 package object serialization { // todo: eliminate this package object
-  type RequestDecoder = Function2[RequestHeader, JsonParser, Request[Body]]
-  type ResponseDecoder = Function2[ResponseHeader, JsonParser, Response[Body]]
+  type RequestDecoder[T <: Request[Body]] = Function2[RequestHeader, JsonParser, T]
+  type ResponseDecoder[T <: Response[Body]] = Function2[ResponseHeader, JsonParser, T]
   type ResponseBodyDecoder = Function2[ResponseHeader, JsonParser, Body]
   type ResponseEncoder = Encoder[Response[Body]]
 
-  def createRequestDecoder[T <: Request[Body]]: RequestDecoder = macro HyperSerializationMacro.createRequestDecoder[T]
-  def createEncoder[T <: Message[_]]: Encoder[T] = macro HyperSerializationMacro.createEncoder[T]
+  def createRequestDecoder[T <: Request[Body]]: RequestDecoder[T] = macro HyperSerializationMacro.createRequestDecoder[T]
   def createResponseBodyDecoder[T <: Body]: ResponseBodyDecoder = macro HyperSerializationMacro.createResponseBodyDecoder[T]
+  def createEncoder[T <: Message[_]]: Encoder[T] = macro HyperSerializationMacro.createEncoder[T]
 }

@@ -160,7 +160,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hbs.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
+      val requestEncoder = hbs.createEncoder[$in]
       val extractor = ${defineExtractor[IN](url)}
       val responseDecoder = thiz.responseDecoder(
         _: hbs.ResponseHeader,
@@ -183,7 +183,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hbs.createEncoder[$in].asInstanceOf[eu.inn.servicebus.serialization.Encoder[Request[Body]]]
+      val requestEncoder = hbs.createEncoder[$in]
       val extractor = ${defineExtractor[IN](url)}
       thiz.publish($r, requestEncoder, extractor)
     }"""

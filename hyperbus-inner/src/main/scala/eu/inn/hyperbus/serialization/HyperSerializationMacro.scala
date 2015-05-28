@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.serialization
 
-import eu.inn.hyperbus.protocol.{ErrorBody, DynamicBody, DynamicRequest, Message}
+import eu.inn.hyperbus.protocol._
 import eu.inn.servicebus.serialization._
 
 import scala.reflect.macros.blackbox.Context
@@ -21,7 +21,7 @@ private[hyperbus] object HyperSerializationMacro {
     c.Expr[Encoder[T]](obj)
   }
 
-  def createRequestDecoder[T: c.WeakTypeTag](c: Context): c.Expr[RequestDecoder] = {
+  def createRequestDecoder[T <: Request[Body] : c.WeakTypeTag](c: Context): c.Expr[RequestDecoder[T]] = {
     import c.universe._
     val t = weakTypeOf[T]
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
@@ -48,7 +48,7 @@ private[hyperbus] object HyperSerializationMacro {
       }
     }"""
     //println(obj)
-    c.Expr[RequestDecoder](obj)
+    c.Expr[RequestDecoder[T]](obj)
   }
 
   def createPartitionArgsExtractor[T: c.WeakTypeTag](c: Context)

@@ -60,7 +60,7 @@ object Helpers {
     }
   }
 
-  def decodeResponseWith[B <: Body](inputStream: InputStream)(decoder: (ResponseHeader, JsonParser) => Response[B]): Response[B] = {
+  def decodeResponseWith[RESP <: Response[Body]](inputStream: InputStream)(decoder: (ResponseHeader, JsonParser) => RESP): RESP = {
     val jf = new JsonFactory()
     val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
     val factory = SerializerFactory.findFactory()

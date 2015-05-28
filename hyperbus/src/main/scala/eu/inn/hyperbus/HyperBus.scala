@@ -35,7 +35,7 @@ trait HyperBusBase {
   def ask[RESP <: Response[Body], REQ <: Request[Body]] (r: REQ,
            requestEncoder: Encoder[REQ],
            partitionArgsExtractor: PartitionArgsExtractor[REQ],
-           responseDecoder: ResponseDecoder): Future[RESP]
+           responseDecoder: ResponseDecoder[RESP]): Future[RESP]
 
   def publish[REQ <: Request[Body]](r: REQ,
               requestEncoder: Encoder[REQ],
@@ -44,7 +44,7 @@ trait HyperBusBase {
   def on[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
          method: String,
          contentType: Option[String],
-         requestDecoder: RequestDecoder,
+         requestDecoder: RequestDecoder[REQ],
          partitionArgsExtractor: PartitionArgsExtractor[REQ])
         (handler: (REQ) => SubscriptionHandlerResult[RESP]): String
 
@@ -52,13 +52,13 @@ trait HyperBusBase {
                 method: String,
                 contentType: Option[String],
                 groupName: String,
-                requestDecoder: RequestDecoder,
+                requestDecoder: RequestDecoder[REQ],
                 partitionArgsExtractor: PartitionArgsExtractor[REQ])
                (handler: (REQ) => SubscriptionHandlerResult[Unit]): String
 
   def responseEncoder(response: Response[Body],
                       outputStream: java.io.OutputStream,
-                      bodyEncoder: PartialFunction[Response[Body],ResponseEncoder]): Unit
+                      bodyEncoder: PartialFunction[Response[Body],Encoder[Response[Body]]]): Unit
 
   def responseDecoder(responseHeader: ResponseHeader,
                      responseBodyJson: com.fasterxml.jackson.core.JsonParser,
@@ -79,16 +79,16 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def on[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.on[REQ]
 
   protected trait Subscription[REQ <: Request[Body]] {
-    def requestDecoder: RequestDecoder
+    def requestDecoder: RequestDecoder[REQ]
   }
   protected case class RequestReplySubscription[REQ <: Request[Body]](
                                    handler: (REQ) => SubscriptionHandlerResult[Response[Body]],
-                                   requestDecoder: RequestDecoder,
+                                   requestDecoder: RequestDecoder[REQ],
                                    partitionArgsExtractor: PartitionArgsExtractor[REQ]) extends Subscription[REQ]
 
   protected case class PubSubSubscription[REQ <: Request[Body]](
                                      handler: (REQ) => SubscriptionHandlerResult[Unit],
-                                     requestDecoder: RequestDecoder,
+                                     requestDecoder: RequestDecoder[REQ],
                                      partitionArgsExtractor: PartitionArgsExtractor[REQ]) extends Subscription[REQ]
 
   protected case class SubKey(method: String, contentType: Option[String])
@@ -108,9 +108,9 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       try {
         Helpers.decodeRequestWith[REQ](inputStream) { (requestHeader, requestBodyJson) =>
           getSubscription(requestHeader.method, requestHeader.contentType) map { subscription =>
-            subscription.requestDecoder(requestHeader, requestBodyJson).asInstanceOf[REQ]
+            subscription.requestDecoder(requestHeader, requestBodyJson)
           } getOrElse {
-            HyperBusUtils.decodeDynamicRequest(requestHeader, requestBodyJson).asInstanceOf[REQ]
+            HyperBusUtils.decodeDynamicRequest(requestHeader, requestBodyJson).asInstanceOf[REQ] // todo: why? remove and throw
           }
         }
       }
@@ -134,7 +134,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
             case z: Response[_] ⇒ Future.successful(z)
             case t: Throwable ⇒ unhandledException(routeKey, in, t)
           }
-          SubscriptionHandlerResult[Response[Body]](f, r.resultEncoder.asInstanceOf[Encoder[Response[Body]]])
+          SubscriptionHandlerResult[Response[Body]](f, r.resultEncoder)
       } getOrElse {
         SubscriptionHandlerResult(unhandledRequest(routeKey, in), defaultResponseEncoder)
       }
@@ -172,12 +172,12 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def ask[RESP <: Response[Body], REQ <: Request[Body]] (r: REQ,
                                                        requestEncoder: Encoder[REQ],
                                                        partitionArgsExtractor: PartitionArgsExtractor[REQ],
-                                                       responseDecoder: ResponseDecoder): Future[RESP] = {
+                                                       responseDecoder: ResponseDecoder[RESP]): Future[RESP] = {
 
     val outputDecoder = Helpers.decodeResponseWith(_:InputStream)(responseDecoder)
     val args = partitionArgsExtractor(r)
     val topic = Topic(r.url, args)
-    underlyingBus.ask[RESP,REQ](topic, r, requestEncoder, outputDecoder.asInstanceOf[Decoder[RESP]]) map {
+    underlyingBus.ask[RESP,REQ](topic, r, requestEncoder, outputDecoder) map {
       case throwable: Throwable ⇒ throw throwable
       case other ⇒ other
     }
@@ -194,7 +194,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def on[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
                                                       method: String,
                                                       contentType: Option[String],
-                                                      requestDecoder: RequestDecoder,
+                                                      requestDecoder: RequestDecoder[REQ],
                                                       partitionArgsExtractor: PartitionArgsExtractor[REQ])
                                                      (handler: (REQ) => SubscriptionHandlerResult[RESP]): String = {
     val routeKey = getRouteKey(topic.url, None)
@@ -203,7 +203,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       val r = subscriptions.add(
         routeKey,
         SubKey(method, contentType),
-        RequestReplySubscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Response[Body]]], requestDecoder, partitionArgsExtractor)
+        RequestReplySubscription(handler.asInstanceOf[(REQ) => SubscriptionHandlerResult[Response[Body]]], requestDecoder, partitionArgsExtractor)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
@@ -221,7 +221,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
                                       method: String,
                                       contentType: Option[String],
                                       groupName: String,
-                                      requestDecoder: RequestDecoder,
+                                      requestDecoder: RequestDecoder[REQ],
                                       partitionArgsExtractor: PartitionArgsExtractor[REQ])
                                      (handler: (REQ) => SubscriptionHandlerResult[Unit]): String = {
     val routeKey = getRouteKey(topic.url, Some(groupName))
@@ -230,7 +230,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
       val r = subscriptions.add(
         routeKey,
         SubKey(method, contentType),
-        PubSubSubscription(handler.asInstanceOf[(Request[Body]) => SubscriptionHandlerResult[Unit]], requestDecoder, partitionArgsExtractor)
+        PubSubSubscription(handler, requestDecoder, partitionArgsExtractor)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
@@ -260,7 +260,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   def responseEncoder(response: Response[Body],
                       outputStream: java.io.OutputStream,
-                      bodyEncoder: PartialFunction[Response[Body],ResponseEncoder]): Unit = {
+                      bodyEncoder: PartialFunction[Response[Body],Encoder[Response[Body]]]): Unit = {
     if (bodyEncoder.isDefinedAt(response))
       bodyEncoder(response)(response, outputStream)
     else
@@ -268,10 +268,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   }
 
   protected def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit = {
+    import eu.inn.hyperbus.serialization._
     response.body match {
-      case _: ErrorBody => eu.inn.hyperbus.serialization.createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
-      case _: CreatedDynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[CreatedDynamicBody]](response.asInstanceOf[Response[CreatedDynamicBody]], outputStream)
-      case _: DefaultDynamicBody => eu.inn.hyperbus.serialization.createEncoder[Response[DefaultDynamicBody]](response.asInstanceOf[Response[DefaultDynamicBody]], outputStream)
+      case _: ErrorBody => createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
+      case _: CreatedDynamicBody => createEncoder[Response[CreatedDynamicBody]](response.asInstanceOf[Response[CreatedDynamicBody]], outputStream)
+      case _: DefaultDynamicBody => createEncoder[Response[DefaultDynamicBody]](response.asInstanceOf[Response[DefaultDynamicBody]], outputStream)
       case _ => responseEncoderNotFound(response)
     }
   }
