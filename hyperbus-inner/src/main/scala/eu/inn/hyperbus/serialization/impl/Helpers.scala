@@ -29,7 +29,7 @@ object Helpers {
     writeUtf8("}",out)
   }
 
-  def decodeRequestWith[B <: Body](inputStream: InputStream)(decoder: (RequestHeader, JsonParser) => Request[B]): Request[B] = {
+  def decodeRequestWith[REQ <: Request[Body]](inputStream: InputStream)(decoder: (RequestHeader, JsonParser) => REQ): REQ = {
     val jf = new JsonFactory()
     val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
     val factory = SerializerFactory.findFactory()

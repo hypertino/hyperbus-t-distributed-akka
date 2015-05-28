@@ -92,7 +92,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
         }
       )
       val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
-      thiz.on(topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
+      thiz.on[Response[Body],$in](topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
     }"""
@@ -119,7 +119,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val requestDecoder = hbs.createRequestDecoder[$in]
       val extractor = ${defineExtractor[IN](url)}
       val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
-      thiz.subscribe(topic, $method, $contentType, $groupName, requestDecoder, extractor) { case (response: $in) =>
+      thiz.subscribe[$in](topic, $method, $contentType, $groupName, requestDecoder, extractor) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Unit]($handler(response),null)
       }
     }"""
