@@ -5,7 +5,7 @@ import eu.inn.servicebus.transport.{AnyValue, PartitionArgs, Topic}
 import scala.collection.mutable
 
 object Helpers {
-  def parseUrl(url: String): Seq[String] = {
+  def extractParametersFromUrl(url: String): Seq[String] = {
     val DEFAULT = 0
     val ARG = 1
     var state = DEFAULT
@@ -19,14 +19,15 @@ object Helpers {
             case '{' ⇒
               state = ARG
             case _ ⇒
-              buf.append(c)
           }
         case ARG ⇒
           c match {
             case '}' ⇒
               result += buf.toString()
+              buf.clear()
               state = DEFAULT
             case _ ⇒
+              buf += c
           }
       }
     }
@@ -34,5 +35,5 @@ object Helpers {
     result.toSeq
   }
 
-  def topicWithAllPartitions(url: String): Topic = Topic(url, PartitionArgs(parseUrl(url).map(_ → AnyValue).toMap))
+  def topicWithAllPartitions(url: String): Topic = Topic(url, PartitionArgs(extractParametersFromUrl(url).map(_ → AnyValue).toMap))
 }

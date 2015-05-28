@@ -12,13 +12,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class ClientTransportTest(output: String) extends ClientTransport {
-  private val buf = new StringBuilder
-  def input = buf.toString()
-  
+  private val messageBuf = new StringBuilder
+  private var inputTopicVar: Topic = null
+
+  def input = messageBuf.toString()
+  def inputTopic = inputTopicVar
+
   override def ask[OUT, IN](topic: Topic, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = {
+    inputTopicVar = topic
     val ba = new ByteArrayOutputStream()
     inputEncoder(message, ba)
-    buf.append(ba.toString("UTF-8"))
+    messageBuf.append(ba.toString("UTF-8"))
 
     val os = new ByteArrayInputStream(output.getBytes("UTF-8"))
     val out = outputDecoder(os)
@@ -36,6 +40,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
 class ServerTransportTest extends ServerTransport {
   var sInputDecoder: Decoder[Any] = null
   var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
+  var sExtractor: PartitionArgsExtractor[Any] = null
 
   def on[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
@@ -44,6 +49,7 @@ class ServerTransportTest extends ServerTransport {
 
     sInputDecoder = inputDecoder
     sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
+    sExtractor = partitionArgsExtractor.asInstanceOf[PartitionArgsExtractor[Any]]
     ""
   }
 

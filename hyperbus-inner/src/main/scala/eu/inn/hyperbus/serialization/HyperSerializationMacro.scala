@@ -51,18 +51,6 @@ private[hyperbus] object HyperSerializationMacro {
     c.Expr[RequestDecoder[T]](obj)
   }
 
-  def createPartitionArgsExtractor[T: c.WeakTypeTag](c: Context)
-                                                    (url: c.Expr[String]): c.Expr[PartitionArgsExtractor[T]] = {
-    import c.universe._
-
-    val t = weakTypeOf[T]
-    val obj = q"""{
-      (x:$t) => eu.inn.servicebus.transport.PartitionArgs(Map())
-    }"""
-
-    c.Expr[PartitionArgsExtractor[T]](obj)
-  }
-
   def createResponseBodyDecoder[T: c.WeakTypeTag](c: Context): c.Expr[ResponseBodyDecoder] = {
     import c.universe._
     val t = weakTypeOf[T]

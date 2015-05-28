@@ -12,7 +12,7 @@ import scala.reflect.macros.blackbox.Context
 
 private[hyperbus] object HyperBusMacro {
 
-  def on[IN: c.WeakTypeTag]
+  def on[IN <: Request[Body] : c.WeakTypeTag]
   (c: Context)
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
     val c0: c.type = c
@@ -22,7 +22,7 @@ private[hyperbus] object HyperBusMacro {
     bundle.on[IN](handler)
   }
 
-  def subscribe[IN: c.WeakTypeTag]
+  def subscribe[IN <: Request[Body] : c.WeakTypeTag]
   (c: Context)
   (groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
@@ -33,7 +33,7 @@ private[hyperbus] object HyperBusMacro {
     bundle.subscribe[IN](groupName)(handler)
   }
 
-  def ask[IN: c.WeakTypeTag]
+  def ask[IN <: Request[Body] : c.WeakTypeTag]
   (c: Context)
   (r: c.Expr[IN]): c.Tree = {
     val c0: c.type = c
@@ -43,7 +43,7 @@ private[hyperbus] object HyperBusMacro {
     bundle.ask[IN](r)
   }
 
-  def publish[IN: c.WeakTypeTag]
+  def publish[IN <: Request[Body] : c.WeakTypeTag]
   (c: Context)
   (r: c.Expr[IN]): c.Tree = {
     val c0: c.type = c
@@ -58,7 +58,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   val c: Context
   import c.universe._
 
-  def on[IN: c.WeakTypeTag]
+  def on[IN <: Request[Body] : c.WeakTypeTag]
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
@@ -100,7 +100,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     c.Expr[String](obj)
   }
 
-  def subscribe[IN: c.WeakTypeTag]
+  def subscribe[IN <: Request[Body] : c.WeakTypeTag]
   (groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val thiz = c.prefix.tree
@@ -127,7 +127,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     c.Expr[String](obj)
   }
 
-  def ask[IN: c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
+  def ask[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
@@ -175,7 +175,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     obj
   }
 
-  def publish[IN: c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
+  def publish[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
     val in = weakTypeOf[IN]
     val url = getUrlAnnotation(in)
     val thiz = c.prefix.tree
@@ -264,26 +264,24 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
   }
 
-  def defineExtractor[T: c.WeakTypeTag](url: String): c.Expr[PartitionArgsExtractor[Request[Body]]] = {
+  def defineExtractor[REQ <: Request[Body] : c.WeakTypeTag](url: String): c.Expr[PartitionArgsExtractor[REQ]] = {
     import c.universe._
 
     // todo: test urls with args
-    val t = weakTypeOf[T] // todo, compile time check instead of asInstanceOf?
-    val lst = impl.Helpers.parseUrl(url).map { arg ⇒
-      q"rt.${TermName(arg)}"
+    val t = weakTypeOf[REQ]
+    val lst = impl.Helpers.extractParametersFromUrl(url).map { arg ⇒
+      q"$arg -> ExactValue(r.body.${TermName(arg)}.toString)" // todo remove toString if string
     }
 
     val obj = q"""{
-      (r:Request[Body]) => {
-        val rt = r.asInstanceOf[$t]
-        eu.inn.servicebus.transport.PartitionArgs(Map(
+      import eu.inn.servicebus.transport._
+      (r:$t) => {
+        PartitionArgs(Map(
           ..$lst
         ))
       }
     }"""
 
-    c.Expr[PartitionArgsExtractor[Request[Body]]](obj)
+    c.Expr[PartitionArgsExtractor[REQ]](obj)
   }
-
-
 }

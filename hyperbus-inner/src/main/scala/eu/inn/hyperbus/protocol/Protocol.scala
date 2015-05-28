@@ -174,6 +174,7 @@ trait DynamicBody extends Body with Links{
   lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map()
 }
 
+// todo: too long name
 case class DefaultDynamicBody(content: Value, contentType: Option[String] = None) extends DynamicBody
 
 case class CreatedDynamicBody(content: Value, contentType: Option[String] = None) extends DynamicBody with CreatedBody
