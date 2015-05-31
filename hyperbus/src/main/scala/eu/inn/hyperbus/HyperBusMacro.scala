@@ -1,8 +1,8 @@
 package eu.inn.hyperbus
 
-import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.protocol.annotations.impl.{ContentTypeMarker, UrlMarker}
-import eu.inn.hyperbus.protocol.annotations.method
+import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.rest.annotations.impl.{ContentTypeMarker, UrlMarker}
+import eu.inn.hyperbus.rest.annotations.method
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.PartitionArgs
 
@@ -78,7 +78,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
-      import eu.inn.hyperbus.protocol._
+      import eu.inn.hyperbus.rest._
       import eu.inn.hyperbus.{serialization=>hbs}
       import eu.inn.{servicebus=>sb}
       val thiz = $thiz
@@ -112,7 +112,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
-      import eu.inn.hyperbus.protocol._
+      import eu.inn.hyperbus.rest._
       import eu.inn.hyperbus.{serialization=>hbs}
       import eu.inn.{servicebus=>sb}
       val thiz = $thiz
@@ -227,8 +227,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getResponsesIn(tin: Seq[c.Type]): Seq[c.Type] = {
-    val tOr = typeOf[eu.inn.hyperbus.protocol.|[_,_]].typeSymbol.typeSignature
-    val tAsk = typeOf[eu.inn.hyperbus.protocol.!].typeSymbol.typeSignature
+    val tOr = typeOf[eu.inn.hyperbus.rest.|[_,_]].typeSymbol.typeSignature
+    val tAsk = typeOf[eu.inn.hyperbus.rest.!].typeSymbol.typeSignature
 
     tin.flatMap { t =>
       if (t.typeSymbol.typeSignature <:< tOr) {

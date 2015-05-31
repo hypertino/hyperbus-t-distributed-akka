@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.protocol.annotations
+package eu.inn.hyperbus.rest.annotations
 
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros

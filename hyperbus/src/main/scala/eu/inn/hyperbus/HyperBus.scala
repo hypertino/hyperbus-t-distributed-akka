@@ -2,7 +2,8 @@ package eu.inn.hyperbus
 
 import java.io.InputStream
 
-import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.rest.standard.{DefError, InternalError, DynamicCreatedBody}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
@@ -271,8 +272,8 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     import eu.inn.hyperbus.serialization._
     response.body match {
       case _: ErrorBody => createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
-      case _: CreatedDynamicBody => createEncoder[Response[CreatedDynamicBody]](response.asInstanceOf[Response[CreatedDynamicBody]], outputStream)
-      case _: DefaultDynamicBody => createEncoder[Response[DefaultDynamicBody]](response.asInstanceOf[Response[DefaultDynamicBody]], outputStream)
+      case _: DynamicCreatedBody => createEncoder[Response[DynamicCreatedBody]](response.asInstanceOf[Response[DynamicCreatedBody]], outputStream)
+      case _: DynamicBodyContainer => createEncoder[Response[DynamicBodyContainer]](response.asInstanceOf[Response[DynamicBodyContainer]], outputStream)
       case _ => responseEncoderNotFound(response)
     }
   }
@@ -307,7 +308,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def unhandledRequest(routeKey: String, request: Request[Body]): Future[Response[Body]] = {
     val s = safeLogError("Unhandled request", request, routeKey)
     Future.successful {
-      InternalError(ErrorBody(StandardErrors.HANDLER_NOT_FOUND, Some(s)))
+      InternalError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s)))
     }
   }
 
@@ -319,7 +320,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Future[Response[Body]] = {
     val s = safeLogError("Unhandled exception", request, routeKey)
     Future.successful {
-      InternalError(ErrorBody(StandardErrors.INTERNAL_ERROR, Some(s)))
+      InternalError(ErrorBody(DefError.INTERNAL_ERROR, Some(s)))
     }
   }
 

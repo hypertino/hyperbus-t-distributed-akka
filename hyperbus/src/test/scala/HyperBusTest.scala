@@ -1,7 +1,8 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.rest.standard.{Created, Conflict}
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._

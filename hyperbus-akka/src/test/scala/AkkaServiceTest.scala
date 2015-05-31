@@ -4,12 +4,13 @@ import eu.inn.binders.annotations.fieldName
 import akka.actor.{ActorSystem, Actor}
 import akka.util.Timeout
 import eu.inn.hyperbus.akkaservice.annotations.group
+import eu.inn.hyperbus.rest.standard._
 import scala.concurrent.duration._
 import eu.inn.binders.dynamic.{Null, Value, Text}
 import eu.inn.hyperbus.akkaservice.AkkaHyperService
-import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.protocol.annotations.{url, contentType}
+import eu.inn.hyperbus.rest.annotations.{url, contentType}
 import eu.inn.servicebus.transport.InprocTransport
 import eu.inn.servicebus.ServiceBus
 import org.scalatest.concurrent.ScalaFutures
@@ -29,7 +30,7 @@ case class TestBody2(resourceData: Long) extends Body
 @contentType("application/vnd+created-body.json")
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
-                             StandardLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
+                             DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody with NoContentType
 
 @contentType("application/vnd+test-error-body.json")
@@ -80,7 +81,7 @@ class TestActor extends Actor {
       if (testPost3.body.resourceData == -3)
         NotFound(TestErrorBody("not_found"))
       else
-        Ok(DefaultDynamicBody(Text("another result")))
+        Ok(DynamicBody(Text("another result")))
     }
   }
 }
@@ -143,7 +144,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers{
       val f2 = hyperBus ? TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DefaultDynamicBody(Text("another result"))))
+        r should equal(Ok(DynamicBody(Text("another result"))))
       }
 
       val f3 = hyperBus ? TestPost3(TestBody2(-1))

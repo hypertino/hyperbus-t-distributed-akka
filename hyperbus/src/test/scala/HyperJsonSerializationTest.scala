@@ -1,7 +1,7 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.binders.dynamic.{Text, Obj}
-import eu.inn.hyperbus.protocol.{DynamicBody, DynamicGet, Created}
+import eu.inn.hyperbus.rest.standard.Created
 import eu.inn.hyperbus.serialization.impl.Helpers
 import org.scalatest.{Matchers, FreeSpec}
 

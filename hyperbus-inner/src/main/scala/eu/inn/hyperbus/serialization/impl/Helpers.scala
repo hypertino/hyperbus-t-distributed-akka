@@ -5,7 +5,8 @@ import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 import com.fasterxml.jackson.core.{JsonParser, JsonToken, JsonFactory}
 import eu.inn.binders.core.BindOptions
 import eu.inn.binders.dynamic.Value
-import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, Status}
 import eu.inn.hyperbus.serialization.{DecodeException, ResponseHeader, RequestHeader}
 import eu.inn.servicebus.serialization.{Encoder}
 
@@ -98,10 +99,9 @@ object Helpers {
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       val v = deserializer.unbind[Value]
       responseHeader.status match {
-        case Status.CREATED => CreatedDynamicBody(v, responseHeader.contentType)
-        case _ => DefaultDynamicBody(v, responseHeader.contentType)
+        case Status.CREATED => DynamicCreatedBody(v, responseHeader.contentType)
+        case _ => DynamicBody(v, responseHeader.contentType)
       }
-
     }
   }
 

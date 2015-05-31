@@ -1,7 +1,7 @@
 package eu.inn.hyperbus
 
 import com.fasterxml.jackson.core.JsonParser
-import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.rest._
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{AnyValue, PartitionArgs}
 

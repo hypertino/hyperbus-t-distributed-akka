@@ -3,8 +3,9 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.impl.Helpers
-import eu.inn.hyperbus.protocol._
-import eu.inn.hyperbus.protocol.annotations.{url, contentType}
+import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.rest.annotations.{url, contentType}
+import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.transport.{ExactValue, PartitionArgs, Topic, InprocTransport}
 import org.scalatest.concurrent.ScalaFutures
@@ -37,7 +38,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       )
 
       whenReady(f) { r =>
-        r.body should equal(DefaultDynamicBody(Obj()))
+        r.body should equal(DynamicBody(Obj()))
       }
     }
 
@@ -46,7 +47,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       val hyperBus = new HyperBus(new ServiceBus(null,st))
       hyperBus.on[TestPostPartition1] { post =>
         Future {
-          Ok(DefaultDynamicBody(Obj()))
+          Ok(DynamicBody(Obj()))
         }
       }
 

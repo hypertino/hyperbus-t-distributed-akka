@@ -1,8 +1,10 @@
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.Text
-import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.rest.Link
+import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.protocol.annotations.{url, contentType}
+import eu.inn.hyperbus.rest.annotations.{url, contentType}
+import eu.inn.hyperbus.rest.standard._
 import eu.inn.servicebus.transport.InprocTransport
 import eu.inn.servicebus.ServiceBus
 import org.scalatest.concurrent.ScalaFutures
@@ -19,7 +21,7 @@ case class TestBody2(resourceData: Long) extends Body
 @contentType("application/vnd+created-body.json")
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
-                             StandardLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
+                             DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody with NoContentType
 
 @url("/resources")
@@ -70,7 +72,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
           if (post.body.resourceData == -2)
             Conflict(ErrorBody("failed"))
           else
-            Ok(DefaultDynamicBody(Text("another result")))
+            Ok(DynamicBody(Text("another result")))
         }
       }
 
@@ -83,7 +85,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       val f2 = hyperBus ? TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DefaultDynamicBody(Text("another result"))))
+        r should equal(Ok(DynamicBody(Text("another result"))))
       }
 
       val f3 = hyperBus ? TestPost3(TestBody2(-1))

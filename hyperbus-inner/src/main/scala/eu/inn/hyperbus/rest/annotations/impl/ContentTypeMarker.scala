@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.protocol.annotations.impl
+package eu.inn.hyperbus.rest.annotations.impl
 
 import scala.annotation.StaticAnnotation
 

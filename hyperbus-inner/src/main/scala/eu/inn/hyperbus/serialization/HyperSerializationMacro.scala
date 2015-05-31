@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.serialization
 
-import eu.inn.hyperbus.protocol._
+import eu.inn.hyperbus.rest._
 import eu.inn.servicebus.serialization._
 
 import scala.reflect.macros.blackbox.Context
@@ -27,7 +27,7 @@ private[hyperbus] object HyperSerializationMacro {
     val t = weakTypeOf[T]
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
-    val decoder = if (t <:< typeOf[DynamicRequest]) {
+    val decoder = if (t <:< typeOf[DynamicRequest[_]]) {
       q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicRequest(requestHeader, requestBodyJson)"
     } else {
       val to = t.typeSymbol.companion
