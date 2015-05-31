@@ -9,7 +9,7 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 import scala.language.experimental.macros
 
-trait ServiceBusBase {
+trait ServiceBusApi {
   def ask[OUT, IN](
                     topic: Topic,
                     message: IN,
@@ -35,11 +35,12 @@ trait ServiceBusBase {
   def off(subscriptionId: String): Unit
 }
 
-class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerTransport: ServerTransport)
-  extends ServiceBusBase {
+case class TransportRoute[T](transport: T, urlArg: PartitionArg, partitionArgs: PartitionArgs = PartitionArgs(Map()))
 
-  protected val clientRoutes = new TrieMap[String, ClientTransport]
-  protected val serverRoutes = new TrieMap[String, ServerTransport]
+class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
+                 val serverRoutes: Seq[TransportRoute[ServerTransport]]) extends ServiceBusApi {
+//  protected val clientRoutes = new TrieMap[String, ClientTransport]
+//  protected val serverRoutes = new TrieMap[String, ServerTransport]
   protected val subscriptions = new TrieMap[String, (Topic, String)]
   protected val idCounter = new AtomicLong(0)
 
@@ -113,9 +114,14 @@ class ServiceBus(val defaultClientTransport: ClientTransport, val defaultServerT
     subscriptionId
   }
 
-  protected def lookupServerTransport(topic: Topic): ServerTransport =
-    serverRoutes.getOrElse(topic.url, defaultServerTransport)
+  protected def lookupServerTransport(topic: Topic): ServerTransport = lookupTransport(topic, serverRoutes)
 
-  protected def lookupClientTransport(topic: Topic): ClientTransport =
-    clientRoutes.getOrElse(topic.url, defaultClientTransport)
+  protected def lookupClientTransport(topic: Topic): ClientTransport = lookupTransport(topic, clientRoutes)
+
+  protected def lookupTransport[T](topic: Topic, routes: Seq[TransportRoute[T]]) : T = {
+    routes.find(r ⇒ r.urlArg.matchArg(ExactArg(topic.url)) &&
+      r.partitionArgs.matchArgs(topic.partitionArgs)) map (_.transport) getOrElse {
+      throw new NoTransportRouteException(s"Topic: ${topic.url}/${topic.partitionArgs.toString}")
+    }
+  }
 }

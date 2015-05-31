@@ -31,7 +31,7 @@ low priority:
   + lostResponse response log details
 */
 
-trait HyperBusBase {
+trait HyperBusApi {
   def ask[RESP <: Response[Body], REQ <: Request[Body]](r: REQ,
                                                         requestEncoder: Encoder[REQ],
                                                         partitionArgsExtractor: PartitionArgsExtractor[REQ],
@@ -65,7 +65,7 @@ trait HyperBusBase {
                       bodyDecoder: PartialFunction[ResponseHeader, ResponseBodyDecoder]): Response[Body]
 }
 
-class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusBase {
+class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
   protected val subscriptions = new Subscriptions[SubKey, Subscription[_]]
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)

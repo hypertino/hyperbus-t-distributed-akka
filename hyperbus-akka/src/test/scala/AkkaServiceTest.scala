@@ -11,8 +11,8 @@ import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.transport.InprocTransport
+import eu.inn.servicebus.{TransportRoute, ServiceBus}
+import eu.inn.servicebus.transport.{ServerTransport, AnyArg, ClientTransport, InprocTransport}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -99,11 +99,19 @@ class TestGroupActor extends Actor {
 }
 
 class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
+
+  def newHyperBus = {
+    val tr = new InprocTransport
+    val cr = List(TransportRoute[ClientTransport](tr, AnyArg))
+    val sr = List(TransportRoute[ServerTransport](tr, AnyArg))
+    val serviceBus = new ServiceBus(cr, sr)
+    new HyperBus(serviceBus)
+  }
+
   "AkkaHyperService " - {
     "Send and Receive" in {
       implicit lazy val system = ActorSystem()
-      val tr = new InprocTransport
-      val hyperBus = new HyperBus(new ServiceBus(tr, tr))
+      val hyperBus = newHyperBus
       val actorRef = TestActorRef[TestActor]
       val groupActorRef = TestActorRef[TestGroupActor]
 
@@ -130,8 +138,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Send and Receive multiple responses" in {
       implicit lazy val system = ActorSystem()
-      val tr = new InprocTransport
-      val hyperBus = new HyperBus(new ServiceBus(tr, tr))
+      val hyperBus = newHyperBus
       val actorRef = TestActorRef[TestActor]
       implicit val timeout = Timeout(20.seconds)
       hyperBus.routeTo[TestActor](actorRef)

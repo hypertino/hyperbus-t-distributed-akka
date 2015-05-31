@@ -3,7 +3,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard.{Conflict, Created}
-import eu.inn.servicebus.ServiceBus
+import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
@@ -77,7 +77,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
 
-      val hyperBus = new HyperBus(new ServiceBus(ct, null))
+      val hyperBus = newHyperBus(ct,null)
       val f = hyperBus ? TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
@@ -94,7 +94,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
       )
 
-      val hyperBus = new HyperBus(new ServiceBus(ct, null))
+      val hyperBus = newHyperBus(ct,null)
       val f = hyperBus ? TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
@@ -108,7 +108,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Subscribe (serialize)" in {
       val st = new ServerTransportTest()
-      val hyperBus = new HyperBus(new ServiceBus(null, st))
+      val hyperBus = newHyperBus(null,st)
       hyperBus.on[TestPost1] { post =>
         Future {
           Created(TestCreatedBody("100500"))
@@ -134,7 +134,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Subscribe (serialize exception)" in {
       val st = new ServerTransportTest()
-      val hyperBus = new HyperBus(new ServiceBus(null, st))
+      val hyperBus = newHyperBus(null,st)
       hyperBus.on[TestPost1] { post =>
         Future {
           throw new Conflict(ErrorBody("failed", errorId = "abcde12345"))
@@ -157,5 +157,12 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         )
       }
     }
+  }
+
+  def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
+    val cr = List(TransportRoute(ct, AnyArg))
+    val sr = List(TransportRoute(st, AnyArg))
+    val serviceBus = new ServiceBus(cr, sr)
+    new HyperBus(serviceBus)
   }
 }

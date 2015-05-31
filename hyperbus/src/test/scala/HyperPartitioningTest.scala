@@ -6,8 +6,8 @@ import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
-import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.transport.{ExactValue, PartitionArgs, Topic}
+import eu.inn.servicebus.{TransportRoute, ServiceBus}
+import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -31,11 +31,11 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
         """{"response":{"status":200},"body":{}}"""
       )
 
-      val hyperBus = new HyperBus(new ServiceBus(ct, null))
+      val hyperBus = newHyperBus(ct, null)
       val f = hyperBus ? TestPostPartition1(TestPartition("1", "ha"))
 
       ct.inputTopic should equal(
-        Topic("/resources/{partitionId}", PartitionArgs(Map("partitionId" → ExactValue("1"))))
+        Topic("/resources/{partitionId}", PartitionArgs(Map("partitionId" → ExactArg("1"))))
       )
 
       whenReady(f) { r =>
@@ -45,7 +45,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
     "Partitioning when serving" in {
       val st = new ServerTransportTest()
-      val hyperBus = new HyperBus(new ServiceBus(null, st))
+      val hyperBus = newHyperBus(null, st)
       hyperBus.on[TestPostPartition1] { post =>
         Future {
           Ok(DynamicBody(Obj()))
@@ -59,7 +59,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
       val partitionArgs = st.sExtractor(msg)
       partitionArgs should equal(
-        PartitionArgs(Map("partitionId" → ExactValue("123")))
+        PartitionArgs(Map("partitionId" → ExactArg("123")))
       )
     }
 
@@ -71,5 +71,12 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       p("x/{abc}/y/{def}") should equal(Seq("abc", "def"))
       p("{abc}{def}") should equal(Seq("abc", "def"))
     }
+  }
+
+  def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
+    val cr = List(TransportRoute(ct, AnyArg))
+    val sr = List(TransportRoute(st, AnyArg))
+    val serviceBus = new ServiceBus(cr, sr)
+    new HyperBus(serviceBus)
   }
 }

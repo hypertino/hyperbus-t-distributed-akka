@@ -269,7 +269,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     // todo: test urls with args
     val t = weakTypeOf[REQ]
     val lst = impl.Helpers.extractParametersFromUrl(url).map { arg ⇒
-      q"$arg -> ExactValue(r.body.${TermName(arg)}.toString)" // todo remove toString if string
+      q"$arg -> ExactArg(r.body.${TermName(arg)}.toString)" // todo remove toString if string
     }
 
     val obj = q"""{

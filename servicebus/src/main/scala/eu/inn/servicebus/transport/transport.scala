@@ -7,6 +7,7 @@ import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.matching.Regex
 
 trait PublishResult {
 }
@@ -15,20 +16,27 @@ trait PartitionArg {
   def matchArg(arg: PartitionArg): Boolean
 }
 
-case object AnyValue extends PartitionArg {
+case object AnyArg extends PartitionArg {
   def matchArg(arg: PartitionArg) = true
 }
 
-case class ExactValue(value: String) extends PartitionArg {
-  def matchArg(arg: PartitionArg) = arg match {
-    case ExactValue(argValue) ⇒ argValue == value
-    case AnyValue ⇒ true
-    case _ ⇒ false
+case class ExactArg(value: String) extends PartitionArg {
+  def matchArg(other: PartitionArg) = other match {
+    case ExactArg(otherValue) ⇒ otherValue == value
+    case _ ⇒ other.matchArg(this)
+  }
+}
+
+case class RegexArg(value: String) extends PartitionArg {
+  lazy val valueRegex = new Regex(value)
+  def matchArg(other: PartitionArg) = other match {
+    case ExactArg(otherValue) ⇒ valueRegex.findFirstMatchIn(otherValue).isDefined
+    case RegexArg(otherValue) ⇒ otherValue == value
+    case _ ⇒ other.matchArg(this)
   }
 }
 
 // case class ExactPartition(partition: String) extends PartitionArg -- kafka?
-// case class RegExValue(regex: String) extends PartitionValue
 
 case class PartitionArgs(args: Map[String, PartitionArg]) {
   def matchArgs(other: PartitionArgs): Boolean = {
@@ -36,7 +44,7 @@ case class PartitionArgs(args: Map[String, PartitionArg]) {
       other.args.get(k).map { av ⇒
         av.matchArg(v)
       } getOrElse {
-        v == AnyValue
+        v == AnyArg
       }
     }.forall(r => r)
   }

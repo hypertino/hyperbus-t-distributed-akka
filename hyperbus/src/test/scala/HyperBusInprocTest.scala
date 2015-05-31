@@ -4,8 +4,8 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest.{Link, _}
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.transport.InprocTransport
+import eu.inn.servicebus.{TransportRoute, ServiceBus}
+import eu.inn.servicebus.transport.{ServerTransport, AnyArg, ClientTransport, InprocTransport}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -41,8 +41,8 @@ with DefinedResponse[
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "Send and Receive" in {
-      val tr = new InprocTransport
-      val hyperBus = new HyperBus(new ServiceBus(tr, tr))
+
+      val hyperBus = newHyperBus()
 
       hyperBus.on[TestPost1] { post =>
         Future {
@@ -58,8 +58,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
     }
 
     "Send and Receive multiple responses" in {
-      val tr = new InprocTransport
-      val hyperBus = new HyperBus(new ServiceBus(tr, tr))
+      val hyperBus = newHyperBus()
 
       hyperBus.on[TestPost3] { post =>
         Future {
@@ -100,5 +99,13 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
         r shouldBe a[Conflict[_]]
       }
     }
+  }
+
+  def newHyperBus() = {
+    val tr = new InprocTransport
+    val cr = List(TransportRoute[ClientTransport](tr, AnyArg))
+    val sr = List(TransportRoute[ServerTransport](tr, AnyArg))
+    val serviceBus = new ServiceBus(cr, sr)
+    new HyperBus(serviceBus)
   }
 }

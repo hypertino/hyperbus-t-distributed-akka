@@ -1,6 +1,6 @@
-import eu.inn.servicebus.ServiceBus
+import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{InprocTransport, NoTransportRouteException, PartitionArgs, Topic}
+import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -11,7 +11,9 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
   "ServiceBus " - {
     "Send and Receive" in {
       val tr = new InprocTransport
-      val serviceBus = new ServiceBus(tr, tr)
+      val cr = List(TransportRoute[ClientTransport](tr, AnyArg))
+      val sr = List(TransportRoute[ServerTransport](tr, AnyArg))
+      val serviceBus = new ServiceBus(cr, sr)
 
       val id = serviceBus.on[String, Int](Topic("topic", PartitionArgs(Map())), mockExtractor[Int]) { s =>
         Future {

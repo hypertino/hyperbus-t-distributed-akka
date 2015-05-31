@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.impl
 
-import eu.inn.servicebus.transport.{AnyValue, PartitionArgs, Topic}
+import eu.inn.servicebus.transport.{AnyArg, PartitionArgs, Topic}
 
 import scala.collection.mutable
 
@@ -35,5 +35,5 @@ object Helpers {
     result.toSeq
   }
 
-  def topicWithAllPartitions(url: String): Topic = Topic(url, PartitionArgs(extractParametersFromUrl(url).map(_ → AnyValue).toMap))
+  def topicWithAllPartitions(url: String): Topic = Topic(url, PartitionArgs(extractParametersFromUrl(url).map(_ → AnyArg).toMap))
 }
