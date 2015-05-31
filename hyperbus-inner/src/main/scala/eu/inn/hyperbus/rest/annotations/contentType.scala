@@ -1,7 +1,6 @@
 package eu.inn.hyperbus.rest.annotations
 
-import scala.annotation.StaticAnnotation
-import scala.annotation.compileTimeOnly
+import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
 
 

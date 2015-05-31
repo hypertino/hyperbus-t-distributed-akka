@@ -4,9 +4,7 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.impl.{ContentTypeMarker, UrlMarker}
 import eu.inn.hyperbus.rest.annotations.method
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.PartitionArgs
 
-import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
 
@@ -56,6 +54,7 @@ private[hyperbus] object HyperBusMacro {
 
 private[hyperbus] trait HyperBusMacroImplementation {
   val c: Context
+
   import c.universe._
 
   def on[IN <: Request[Body] : c.WeakTypeTag]
@@ -69,7 +68,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val (method: String, bodySymbol) = getMethodAndBody(in)
 
     val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
-    val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot{
+    val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot {
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       cq"_: $body => hbs.createEncoder[Response[$body]].asInstanceOf[hbs.ResponseEncoder]"
@@ -141,7 +140,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
 
     val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
-    val bodyCases: Seq[c.Tree] = responseBodyTypes.filterNot{
+    val bodyCases: Seq[c.Tree] = responseBodyTypes.filterNot {
       _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
@@ -192,7 +191,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getUniqueResponseBodies(t: c.Type): Seq[c.Type] = {
-    getResponses(t).foldLeft(Seq[c.Type]())((seq,el) => {
+    getResponses(t).foldLeft(Seq[c.Type]())((seq, el) => {
       val bodyType = el.typeArgs.head
       if (!seq.exists(_ =:= bodyType)) {
         seq ++ Seq(el.typeArgs.head)
@@ -227,7 +226,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getResponsesIn(tin: Seq[c.Type]): Seq[c.Type] = {
-    val tOr = typeOf[eu.inn.hyperbus.rest.|[_,_]].typeSymbol.typeSignature
+    val tOr = typeOf[eu.inn.hyperbus.rest.|[_, _]].typeSymbol.typeSignature
     val tAsk = typeOf[eu.inn.hyperbus.rest.!].typeSymbol.typeSignature
 
     tin.flatMap { t =>

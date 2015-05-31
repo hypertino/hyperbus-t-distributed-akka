@@ -7,11 +7,8 @@ import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, ResponseHeader}
-import eu.inn.servicebus.transport.{Topic, AnyValue, PartitionArgs}
 
-import scala.collection.mutable
-
-private [hyperbus] object HyperBusUtils {
+private[hyperbus] object HyperBusUtils {
   // todo: Generic Errors and Responses
   // handle non-standrard status
   def createResponse(responseHeader: ResponseHeader, body: Body): Response[Body] = {

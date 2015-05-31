@@ -4,12 +4,14 @@ import scala.collection.concurrent.TrieMap
 
 trait ComplexElement[ME, REMOVE] {
   def upsert(upsertPart: ME): ME
+
   def remove(removePart: REMOVE): ME
+
   def isEmpty: Boolean
 }
 
 class ComplexTrieMap[K, REMOVE, V <: ComplexElement[V, REMOVE]] {
-  protected val map = new TrieMap[K,V]
+  protected val map = new TrieMap[K, V]
 
   def get(key: K): Option[V] = map.get(key)
 

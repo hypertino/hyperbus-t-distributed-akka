@@ -1,6 +1,6 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import org.scalatest.{Matchers, FreeSpec}
+import org.scalatest.{FreeSpec, Matchers}
 
 case class TestMsg(x: String, y: Int)
 
@@ -9,7 +9,7 @@ class JsonSerializationTest extends FreeSpec with Matchers {
     "Encode" in {
       val encoder = eu.inn.servicebus.serialization.createEncoder[TestMsg]
       val ba = new ByteArrayOutputStream()
-      encoder(TestMsg("yo",1),ba)
+      encoder(TestMsg("yo", 1), ba)
       ba.toString("UTF8") should equal("""{"x":"yo","y":1}""")
     }
     "Decode" in {
@@ -17,7 +17,7 @@ class JsonSerializationTest extends FreeSpec with Matchers {
       val is = new ByteArrayInputStream(str.getBytes("UTF8"))
       val decoder = eu.inn.servicebus.serialization.createDecoder[TestMsg]
       val t = decoder(is)
-      t should equal(TestMsg("yo",1))
+      t should equal(TestMsg("yo", 1))
     }
   }
 }

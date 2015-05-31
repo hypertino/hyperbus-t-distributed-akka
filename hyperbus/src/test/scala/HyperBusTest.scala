@@ -2,7 +2,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard.{Created, Conflict}
+import eu.inn.hyperbus.rest.standard.{Conflict, Created}
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
@@ -17,6 +17,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
   private var inputTopicVar: Topic = null
 
   def input = messageBuf.toString()
+
   def inputTopic = inputTopicVar
 
   override def ask[OUT, IN](topic: Topic, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = {
@@ -31,7 +32,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
   }
 
   override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[PublishResult] = {
-    ask[Any,IN](topic, message, inputEncoder, null) map { x =>
+    ask[Any, IN](topic, message, inputEncoder, null) map { x =>
       new PublishResult {
       }
     }
@@ -76,10 +77,10 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
 
-      val hyperBus = new HyperBus(new ServiceBus(ct,null))
+      val hyperBus = new HyperBus(new ServiceBus(ct, null))
       val f = hyperBus ? TestPost1(TestBody1("ha ha"))
 
-      ct.input should equal (
+      ct.input should equal(
         """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
       )
 
@@ -93,21 +94,21 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
       )
 
-      val hyperBus = new HyperBus(new ServiceBus(ct,null))
+      val hyperBus = new HyperBus(new ServiceBus(ct, null))
       val f = hyperBus ? TestPost1(TestBody1("ha ha"))
 
-      ct.input should equal (
+      ct.input should equal(
         """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f.failed) { r =>
-        r should equal (Conflict(ErrorBody("failed",errorId="abcde12345")))
+        r should equal(Conflict(ErrorBody("failed", errorId = "abcde12345")))
       }
     }
 
     "Subscribe (serialize)" in {
       val st = new ServerTransportTest()
-      val hyperBus = new HyperBus(new ServiceBus(null,st))
+      val hyperBus = new HyperBus(new ServiceBus(null, st))
       hyperBus.on[TestPost1] { post =>
         Future {
           Created(TestCreatedBody("100500"))
@@ -133,7 +134,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Subscribe (serialize exception)" in {
       val st = new ServerTransportTest()
-      val hyperBus = new HyperBus(new ServiceBus(null,st))
+      val hyperBus = new HyperBus(new ServiceBus(null, st))
       hyperBus.on[TestPost1] { post =>
         Future {
           throw new Conflict(ErrorBody("failed", errorId = "abcde12345"))
@@ -147,7 +148,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val hres = st.sHandler(msg)
       whenReady(hres.futureResult) { r =>
-        r shouldBe a [Conflict[_]]
+        r shouldBe a[Conflict[_]]
         val ba = new ByteArrayOutputStream()
         hres.resultEncoder(r, ba)
         val s = ba.toString("UTF-8")

@@ -1,13 +1,13 @@
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.io.ByteArrayInputStream
 
-import eu.inn.binders.dynamic.{Obj, Text}
+import eu.inn.binders.dynamic.Obj
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{url, contentType}
+import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
 import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.transport.{ExactValue, PartitionArgs, Topic, InprocTransport}
+import eu.inn.servicebus.transport.{ExactValue, PartitionArgs, Topic}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -22,6 +22,7 @@ with DefinedResponse[Ok[DynamicBody]]
 
 
 class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
+
   import scala.concurrent.ExecutionContext.Implicits.global
 
   "HyperPartitioning " - {
@@ -30,10 +31,10 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
         """{"response":{"status":200},"body":{}}"""
       )
 
-      val hyperBus = new HyperBus(new ServiceBus(ct,null))
+      val hyperBus = new HyperBus(new ServiceBus(ct, null))
       val f = hyperBus ? TestPostPartition1(TestPartition("1", "ha"))
 
-      ct.inputTopic should equal (
+      ct.inputTopic should equal(
         Topic("/resources/{partitionId}", PartitionArgs(Map("partitionId" → ExactValue("1"))))
       )
 
@@ -44,7 +45,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
     "Partitioning when serving" in {
       val st = new ServerTransportTest()
-      val hyperBus = new HyperBus(new ServiceBus(null,st))
+      val hyperBus = new HyperBus(new ServiceBus(null, st))
       hyperBus.on[TestPostPartition1] { post =>
         Future {
           Ok(DynamicBody(Obj()))

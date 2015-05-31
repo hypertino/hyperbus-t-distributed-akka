@@ -1,14 +1,14 @@
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.Text
-import eu.inn.hyperbus.rest.Link
-import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.rest.annotations.{url, contentType}
+import eu.inn.hyperbus.rest.{Link, _}
+import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.servicebus.transport.InprocTransport
 import eu.inn.servicebus.ServiceBus
+import eu.inn.servicebus.transport.InprocTransport
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{Matchers, FreeSpec}
+import org.scalatest.{FreeSpec, Matchers}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -35,14 +35,14 @@ with DefinedResponse[Created[TestCreatedBody]]
 @url("/resources")
 case class TestPost3(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[
-    | [Ok[DynamicBody], | [Created[TestCreatedBody], !]]
+  |[Ok[DynamicBody], |[Created[TestCreatedBody], !]]
   ]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "Send and Receive" in {
       val tr = new InprocTransport
-      val hyperBus = new HyperBus(new ServiceBus(tr,tr))
+      val hyperBus = new HyperBus(new ServiceBus(tr, tr))
 
       hyperBus.on[TestPost1] { post =>
         Future {
@@ -59,7 +59,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Send and Receive multiple responses" in {
       val tr = new InprocTransport
-      val hyperBus = new HyperBus(new ServiceBus(tr,tr))
+      val hyperBus = new HyperBus(new ServiceBus(tr, tr))
 
       hyperBus.on[TestPost3] { post =>
         Future {
@@ -91,13 +91,13 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       val f3 = hyperBus ? TestPost3(TestBody2(-1))
 
       whenReady(f3.failed) { r =>
-        r shouldBe a [Conflict[_]]
+        r shouldBe a[Conflict[_]]
       }
 
       val f4 = hyperBus ? TestPost3(TestBody2(-2))
 
       whenReady(f4.failed) { r =>
-        r shouldBe a [Conflict[_]]
+        r shouldBe a[Conflict[_]]
       }
     }
   }

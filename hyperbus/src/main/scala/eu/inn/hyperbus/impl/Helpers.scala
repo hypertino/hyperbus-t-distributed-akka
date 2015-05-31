@@ -12,7 +12,7 @@ object Helpers {
     val result = new mutable.MutableList[String]
     val buf = new mutable.StringBuilder
 
-    url.foreach{c ⇒
+    url.foreach { c ⇒
       state match {
         case DEFAULT ⇒
           c match {

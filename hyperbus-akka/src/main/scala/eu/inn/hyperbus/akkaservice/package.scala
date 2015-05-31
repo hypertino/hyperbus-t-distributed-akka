@@ -10,4 +10,5 @@ package object akkaservice {
     // todo: + implicit route options (groupName mapping to runtime group)
     def routeTo[A](actorRef: ActorRef): List[String] = macro AkkaHyperServiceMacro.routeTo[A]
   }
+
 }

@@ -1,14 +1,14 @@
 package eu.inn.servicebus
 
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{Topic, PublishResult}
+import eu.inn.servicebus.transport.{PublishResult, Topic}
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
 
 private[servicebus] object ServiceBusMacro {
   def ask[OUT: c.WeakTypeTag, IN: c.WeakTypeTag](c: Context)(topic: c.Expr[Topic],
-                                                              message: c.Expr[IN]): c.Expr[Future[OUT]] = {
+                                                             message: c.Expr[IN]): c.Expr[Future[OUT]] = {
     import c.universe._
 
     val thiz = c.prefix.tree
@@ -27,7 +27,7 @@ private[servicebus] object ServiceBusMacro {
   }
 
   def publish[IN: c.WeakTypeTag](c: Context)
-                                (topic: c.Expr[Topic],message: c.Expr[IN]): c.Expr[Future[PublishResult]] = {
+                                (topic: c.Expr[Topic], message: c.Expr[IN]): c.Expr[Future[PublishResult]] = {
     import c.universe._
 
     val thiz = c.prefix.tree
@@ -44,9 +44,9 @@ private[servicebus] object ServiceBusMacro {
   }
 
   def on[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]
-    (c: Context)
-    (topic: c.Expr[Topic], partitionArgsExtractor: c.Expr[PartitionArgsExtractor[IN]])
-    (handler: c.Expr[(IN) => Future[OUT]]): c.Expr[String] = {
+  (c: Context)
+  (topic: c.Expr[Topic], partitionArgsExtractor: c.Expr[PartitionArgsExtractor[IN]])
+  (handler: c.Expr[(IN) => Future[OUT]]): c.Expr[String] = {
 
     import c.universe._
 

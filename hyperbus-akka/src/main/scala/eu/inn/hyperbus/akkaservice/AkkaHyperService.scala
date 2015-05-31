@@ -57,7 +57,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
   import c.universe._
 
-  def route[A: c.WeakTypeTag] (hyperBus: c.Tree, actorRef: c.Tree): c.Tree = {
+  def route[A: c.WeakTypeTag](hyperBus: c.Tree, actorRef: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
       c.abort(c.enclosingPosition, s"No suitable 'on' or 'subscribe' method is defined in ${weakTypeOf[A]}")
@@ -66,7 +66,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     val typ = weakTypeOf[A]
     //val defaultGroup = groupName map { s ⇒ q"Some($s)" } getOrElse q"None"
 
-    val subscriptions = onMethods map { m⇒
+    val subscriptions = onMethods map { m ⇒
       val arg = m.paramLists.head.head
       val argType = arg.typeSignatureIn(typ)
       getGroupAnnotation(m).map { groupName ⇒
@@ -98,7 +98,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   }
 
 
-  def dispatch[A: c.WeakTypeTag] (actor: c.Tree): c.Tree = {
+  def dispatch[A: c.WeakTypeTag](actor: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
       c.abort(c.enclosingPosition, s"No suitable 'on' or 'subscribe' method is defined in ${weakTypeOf[A]}")
@@ -106,7 +106,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
     val typ = weakTypeOf[A]
 
-    val cases = onMethods map { m⇒
+    val cases = onMethods map { m ⇒
       val methodName = m.asMethod.name
       val arg = m.paramLists.head.head
       val argType = arg.typeSignatureIn(typ)
@@ -139,7 +139,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       //println("method: " + member.name.decoded + " params: " + m.paramss)
       m.returnType.typeSymbol.typeSignature <:< fts &&
         ((m.paramLists.size == 1 && m.paramLists.head.size == 1) ||
-        (m.paramLists.size == 2 && m.paramLists.head.size == 1 && allImplicits(m.paramLists.tail)))
+          (m.paramLists.size == 2 && m.paramLists.head.size == 1 && allImplicits(m.paramLists.tail)))
     }
     ).map(_.asInstanceOf[MethodSymbol]).toList
   }

@@ -1,36 +1,37 @@
 package eu.inn.hyperbus.serialization.impl
 
-import java.io.{ByteArrayInputStream, InputStream, OutputStream}
+import java.io.{InputStream, OutputStream}
 
-import com.fasterxml.jackson.core.{JsonParser, JsonToken, JsonFactory}
+import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import eu.inn.binders.core.BindOptions
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, Status}
-import eu.inn.hyperbus.serialization.{DecodeException, ResponseHeader, RequestHeader}
-import eu.inn.servicebus.serialization.{Encoder}
+import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, ResponseHeader}
+import eu.inn.servicebus.serialization.Encoder
 
 object Helpers {
+
   import eu.inn.binders.json._
 
   implicit val bindOptions = new BindOptions(true)
 
   def encodeMessage[B <: Body](request: Request[B], bodyEncoder: Encoder[B], out: OutputStream) = {
     val req = RequestHeader(request.url, request.method, request.body.contentType)
-    writeUtf8("""{"request":""",out)
+    writeUtf8("""{"request":""", out)
     req.writeJson(out)
-    writeUtf8(""","body":""",out)
+    writeUtf8(""","body":""", out)
     bodyEncoder(request.body, out)
-    writeUtf8("}",out)
+    writeUtf8("}", out)
   }
 
   def encodeMessage[B <: Body](response: Response[B], bodyEncoder: Encoder[B], out: OutputStream) = {
     val resp = ResponseHeader(response.status, response.body.contentType)
-    writeUtf8("""{"response":""",out)
+    writeUtf8("""{"response":""", out)
     resp.writeJson(out)
-    writeUtf8(""","body":""",out)
+    writeUtf8(""","body":""", out)
     bodyEncoder(response.body, out)
-    writeUtf8("}",out)
+    writeUtf8("}", out)
   }
 
   def decodeRequestWith[REQ <: Request[Body]](inputStream: InputStream)(decoder: (RequestHeader, JsonParser) => REQ): REQ = {
@@ -43,7 +44,7 @@ object Helpers {
       val fieldName = jp.getCurrentName
       val requestHeader =
         if (fieldName == "request") {
-          factory.withJsonParser(jp) { deserializer=>
+          factory.withJsonParser(jp) { deserializer =>
             deserializer.unbind[RequestHeader]
           }
         } else {
@@ -74,7 +75,7 @@ object Helpers {
       val fieldName = jp.getCurrentName
       val responseHeader =
         if (fieldName == "response") {
-          factory.withJsonParser(jp) { deserializer=>
+          factory.withJsonParser(jp) { deserializer =>
             deserializer.unbind[ResponseHeader]
           }
         } else {
@@ -117,7 +118,7 @@ object Helpers {
     if (next != token) throw DecodeException(s"$token expected at $loc, but found: $next")
   }
 
-  private def writeUtf8(s:String, out: OutputStream) = {
+  private def writeUtf8(s: String, out: OutputStream) = {
     out.write(s.getBytes("UTF8"))
   }
 }
