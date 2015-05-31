@@ -58,6 +58,7 @@ case object EmptyBody extends Body {
 // --------------- Response Groups ---------------
 
 trait NormalResponse[+B <: Body] extends Response[B]
+trait RedirectResponse[+B <: Body] extends Response[B]
 
 trait ErrorBodyTrait extends Body {
   def code: String

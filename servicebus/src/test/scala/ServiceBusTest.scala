@@ -1,5 +1,6 @@
 import java.io.OutputStream
 
+import eu.inn.binders.naming.{SnakeCaseToPascalCaseConverter, SnakeCaseToCamelCaseConverter}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{PartitionArgs, Topic, NoTransportRouteException, InprocTransport}
 import eu.inn.servicebus.ServiceBus
@@ -7,7 +8,6 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-
 
 class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
   "ServiceBus " - {
@@ -34,6 +34,7 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
   }
+
   def mockExtractor[T]: PartitionArgsExtractor[T] = {
     (x:T) => PartitionArgs(Map())
   }

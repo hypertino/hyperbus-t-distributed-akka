@@ -3,7 +3,7 @@ package eu.inn.hyperbus
 import java.io.InputStream
 
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard.{DefError, InternalError, DynamicCreatedBody}
+import eu.inn.hyperbus.rest.standard.{InternalServerError, DefError, DynamicCreatedBody}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
@@ -308,7 +308,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def unhandledRequest(routeKey: String, request: Request[Body]): Future[Response[Body]] = {
     val s = safeLogError("Unhandled request", request, routeKey)
     Future.successful {
-      InternalError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s)))
+      InternalServerError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s)))
     }
   }
 
@@ -320,7 +320,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Future[Response[Body]] = {
     val s = safeLogError("Unhandled exception", request, routeKey)
     Future.successful {
-      InternalError(ErrorBody(DefError.INTERNAL_ERROR, Some(s)))
+      InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(s)))
     }
   }
 

@@ -6,12 +6,54 @@ import eu.inn.hyperbus.rest._
 object Status {
   val OK = 200
   val CREATED = 201
+  val ACCEPTED = 202
+  val NON_AUTHORITATIVE_INFORMATION = 203
+  val NO_CONTENT = 204
+  val RESET_CONTENT = 205
+  val PARTIAL_CONTENT = 206
+  val MULTI_STATUS = 207
 
-  val NOT_FOUND=404
-  val CONFLICT=409
+  val MULTIPLE_CHOICES = 300
+  val MOVED_PERMANENTLY = 301
+  val FOUND = 302
+  val SEE_OTHER = 303
+  val NOT_MODIFIED = 304
+  val USE_PROXY = 305
+  val TEMPORARY_REDIRECT = 307
 
-  val INTERNAL_ERROR=500
+  val BAD_REQUEST = 400
+  val UNAUTHORIZED = 401
+  val PAYMENT_REQUIRED = 402
+  val FORBIDDEN = 403
+  val NOT_FOUND = 404
+  val METHOD_NOT_ALLOWED = 405
+  val NOT_ACCEPTABLE = 406
+  val PROXY_AUTHENTICATION_REQUIRED = 407
+  val REQUEST_TIMEOUT = 408
+  val CONFLICT = 409
+  val GONE = 410
+  val LENGTH_REQUIRED = 411
+  val PRECONDITION_FAILED = 412
+  val REQUEST_ENTITY_TOO_LARGE = 413
+  val REQUEST_URI_TOO_LONG = 414
+  val UNSUPPORTED_MEDIA_TYPE = 415
+  val REQUESTED_RANGE_NOT_SATISFIABLE = 416
+  val EXPECTATION_FAILED = 417
+  val UNPROCESSABLE_ENTITY = 422
+  val LOCKED = 423
+  val FAILED_DEPENDENCY = 424
+  val TOO_MANY_REQUEST = 429
+
+  val INTERNAL_SERVER_ERROR = 500
+  val NOT_IMPLEMENTED = 501
+  val BAD_GATEWAY = 502
+  val SERVICE_UNAVAILABLE = 503
+  val GATEWAY_TIMEOUT = 504
+  val HTTP_VERSION_NOT_SUPPORTED = 505
+  val INSUFFICIENT_STORAGE = 507
 }
+
+// ----------------- Normal responses -----------------
 
 case class Ok[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
   override def status: Int = Status.OK
@@ -27,9 +69,82 @@ case class Created[+B <: CreatedBody](body: B) extends Response[B] with NormalRe
 
 case class DynamicCreatedBody(content: Value, contentType: Option[String] = None) extends DynamicBody with CreatedBody
 
-case class InternalError[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.INTERNAL_ERROR
+case class Accepted[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+  override def status: Int = Status.ACCEPTED
+}
+
+case class NonAuthoritativeInformation[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+  override def status: Int = Status.NON_AUTHORITATIVE_INFORMATION
+}
+
+case class NoContent[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+  override def status: Int = Status.NO_CONTENT
+}
+
+case class ResetContent[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+  override def status: Int = Status.RESET_CONTENT
+}
+
+case class PartialContent[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+  override def status: Int = Status.PARTIAL_CONTENT
+}
+
+case class MultiStatus[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+  override def status: Int = Status.MULTI_STATUS
+}
+
+// ----------------- Redirect responses -----------------
+
+// todo: URL for redirects like for created?
+
+case class MultipleChoices[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
+  override def status: Int = Status.MULTIPLE_CHOICES
+}
+
+case class MovedPermanently[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
+  override def status: Int = Status.MOVED_PERMANENTLY
+}
+
+case class Found[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
+  override def status: Int = Status.FOUND
+}
+
+case class SeeOther[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
+  override def status: Int = Status.SEE_OTHER
+}
+
+case class NotModified[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
+  override def status: Int = Status.NOT_MODIFIED
+}
+
+case class UseProxy[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
+  override def status: Int = Status.USE_PROXY
+}
+
+case class TemporaryRedirect[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
+  override def status: Int = Status.TEMPORARY_REDIRECT
+}
+
+// ----------------- Client Error responses -----------------
+
+case class BadRequest[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.BAD_REQUEST
+}
+
+case class Unauthorized[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.UNAUTHORIZED
+}
+
+case class PaymentRequired[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.PAYMENT_REQUIRED
+}
+
+case class Forbidden[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.FORBIDDEN
 }
 
 case class NotFound[+B <: ErrorBodyTrait](body: B)
@@ -37,8 +152,124 @@ case class NotFound[+B <: ErrorBodyTrait](body: B)
   override def status: Int = Status.NOT_FOUND
 }
 
+case class MethodNotAllowed[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.METHOD_NOT_ALLOWED
+}
+
+case class NotAcceptable[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.NOT_ACCEPTABLE
+}
+
+case class ProxyAuthenticationRequired[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.PROXY_AUTHENTICATION_REQUIRED
+}
+
+case class RequestTimeout[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.REQUEST_TIMEOUT
+}
+
 case class Conflict[+B <: ErrorBodyTrait](body: B)
   extends RuntimeException(body.message) with Response[B] with ClientError[B] {
   override def status: Int = Status.CONFLICT
 }
 
+case class Gone[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.GONE
+}
+
+case class LengthRequired[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.LENGTH_REQUIRED
+}
+
+case class PreconditionFailed[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.PRECONDITION_FAILED
+}
+
+case class RequestEntityTooLarge[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.REQUEST_ENTITY_TOO_LARGE
+}
+
+case class RequestUriTooLong[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.REQUEST_URI_TOO_LONG
+}
+
+case class UnsupportedMediaType[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.UNSUPPORTED_MEDIA_TYPE
+}
+
+case class RequestedRangeNotSatisfiable[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.REQUESTED_RANGE_NOT_SATISFIABLE
+}
+
+case class ExpectationFailed[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.EXPECTATION_FAILED
+}
+
+case class UnprocessableEntity[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.UNPROCESSABLE_ENTITY
+}
+
+case class Locked[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.LOCKED
+}
+
+case class FailedDependency[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.FAILED_DEPENDENCY
+}
+
+case class TooManyRequest[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
+  override def status: Int = Status.TOO_MANY_REQUEST
+}
+
+// ----------------- Server Error responses -----------------
+
+case class InternalServerError[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
+  override def status: Int = Status.INTERNAL_SERVER_ERROR
+}
+
+case class NotImplemented[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
+  override def status: Int = Status.NOT_IMPLEMENTED
+}
+
+case class BadGateway[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
+  override def status: Int = Status.BAD_GATEWAY
+}
+
+case class ServiceUnavailable[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
+  override def status: Int = Status.SERVICE_UNAVAILABLE
+}
+
+case class GatewayTimeout[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
+  override def status: Int = Status.GATEWAY_TIMEOUT
+}
+
+case class HttpVersionNotSupported[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
+  override def status: Int = Status.HTTP_VERSION_NOT_SUPPORTED
+}
+
+case class InsufficientStorage[+B <: ErrorBodyTrait](body: B)
+  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
+  override def status: Int = Status.INSUFFICIENT_STORAGE
+}
