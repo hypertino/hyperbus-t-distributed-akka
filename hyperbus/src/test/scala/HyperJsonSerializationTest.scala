@@ -10,6 +10,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
   "HyperJsonSerialization " - {
     "Serialize Body" in {
       import eu.inn.binders.json._
+      import Helpers.bindOptions // by default skip null fields
       val body = TestCreatedBody("100500")
       val s = body.toJson
       s should equal("""{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}""")

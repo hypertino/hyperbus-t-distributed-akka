@@ -23,9 +23,13 @@ javacOptions ++= Seq(
   "-Xlint:deprecation"
 )
 
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("public")
+)
+
 libraryDependencies ++= Seq(
-  "eu.inn" %% "binders-core" % "0.5.12",
-  "eu.inn" %% "binders-json" % "0.5.12",
+  "eu.inn" %% "binders-core" % "0.6.55",
+  "eu.inn" %% "binders-json" % "0.6.34",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test"
 )

@@ -13,6 +13,7 @@ private[hyperbus] object HyperSerializationMacro {
 
     val obj = q"""
       (t: $t, out: java.io.OutputStream) => {
+        import eu.inn.hyperbus.serialization.impl.Helpers.bindOptions
         val bodyEncoder = eu.inn.servicebus.serialization.createEncoder[$tBody]
         eu.inn.hyperbus.serialization.impl.Helpers.encodeMessage(t, bodyEncoder, out)
       }

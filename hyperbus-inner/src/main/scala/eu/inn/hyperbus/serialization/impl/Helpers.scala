@@ -3,6 +3,7 @@ package eu.inn.hyperbus.serialization.impl
 import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 
 import com.fasterxml.jackson.core.{JsonParser, JsonToken, JsonFactory}
+import eu.inn.binders.core.BindOptions
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.protocol._
 import eu.inn.hyperbus.serialization.{DecodeException, ResponseHeader, RequestHeader}
@@ -10,6 +11,8 @@ import eu.inn.servicebus.serialization.{Encoder}
 
 object Helpers {
   import eu.inn.binders.json._
+
+  implicit val bindOptions = new BindOptions(true)
 
   def encodeMessage[B <: Body](request: Request[B], bodyEncoder: Encoder[B], out: OutputStream) = {
     val req = RequestHeader(request.url, request.method, request.body.contentType)
