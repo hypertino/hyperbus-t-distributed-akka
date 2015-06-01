@@ -1,7 +1,7 @@
 package eu.inn.servicebus
 
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{PublishResult, Topic}
+import eu.inn.servicebus.transport.Topic
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
@@ -27,7 +27,7 @@ private[servicebus] object ServiceBusMacro {
   }
 
   def publish[IN: c.WeakTypeTag](c: Context)
-                                (topic: c.Expr[Topic], message: c.Expr[IN]): c.Expr[Future[PublishResult]] = {
+                                (topic: c.Expr[Topic], message: c.Expr[IN]): c.Expr[Future[Unit]] = {
     import c.universe._
 
     val thiz = c.prefix.tree
@@ -40,7 +40,7 @@ private[servicebus] object ServiceBusMacro {
       thiz.publish[$in]($topic,$message,encoder)
     }"""
     //println(obj)
-    c.Expr[Future[PublishResult]](obj)
+    c.Expr[Future[Unit]](obj)
   }
 
   def on[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]

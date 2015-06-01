@@ -9,9 +9,6 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.matching.Regex
 
-trait PublishResult {
-}
-
 trait PartitionArg {
   def matchArg(arg: PartitionArg): Boolean
 }
@@ -64,7 +61,7 @@ trait ClientTransport {
                    topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
-                   ): Future[PublishResult]
+                   ): Future[Unit]
 }
 
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT], resultEncoder: Encoder[OUT])
@@ -92,7 +89,6 @@ class NoTransportRouteException(message: String) extends RuntimeException(messag
 class InprocTransport(implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport {
   protected val subscriptions = new Subscriptions[SubKey, Subscription[_, _]]
   protected val log = LoggerFactory.getLogger(this.getClass)
-  protected val currentMessageId = new AtomicLong(System.currentTimeMillis())
 
   override def ask[OUT, IN](
                              topic: Topic,
@@ -145,11 +141,8 @@ class InprocTransport(implicit val executionContext: ExecutionContext) extends C
                    topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
-                   ): Future[PublishResult] = {
+                   ): Future[Unit] = {
     ask[Any, IN](topic, message, inputEncoder, null) map { x =>
-      new PublishResult {
-        def messageId: String = currentMessageId.incrementAndGet().toHexString // todo is this really needed?
-      }
     }
   }
 

@@ -21,7 +21,7 @@ trait ServiceBusApi {
                    topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
-                   ): Future[PublishResult]
+                   ): Future[Unit]
 
   def on[OUT, IN](topic: Topic, inputDecoder: Decoder[IN],
                   partitionArgsExtractor: PartitionArgsExtractor[IN])
@@ -52,7 +52,7 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
   def publish[IN](
                    topic: Topic,
                    message: IN
-                   ): Future[PublishResult] = macro ServiceBusMacro.publish[IN]
+                   ): Future[Unit] = macro ServiceBusMacro.publish[IN]
 
   def ask[OUT, IN](
                     topic: Topic,
@@ -67,7 +67,7 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
                    topic: Topic,
                    message: IN,
                    inputEncoder: Encoder[IN]
-                   ): Future[PublishResult] = {
+                   ): Future[Unit] = {
     this.lookupClientTransport(topic).publish[IN](topic, message, inputEncoder)
   }
 

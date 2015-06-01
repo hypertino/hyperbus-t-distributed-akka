@@ -8,7 +8,7 @@ import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.Helpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{PartitionArgs, PublishResult, SubscriptionHandlerResult, Topic}
+import eu.inn.servicebus.transport.{PartitionArgs, SubscriptionHandlerResult, Topic}
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -39,7 +39,7 @@ trait HyperBusApi {
 
   def publish[REQ <: Request[Body]](r: REQ,
                                     requestEncoder: Encoder[REQ],
-                                    partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[PublishResult]
+                                    partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit]
 
   def on[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
                                                        method: String,
@@ -72,7 +72,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   def ?[REQ <: Request[Body]](r: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
 
-  def ![REQ <: Request[Body]](r: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
+  def ![REQ <: Request[Body]](r: REQ): Future[Unit] = macro HyperBusMacro.publish[REQ]
 
   def subscribe[IN <: Request[Body]](groupName: String)
                                     (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
@@ -188,7 +188,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   def publish[REQ <: Request[Body]](r: REQ,
                                     requestEncoder: Encoder[REQ],
-                                    partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[PublishResult] = {
+                                    partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit] = {
     val args = partitionArgsExtractor(r)
     val topic = Topic(r.url, args)
     underlyingBus.publish[REQ](topic, r, requestEncoder)

@@ -30,9 +30,10 @@ object Build extends sbt.Build {
       addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersionRoot cross CrossVersion.full)
     )
 
-  lazy val `Hyper-Project-Root` = project.in(file(".")) aggregate(servicebus, `hyperbus-inner`, hyperbus, `hyperbus-akka`)
+  lazy val `Hyper-Project-Root` = project.in(file(".")) aggregate(servicebus, `hyperbus-inner`, hyperbus, `hyperbus-akka`, `servicebus-t-distributed-akka`)
   lazy val servicebus = project.in(file("servicebus"))
   lazy val `hyperbus-inner` = project.in(file("hyperbus-inner")) dependsOn servicebus
   lazy val hyperbus = project.in(file("hyperbus")) dependsOn `hyperbus-inner`
   lazy val `hyperbus-akka` = project.in(file("hyperbus-akka")) dependsOn hyperbus
+  lazy val `servicebus-t-distributed-akka` = project.in(file("servicebus-t-distributed-akka")) dependsOn servicebus
 }
