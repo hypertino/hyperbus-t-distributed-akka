@@ -12,23 +12,25 @@ class ServiceBusConfigurationTest extends FreeSpec with ScalaFutures with Matche
   "ServiceBus " - {
     "Configuration Test " in {
       val config = ConfigFactory.parseString("""
-        client-routes: [
-          {
-            url: "/topic/{userId}", match-type: Exact
-            partition-args: { userId: { value: null, match-type: Any } },
-            class-name: InprocTransport,
-            configuration: null
-          }
-        ],
+        service-bus: {
+          client-routes: [
+            {
+              url: "/topic/{userId}", match-type: Exact
+              partition-args: { userId: { value: null, match-type: Any } },
+              class-name: InprocTransport,
+              configuration: null
+            }
+          ],
 
-        server-routes: [
-          {
-            url: "/topic/{userId}", match-type: Exact
-            partition-args: { userId: { value: ".*", match-type: Regex } },
-            class-name: InprocTransport,
-            configuration: null
-          }
-        ]
+          server-routes: [
+            {
+              url: "/topic/{userId}", match-type: Exact
+              partition-args: { userId: { value: ".*", match-type: Regex } },
+              class-name: InprocTransport,
+              configuration: null
+            }
+          ]
+        }
       """)
 
       val sbc = ServiceBusConfigurationLoader.fromConfig(config)

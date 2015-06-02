@@ -34,25 +34,6 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
     }
-
-    "Configuration Test " in {
-      val config = ConfigFactory.parseString("""
-        client-routes: [
-        ],
-
-        server-routes: [
-        ]
-      """)
-
-      val sbc = ServiceBusConfigurationLoader.fromConfig(config)
-
-      sbc should equal(
-        ServiceBusConfiguration(
-          Seq(),
-          Seq()
-        )
-      )
-    }
   }
 
   def mockExtractor[T]: PartitionArgsExtractor[T] = {

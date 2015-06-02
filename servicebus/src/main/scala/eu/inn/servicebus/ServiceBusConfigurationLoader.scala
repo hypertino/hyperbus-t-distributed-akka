@@ -10,14 +10,17 @@ object ServiceBusConfigurationLoader {
   import scala.collection.JavaConversions._
   import ConfigUtils._
 
-  def fromConfig(config: Config): ServiceBusConfiguration = ServiceBusConfiguration(
-    config.getConfigList("client-routes").map{ li⇒
-      getTransportRoute[ClientTransport](li)
-    }.toSeq,
-    config.getConfigList("server-routes").map{ li⇒
-      getTransportRoute[ServerTransport](li)
-    }.toSeq
-  )
+  def fromConfig(config: Config): ServiceBusConfiguration = {
+    val sc = config.getConfig("service-bus")
+    ServiceBusConfiguration(
+      sc.getConfigList("client-routes").map{ li⇒
+        getTransportRoute[ClientTransport](li)
+      }.toSeq,
+      sc.getConfigList("server-routes").map{ li⇒
+        getTransportRoute[ServerTransport](li)
+      }.toSeq
+    )
+  }
 
   private def getTransportRoute[T](config: Config): TransportRoute[T] = {
     val urlArg = getPartitionArg(config.getOptionString("url").getOrElse(""), config.getOptionString("match-type"))
