@@ -2,10 +2,11 @@ package eu.inn.hyperbus
 
 import java.io.InputStream
 
+import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard.{DefError, DynamicCreatedBody, InternalServerError}
 import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.serialization.impl.Helpers
+import eu.inn.hyperbus.serialization.impl.InnerHelpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{PartitionArgs, SubscriptionHandlerResult, Topic}
@@ -109,11 +110,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
     def decoder(inputStream: InputStream): REQ = {
       try {
-        Helpers.decodeRequestWith[REQ](inputStream) { (requestHeader, requestBodyJson) =>
+        InnerHelpers.decodeRequestWith[REQ](inputStream) { (requestHeader, requestBodyJson) =>
           getSubscription(requestHeader.method, requestHeader.contentType) map { subscription =>
             subscription.requestDecoder(requestHeader, requestBodyJson)
           } getOrElse {
-            HyperBusUtils.decodeDynamicRequest(requestHeader, requestBodyJson).asInstanceOf[REQ] // todo: why? remove and throw
+            Helpers.decodeDynamicRequest(requestHeader, requestBodyJson).asInstanceOf[REQ] // todo: why? remove and throw
           }
         }
       }
@@ -123,8 +124,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
           throw e
       }
     }
-
-
   }
 
   protected class UnderlyingRequestReplyHandler[REQ <: Request[Body]](routeKey: String)
@@ -177,7 +176,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
                                                         partitionArgsExtractor: PartitionArgsExtractor[REQ],
                                                         responseDecoder: ResponseDecoder[RESP]): Future[RESP] = {
 
-    val outputDecoder = Helpers.decodeResponseWith(_: InputStream)(responseDecoder)
+    val outputDecoder = InnerHelpers.decodeResponseWith(_: InputStream)(responseDecoder)
     val args = partitionArgsExtractor(r)
     val topic = Topic(r.url, args)
     underlyingBus.ask[RESP, REQ](topic, r, requestEncoder, outputDecoder) map {
@@ -297,7 +296,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         bodyDecoder(responseHeader)(responseHeader, responseBodyJson)
       else
         defaultResponseBodyDecoder(responseHeader, responseBodyJson)
-    HyperBusUtils.createResponse(responseHeader, body)
+    Helpers.createResponse(responseHeader, body)
   }
 
   def safeLogError(msg: String, request: Request[Body], routeKey: String, error: Throwable = null): String = {
