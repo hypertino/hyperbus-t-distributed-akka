@@ -1,7 +1,6 @@
 import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
-import eu.inn.servicebus.transport.distributedakka.{DistributedAkkaServerTransport, DistributedAkkaClientTransport}
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._

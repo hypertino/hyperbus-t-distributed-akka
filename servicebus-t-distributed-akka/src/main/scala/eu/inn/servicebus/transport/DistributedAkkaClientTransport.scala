@@ -1,4 +1,4 @@
-package eu.inn.servicebus.transport.distributedakka
+package eu.inn.servicebus.transport
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
@@ -6,15 +6,25 @@ import akka.actor.ActorSystem
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.util.Timeout
+import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport.{ClientTransport, Topic}
+import eu.inn.servicebus.util.ConfigUtils
 
+import scala.concurrent.duration.{FiniteDuration, Duration}
 import scala.concurrent.{ExecutionContext, Future}
+import ConfigUtils._
 
 class DistributedAkkaClientTransport(val actorSystem: ActorSystem = Util.akkaSystem,
               val localAffinity: Boolean = true,
               implicit val executionContext: ExecutionContext = ExecutionContext.global,
               implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
+
+  def this(config: Config) = this(
+    config.getOptionString("actor-system").map { ActorSystem(_) } getOrElse Util.akkaSystem,
+    config.getOptionBoolean("local-afinity") getOrElse true,
+    scala.concurrent.ExecutionContext.global, // todo: configurable ExecutionContext like in akka?
+    new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
+  )
 
   val mediator = DistributedPubSubExtension(actorSystem).mediator
 

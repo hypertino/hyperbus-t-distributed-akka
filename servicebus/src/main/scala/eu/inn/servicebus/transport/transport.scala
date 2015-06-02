@@ -2,6 +2,7 @@ package eu.inn.servicebus.transport
 
 import java.util.concurrent.atomic.AtomicLong
 
+import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
@@ -86,7 +87,10 @@ private[transport] case class Subscription[OUT, IN](
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 
-class InprocTransport(implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport {
+class InprocTransport()(implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport {
+
+  def this(config: Config) = this()(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
+
   protected val subscriptions = new Subscriptions[SubKey, Subscription[_, _]]
   protected val log = LoggerFactory.getLogger(this.getClass)
 

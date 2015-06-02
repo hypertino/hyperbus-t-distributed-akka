@@ -1,4 +1,4 @@
-package eu.inn.servicebus.transport.distributedakka
+package eu.inn.servicebus.transport
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.concurrent.atomic.AtomicLong
@@ -6,12 +6,18 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.actor._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Subscribe, SubscribeAck}
+import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Decoder, PartitionArgsExtractor}
-import eu.inn.servicebus.transport.{ServerTransport, SubscriptionHandlerResult, Topic}
-
+import eu.inn.servicebus.util.ConfigUtils
 import scala.collection.concurrent.TrieMap
+import ConfigUtils._
 
 class DistributedAkkaServerTransport(val actorSystem: ActorSystem = Util.akkaSystem) extends ServerTransport {
+
+  def this(config: Config) = this(
+    config.getOptionString("actor-system").map { ActorSystem(_) } getOrElse Util.akkaSystem
+  )
+
   val subscriptions = new TrieMap[String, ActorRef]
   protected val idCounter = new AtomicLong(0)
 
@@ -47,19 +53,19 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem = Util.akkaSys
   }
 }
 
-private [distributedakka] trait Command
+private [transport] trait Command
 
-private [distributedakka] case class Subscription[OUT, IN](topic: Topic,
+private [transport] case class Subscription[OUT, IN](topic: Topic,
                                                            groupName: Option[String],
                                                            inputDecoder: Decoder[IN],
                                                            partitionArgsExtractor: PartitionArgsExtractor[IN],
                                                            handler: (IN) => SubscriptionHandlerResult[OUT])
 
-private [distributedakka] case class Start[OUT,IN](id: String, subscription: Subscription[OUT,IN]) extends Command
+private [transport] case class Start[OUT,IN](id: String, subscription: Subscription[OUT,IN]) extends Command
 
-private [distributedakka] case object StopServer extends Command
+private [transport] case object StopServer extends Command
 
-private [distributedakka] abstract class ServerActor[OUT,IN] extends Actor with ActorLogging {
+private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorLogging {
   protected [this] val mediator = DistributedPubSubExtension(context.system).mediator
   protected [this] var subscription: Subscription[OUT,IN] = null
 
@@ -75,7 +81,7 @@ private [distributedakka] abstract class ServerActor[OUT,IN] extends Actor with 
   def start: Receive
 }
 
-private [distributedakka] class OnServerActor[OUT,IN] extends ServerActor[OUT,IN] {
+private [transport] class OnServerActor[OUT,IN] extends ServerActor[OUT,IN] {
   import context._
   import akka.pattern.pipe
 
@@ -93,7 +99,7 @@ private [distributedakka] class OnServerActor[OUT,IN] extends ServerActor[OUT,IN
   }
 }
 
-private [distributedakka] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] {
+private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] {
   def start: Receive = {
     case input: String ⇒
       val inputBytes = new ByteArrayInputStream(input.getBytes(Util.defaultEncoding))

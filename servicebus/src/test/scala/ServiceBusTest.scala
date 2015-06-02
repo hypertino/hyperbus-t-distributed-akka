@@ -1,4 +1,5 @@
-import eu.inn.servicebus.{TransportRoute, ServiceBus}
+import com.typesafe.config.{ConfigFactory, Config}
+import eu.inn.servicebus.{ServiceBusConfiguration, ServiceBusConfigurationLoader, TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
@@ -32,6 +33,25 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
           e shouldBe a[NoTransportRouteException]
         }
       }
+    }
+
+    "Configuration Test " in {
+      val config = ConfigFactory.parseString("""
+        client-routes: [
+        ],
+
+        server-routes: [
+        ]
+      """)
+
+      val sbc = ServiceBusConfigurationLoader.fromConfig(config)
+
+      sbc should equal(
+        ServiceBusConfiguration(
+          Seq(),
+          Seq()
+        )
+      )
     }
   }
 

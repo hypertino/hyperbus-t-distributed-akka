@@ -37,10 +37,14 @@ trait ServiceBusApi {
 
 case class TransportRoute[T](transport: T, urlArg: PartitionArg, partitionArgs: PartitionArgs = PartitionArgs(Map()))
 
+case class ServiceBusConfiguration(clientRoutes: Seq[TransportRoute[ClientTransport]],
+                                   serverRoutes: Seq[TransportRoute[ServerTransport]])
+
 class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
                  val serverRoutes: Seq[TransportRoute[ServerTransport]]) extends ServiceBusApi {
-//  protected val clientRoutes = new TrieMap[String, ClientTransport]
-//  protected val serverRoutes = new TrieMap[String, ServerTransport]
+
+  def this(configuration: ServiceBusConfiguration) = this(configuration.clientRoutes, configuration.serverRoutes)
+
   protected val subscriptions = new TrieMap[String, (Topic, String)]
   protected val idCounter = new AtomicLong(0)
 

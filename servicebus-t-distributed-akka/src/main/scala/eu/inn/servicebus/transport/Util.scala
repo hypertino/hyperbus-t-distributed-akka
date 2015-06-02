@@ -1,10 +1,10 @@
-package eu.inn.servicebus.transport.distributedakka
+package eu.inn.servicebus.transport
 
 import akka.actor.ActorSystem
 import scala.concurrent.duration
 import duration._
 
-private [distributedakka] object Util {
+private [transport] object Util {
   val defaultTimeout = 30.second
   val defaultEncoding = "UTF-8"
   lazy val akkaSystem = ActorSystem("eu-inn-distrib-akka")
