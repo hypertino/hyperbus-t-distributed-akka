@@ -3,7 +3,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import eu.inn.binders.dynamic.{Text, Obj}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard.{DynamicPost, Conflict, Created}
+import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, DynamicPost, Conflict, Created}
 import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, ResponseHeader}
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
@@ -72,44 +72,6 @@ class ServerTransportTest extends ServerTransport {
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
-
-    "TEMPORARY" in { // todo: remove this test
-      val ct = new ClientTransportTest(
-        """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
-      )
-
-      val request = DynamicPost("/resources",
-        DynamicBody(
-          Obj(Map("resourceData" → Text("ha ha"))),
-          Some("application/vnd+test-1.json")
-        )
-      )
-      val hyperBus = newHyperBus(ct,null)
-
-      import eu.inn.hyperbus.impl.Helpers._
-      import eu.inn.hyperbus.{serialization=>hbs}
-
-      val decoder = hyperBus.responseDecoder(
-        _: hbs.ResponseHeader,
-        _: com.fasterxml.jackson.core.JsonParser,
-        {case _ ⇒ hbs.createResponseBodyDecoder[DynamicBody]}
-      )
-
-      val f = hyperBus.ask(request,
-        encodeDynamicRequest,
-        extractDynamicPartitionArgs,
-        decoder)
-
-      ct.input should equal(
-        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
-      )
-
-      whenReady(f) { r =>
-        r.body should equal(DynamicBody(Text("100500")))
-      }
-    }
-
-
     "Send (serialize)" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
@@ -127,12 +89,12 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
-    /*"Send dynamic (serialize)" in {
+    "Send dynamic (serialize)" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
 
-      val hyperBus = newHyperBus(ct,null)
+      val hyperBus = newHyperBus(ct, null)
       val f = hyperBus ? DynamicPost("/resources",
         DynamicBody(
           Obj(Map("resourceData" → Text("ha ha"))),
@@ -145,9 +107,10 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       whenReady(f) { r =>
-        r.body should equal(DynamicBody(Text("100500")))
+        r shouldBe a[Created[_]]
+        r.body shouldBe a[DynamicCreatedBody]
       }
-    }*/
+    }
     
     "Send (serialize exception)" in {
       val ct = new ClientTransportTest(

@@ -33,12 +33,12 @@ low priority:
 */
 
 trait HyperBusApi {
-  def ask[RESP <: Response[Body], REQ <: Request[Body]](r: REQ,
+  def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
                                                         requestEncoder: Encoder[REQ],
                                                         partitionArgsExtractor: PartitionArgsExtractor[REQ],
                                                         responseDecoder: ResponseDecoder[RESP]): Future[RESP]
 
-  def publish[REQ <: Request[Body]](r: REQ,
+  def publish[REQ <: Request[Body]](request: REQ,
                                     requestEncoder: Encoder[REQ],
                                     partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit]
 
@@ -67,22 +67,40 @@ trait HyperBusApi {
 }
 
 class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+  protected trait Subscription[REQ <: Request[Body]] {
+    def requestDecoder: RequestDecoder[REQ]
+  }
   protected val subscriptions = new Subscriptions[SubKey, Subscription[_]]
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def ?[REQ <: Request[Body]](r: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
+  def ?[REQ <: Request[Body]](request: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
 
-  def ![REQ <: Request[Body]](r: REQ): Future[Unit] = macro HyperBusMacro.publish[REQ]
+  def ![REQ <: Request[Body]](request: REQ): Future[Unit] = macro HyperBusMacro.publish[REQ]
 
   def subscribe[IN <: Request[Body]](groupName: String)
                                     (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
   def on[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.on[REQ]
 
-  protected trait Subscription[REQ <: Request[Body]] {
-    def requestDecoder: RequestDecoder[REQ]
+  def ?(request: DynamicRequest[DynamicBody]): Future[Response[Body]] = {
+    import eu.inn.hyperbus.impl.Helpers._
+    import eu.inn.hyperbus.{serialization=>hbs}
+
+    val decoder = responseDecoder(
+    _: hbs.ResponseHeader,
+    _: com.fasterxml.jackson.core.JsonParser,
+    {case _ ⇒ hbs.createResponseBodyDecoder[DynamicBody]}
+    )
+
+    ask(request, encodeDynamicRequest, extractDynamicPartitionArgs, decoder)
   }
+
+  def !(request: DynamicRequest[DynamicBody]): Future[Unit] = {
+    import eu.inn.hyperbus.impl.Helpers._
+    publish(request, encodeDynamicRequest, extractDynamicPartitionArgs)
+  }
+
 
   protected case class RequestReplySubscription[REQ <: Request[Body]](
                                                                        handler: (REQ) => SubscriptionHandlerResult[Response[Body]],
@@ -171,26 +189,26 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
-  def ask[RESP <: Response[Body], REQ <: Request[Body]](r: REQ,
+  def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
                                                         requestEncoder: Encoder[REQ],
                                                         partitionArgsExtractor: PartitionArgsExtractor[REQ],
                                                         responseDecoder: ResponseDecoder[RESP]): Future[RESP] = {
 
     val outputDecoder = InnerHelpers.decodeResponseWith(_: InputStream)(responseDecoder)
-    val args = partitionArgsExtractor(r)
-    val topic = Topic(r.url, args)
-    underlyingBus.ask[RESP, REQ](topic, r, requestEncoder, outputDecoder) map {
+    val args = partitionArgsExtractor(request)
+    val topic = Topic(request.url, args)
+    underlyingBus.ask[RESP, REQ](topic, request, requestEncoder, outputDecoder) map {
       case throwable: Throwable ⇒ throw throwable
       case other ⇒ other
     }
   }
 
-  def publish[REQ <: Request[Body]](r: REQ,
+  def publish[REQ <: Request[Body]](request: REQ,
                                     requestEncoder: Encoder[REQ],
                                     partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit] = {
-    val args = partitionArgsExtractor(r)
-    val topic = Topic(r.url, args)
-    underlyingBus.publish[REQ](topic, r, requestEncoder)
+    val args = partitionArgsExtractor(request)
+    val topic = Topic(request.url, args)
+    underlyingBus.publish[REQ](topic, request, requestEncoder)
   }
 
   def on[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,

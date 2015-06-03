@@ -8,7 +8,9 @@ import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.impl
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.serialization.impl.InnerHelpers
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, ResponseHeader}
+import eu.inn.servicebus.serialization.Encoder
 import eu.inn.servicebus.transport.{ExactArg, AnyArg, PartitionArgs, Topic}
 
 import scala.collection.mutable
@@ -114,12 +116,23 @@ object Helpers {
     }
   }
 
-  def encodeDynamicRequest(request: DynamicRequest[DynamicBody], outputStream: OutputStream): Unit =
-    eu.inn.hyperbus.serialization.createEncoder[DynamicRequest[DynamicBodyContainer]]
+  def encodeDynamicRequest(request: DynamicRequest[DynamicBody], outputStream: OutputStream): Unit = {
+    val bodyEncoder: Encoder[DynamicBody] = dynamicBodyEncoder
+    InnerHelpers.encodeMessage(request, bodyEncoder, outputStream)
+  }
 
   def extractDynamicPartitionArgs(request: DynamicRequest[DynamicBody]) = PartitionArgs(
     impl.Helpers.extractParametersFromUrl(request.url).map { arg ⇒
       arg → ExactArg(request.body.content.asMap.get(arg).map(_.asString) getOrElse "") // todo: inner fields like abc.userId
     }.toMap
   )
+
+  def dynamicBodyEncoder(body: DynamicBody, outputStream: OutputStream): Unit = {
+    dynamicValueEncoder(body.content, outputStream)
+  }
+
+  def dynamicValueEncoder(value: Value, outputStream: OutputStream): Unit = {
+    import eu.inn.hyperbus.serialization.impl.InnerHelpers.bindOptions
+    eu.inn.servicebus.serialization.createEncoder[Value](value, outputStream)
+  }
 }
