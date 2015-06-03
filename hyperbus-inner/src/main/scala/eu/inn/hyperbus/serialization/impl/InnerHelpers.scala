@@ -10,7 +10,7 @@ import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, Status}
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, ResponseHeader}
 import eu.inn.servicebus.serialization.Encoder
 
-object Helpers {
+object InnerHelpers {
 
   import eu.inn.binders.json._
 

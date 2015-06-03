@@ -33,22 +33,22 @@ private[hyperbus] object HyperBusMacro {
 
   def ask[IN <: Request[Body] : c.WeakTypeTag]
   (c: Context)
-  (r: c.Expr[IN]): c.Tree = {
+  (request: c.Expr[IN]): c.Tree = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.ask[IN](r)
+    bundle.ask[IN](request)
   }
 
   def publish[IN <: Request[Body] : c.WeakTypeTag]
   (c: Context)
-  (r: c.Expr[IN]): c.Tree = {
+  (request: c.Expr[IN]): c.Tree = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.publish[IN](r)
+    bundle.publish[IN](request)
   }
 }
 

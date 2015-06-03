@@ -13,9 +13,9 @@ private[hyperbus] object HyperSerializationMacro {
 
     val obj = q"""
       (t: $t, out: java.io.OutputStream) => {
-        import eu.inn.hyperbus.serialization.impl.Helpers.bindOptions
+        import eu.inn.hyperbus.serialization.impl.InnerHelpers.bindOptions
         val bodyEncoder = eu.inn.servicebus.serialization.createEncoder[$tBody]
-        eu.inn.hyperbus.serialization.impl.Helpers.encodeMessage(t, bodyEncoder, out)
+        eu.inn.hyperbus.serialization.impl.InnerHelpers.encodeMessage(t, bodyEncoder, out)
       }
     """
     //println(obj)
@@ -28,7 +28,7 @@ private[hyperbus] object HyperSerializationMacro {
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
     val decoder = if (t <:< typeOf[DynamicRequest[_]]) {
-      q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicRequest(requestHeader, requestBodyJson)"
+      q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeDynamicRequest(requestHeader, requestBodyJson)"
     } else {
       val to = t.typeSymbol.companion
       if (to == NoSymbol) {
@@ -58,10 +58,10 @@ private[hyperbus] object HyperSerializationMacro {
 
     val decoder =
       if (t <:< typeOf[DynamicBody]) {
-        q"eu.inn.hyperbus.serialization.impl.Helpers.decodeDynamicResponseBody(responseHeader, responseBodyJson)"
+        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeDynamicResponseBody(responseHeader, responseBodyJson)"
       }
       else if (t <:< typeOf[ErrorBody]) {
-        q"eu.inn.hyperbus.serialization.impl.Helpers.decodeErrorResponseBody(responseHeader, responseBodyJson)"
+        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeErrorResponseBody(responseHeader, responseBodyJson)"
       }
       else {
         // todo: validate contentType?

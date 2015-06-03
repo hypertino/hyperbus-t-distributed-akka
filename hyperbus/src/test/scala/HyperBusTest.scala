@@ -1,8 +1,10 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
+import eu.inn.binders.dynamic.{Text, Obj}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard.{Conflict, Created}
+import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, DynamicPost, Conflict, Created}
+import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, ResponseHeader}
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
@@ -76,7 +78,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct,null)
-      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
         """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
@@ -87,13 +89,36 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
+    "Send dynamic (serialize)" in {
+      val ct = new ClientTransportTest(
+        """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
+      )
+
+      val hyperBus = newHyperBus(ct, null)
+      val f = hyperBus <~ DynamicPost("/resources",
+        DynamicBody(
+          Obj(Map("resourceData" → Text("ha ha"))),
+          Some("application/vnd+test-1.json")
+        )
+      )
+
+      ct.input should equal(
+        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+      )
+
+      whenReady(f) { r =>
+        r shouldBe a[Created[_]]
+        r.body shouldBe a[DynamicCreatedBody]
+      }
+    }
+    
     "Send (serialize exception)" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
       )
 
       val hyperBus = newHyperBus(ct,null)
-      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
         """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
@@ -107,7 +132,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "Subscribe (serialize)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null,st)
-      hyperBus.on[TestPost1] { post =>
+      hyperBus ~> { post: TestPost1 =>
         Future {
           Created(TestCreatedBody("100500"))
         }
@@ -133,7 +158,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "Subscribe (serialize exception)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null,st)
-      hyperBus.on[TestPost1] { post =>
+      hyperBus ~> { post: TestPost1 =>
         Future {
           throw new Conflict(ErrorBody("failed", errorId = "abcde12345"))
         }

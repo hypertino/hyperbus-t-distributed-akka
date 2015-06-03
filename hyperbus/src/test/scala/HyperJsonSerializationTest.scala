@@ -8,7 +8,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
   "HyperJsonSerialization " - {
     "Serialize Body" in {
       import eu.inn.binders.json._
-      import eu.inn.hyperbus.serialization.impl.Helpers.bindOptions // by default skip null fields
+      import eu.inn.hyperbus.serialization.impl.InnerHelpers.bindOptions // by default skip null fields
       val body = TestCreatedBody("100500")
       val s = body.toJson
       s should equal("""{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}""")
@@ -39,6 +39,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
       s should equal("""{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
     }
     /*
+    todo: fix test
         "Decode DynamicRequest" in {
           val s = """{"request":{"method":"get","url":"/test"},"body":{"resourceId":"100500"}}"""
           val is = new ByteArrayInputStream(s.getBytes("UTF8"))

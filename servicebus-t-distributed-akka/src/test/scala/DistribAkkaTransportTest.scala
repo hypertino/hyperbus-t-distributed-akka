@@ -6,16 +6,27 @@ import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers {
+class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
+  var actorSystem: ActorSystem = null
+
+  before {
+    actorSystem = ActorSystem()
+  }
+
+  after {
+    actorSystem.shutdown()
+    actorSystem.awaitTermination()
+  }
+
   "DistributedAkkaTransport " - {
     "Send and Receive" in {
-      val clientTransport = new DistributedAkkaClientTransport()
-      val serverTransport = new DistributedAkkaServerTransport()
+      val clientTransport = new DistributedAkkaClientTransport(actorSystem)
+      val serverTransport = new DistributedAkkaServerTransport(actorSystem)
 
       val cr = List(TransportRoute[ClientTransport](clientTransport, AnyArg))
       val sr = List(TransportRoute[ServerTransport](serverTransport, AnyArg))

@@ -44,13 +44,13 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
       val hyperBus = newHyperBus()
 
-      hyperBus.on[TestPost1] { post =>
+      hyperBus ~> { post: TestPost1 =>
         Future {
           new Created(TestCreatedBody("100500"))
         }
       }
 
-      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       whenReady(f) { r =>
         r.body should equal(TestCreatedBody("100500"))
@@ -60,7 +60,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
     "Send and Receive multiple responses" in {
       val hyperBus = newHyperBus()
 
-      hyperBus.on[TestPost3] { post =>
+      hyperBus ~> { post: TestPost3 =>
         Future {
           if (post.body.resourceData == 1)
             Created(TestCreatedBody("100500"))
@@ -75,25 +75,25 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val f = hyperBus ? TestPost3(TestBody2(1))
+      val f = hyperBus <~ TestPost3(TestBody2(1))
 
       whenReady(f) { r =>
         r should equal(Created(TestCreatedBody("100500")))
       }
 
-      val f2 = hyperBus ? TestPost3(TestBody2(2))
+      val f2 = hyperBus <~ TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
         r should equal(Ok(DynamicBody(Text("another result"))))
       }
 
-      val f3 = hyperBus ? TestPost3(TestBody2(-1))
+      val f3 = hyperBus <~ TestPost3(TestBody2(-1))
 
       whenReady(f3.failed) { r =>
         r shouldBe a[Conflict[_]]
       }
 
-      val f4 = hyperBus ? TestPost3(TestBody2(-2))
+      val f4 = hyperBus <~ TestPost3(TestBody2(-2))
 
       whenReady(f4.failed) { r =>
         r shouldBe a[Conflict[_]]
