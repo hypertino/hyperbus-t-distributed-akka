@@ -78,7 +78,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct,null)
-      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
         """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
@@ -95,7 +95,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus ? DynamicPost("/resources",
+      val f = hyperBus <~ DynamicPost("/resources",
         DynamicBody(
           Obj(Map("resourceData" → Text("ha ha"))),
           Some("application/vnd+test-1.json")
@@ -118,7 +118,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct,null)
-      val f = hyperBus ? TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
         """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
@@ -132,7 +132,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "Subscribe (serialize)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null,st)
-      hyperBus.on[TestPost1] { post =>
+      hyperBus ~> { post: TestPost1 =>
         Future {
           Created(TestCreatedBody("100500"))
         }
@@ -158,7 +158,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "Subscribe (serialize exception)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null,st)
-      hyperBus.on[TestPost1] { post =>
+      hyperBus ~> { post: TestPost1 =>
         Future {
           throw new Conflict(ErrorBody("failed", errorId = "abcde12345"))
         }

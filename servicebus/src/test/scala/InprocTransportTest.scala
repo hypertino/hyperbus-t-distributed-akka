@@ -51,7 +51,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       }
 
       val group1 = new AtomicInteger(0)
-      val group1promise = Promise[Unit]
+      val group1promise = Promise[Unit]()
       val group1Func = (s: String) => {
         SubscriptionHandlerResult[Unit](Future {
           group1.incrementAndGet()
@@ -64,7 +64,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       t.subscribe(Topic("a", PartitionArgs(Map())), "group1", null, mockExtractor[String])(group1Func)
 
       val group2 = new AtomicInteger(0)
-      val group2promise = Promise[Unit]
+      val group2promise = Promise[Unit]()
       val group2Func = (s: String) => {
         SubscriptionHandlerResult[Unit](Future {
           group2.incrementAndGet()
@@ -95,7 +95,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       val t = new InprocTransport
 
       val group1 = new AtomicInteger(0)
-      val group1promise = Promise[Unit]
+      val group1promise = Promise[Unit]()
       val group1Func = (s: String) => {
         SubscriptionHandlerResult[Unit](Future {
           group1.incrementAndGet()

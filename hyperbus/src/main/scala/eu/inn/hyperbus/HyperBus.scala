@@ -74,29 +74,27 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def ?[REQ <: Request[Body]](request: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
+  def <~[REQ <: Request[Body]](request: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
 
-  def ![REQ <: Request[Body]](request: REQ): Future[Unit] = macro HyperBusMacro.publish[REQ]
+  def <|[REQ <: Request[Body]](request: REQ): Future[Unit] = macro HyperBusMacro.publish[REQ]
 
-  def subscribe[IN <: Request[Body]](groupName: String)
+  def |>[IN <: Request[Body]](groupName: String)
                                     (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
-  def on[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.on[REQ]
+  def ~>[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.on[REQ]
 
-  def ?(request: DynamicRequest[DynamicBody]): Future[Response[Body]] = {
+  def <~(request: DynamicRequest[DynamicBody]): Future[Response[Body]] = {
     import eu.inn.hyperbus.impl.Helpers._
     import eu.inn.hyperbus.{serialization=>hbs}
 
-    val decoder = responseDecoder(
-    _: hbs.ResponseHeader,
-    _: com.fasterxml.jackson.core.JsonParser,
-    {case _ ⇒ hbs.createResponseBodyDecoder[DynamicBody]}
+    ask(request, encodeDynamicRequest,
+      extractDynamicPartitionArgs, responseDecoder(_,_,{
+        case _ ⇒ hbs.createResponseBodyDecoder[DynamicBody]
+      })
     )
-
-    ask(request, encodeDynamicRequest, extractDynamicPartitionArgs, decoder)
   }
 
-  def !(request: DynamicRequest[DynamicBody]): Future[Unit] = {
+  def <|(request: DynamicRequest[DynamicBody]): Future[Unit] = {
     import eu.inn.hyperbus.impl.Helpers._
     publish(request, encodeDynamicRequest, extractDynamicPartitionArgs)
   }

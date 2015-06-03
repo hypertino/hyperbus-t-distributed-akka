@@ -58,6 +58,12 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
                    message: IN
                    ): Future[Unit] = macro ServiceBusMacro.publish[IN]
 
+  def on[OUT, IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
+                 (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT, IN]
+
+  def subscribe[IN](topic: Topic, groupName: String, partitionArgsExtractor: PartitionArgsExtractor[IN])
+            (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]
+
   def ask[OUT, IN](
                     topic: Topic,
                     message: IN,
@@ -74,12 +80,6 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
                    ): Future[Unit] = {
     this.lookupClientTransport(topic).publish[IN](topic, message, inputEncoder)
   }
-
-  def on[OUT, IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
-                 (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT, IN]
-
-  def subscribe[IN](topic: Topic, groupName: String, partitionArgsExtractor: PartitionArgsExtractor[IN])
-                   (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]
 
   def off(subscriptionId: String): Unit = {
     subscriptions.get(subscriptionId).foreach(s ⇒ lookupServerTransport(s._1).off(s._2))

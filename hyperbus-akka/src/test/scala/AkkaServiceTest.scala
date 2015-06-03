@@ -119,7 +119,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       hyperBus.routeTo[TestActor](actorRef)
       hyperBus.routeTo[TestGroupActor](groupActorRef)
 
-      val f1 = hyperBus ? TestPost1(TestBody1("ha ha"))
+      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       whenReady(f1) { r =>
         r.body should equal(TestCreatedBody("100500"))
@@ -127,7 +127,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
         groupActorRef.underlyingActor.count should equal(1)
       }
 
-      val f2 = hyperBus ! TestPost1(TestBody1("ha ha"))
+      val f2 = hyperBus <| TestPost1(TestBody1("ha ha"))
 
       whenReady(f2) { r =>
         actorRef.underlyingActor.count should equal(2)
@@ -143,31 +143,31 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       implicit val timeout = Timeout(20.seconds)
       hyperBus.routeTo[TestActor](actorRef)
 
-      val f = hyperBus ? TestPost3(TestBody2(1))
+      val f = hyperBus <~ TestPost3(TestBody2(1))
 
       whenReady(f) { r =>
         r should equal(Created(TestCreatedBody("100500")))
       }
 
-      val f2 = hyperBus ? TestPost3(TestBody2(2))
+      val f2 = hyperBus <~ TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
         r should equal(Ok(DynamicBody(Text("another result"))))
       }
 
-      val f3 = hyperBus ? TestPost3(TestBody2(-1))
+      val f3 = hyperBus <~ TestPost3(TestBody2(-1))
 
       whenReady(f3.failed) { r =>
         r shouldBe a[Conflict[_]]
       }
 
-      val f4 = hyperBus ? TestPost3(TestBody2(-2))
+      val f4 = hyperBus <~ TestPost3(TestBody2(-2))
 
       whenReady(f4.failed) { r =>
         r shouldBe a[Conflict[_]]
       }
 
-      val f5 = hyperBus ? TestPost3(TestBody2(-3))
+      val f5 = hyperBus <~ TestPost3(TestBody2(-3))
 
       whenReady(f5.failed) { r =>
         r shouldBe a[NotFound[_]]
