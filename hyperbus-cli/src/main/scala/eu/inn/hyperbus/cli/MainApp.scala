@@ -1,12 +1,15 @@
 package eu.inn.hyperbus.cli
 
 import akka.actor.{Props, ActorSystem, Actor}
+import com.fasterxml.jackson.core.JsonFactory
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders.dynamic.{Text, Value}
+import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.rest.{Body, DynamicBody, DefinedResponse}
+import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.servicebus.{ServiceBusConfigurationLoader, ServiceBus}
 
 import scala.concurrent.Future
@@ -18,53 +21,11 @@ trait Commands
 case class InitCommand(hyperBus: HyperBus) extends Commands
 case class InputCommand(message: String) extends Commands
 
-class CommandActor extends Actor {
-  var hyperBus: HyperBus = null
-
-  override def receive: Receive = {
-    case InitCommand(h) ⇒ this.hyperBus = h
-
-    case InputCommand("ask") ⇒
-      print("Please provide request message\n>")
-      context.become(ask)
-
-    case InputCommand(msg) ⇒
-      print(s"Invalid command received: '$msg', available: ask, publish, quit\n>")
-  }
-
-  def ask: Receive = {
-    case InputCommand(s) ⇒ {
-
-      import eu.inn.binders.json._
-      val request = DynamicGet("/test", DynamicBody(s.parseJson[Value]))
-
-      /*hyperBus ? request map {
-        response ⇒
-          println(response)
-      }*/
-
-      //import eu.inn.hyperbus.{serialization ⇒ hbs}
-      //val encoder = hbs.createEncoder[DynamicGet[DynamicBody]]
-
-
-      /*val responseDecoder = hyperBus.responseDecoder(
-        _: hbs.ResponseHeader,
-        _: com.fasterxml.jackson.core.JsonParser,
-        null
-      )
-      val decoder = eu.inn.hyperbus.serialization.createRequestDecoder[Dynamic]
-      hyperBus.ask(get, encoder,null,responseDecoder) map { result ⇒
-        print(s"Response: $result\n>")
-      }*/
-    }
-  }
-}
-
-@contentType("test-body")
-case class TestBody(content: DynamicBody) extends Body
+@contentType("application/vnd+test-body.json")
+case class TestBody(content: Option[String]) extends Body
 
 @url("/test")
-case class TestRequest(body: TestBody) extends StaticPost(body)
+case class TestRequest(body: TestBody) extends StaticGet(body)
 with DefinedResponse[Ok[TestBody]]
 
 object MainApp {
@@ -76,32 +37,60 @@ object MainApp {
     val serviceBus = new ServiceBus(serviceBusConfig)
     val hyperBus = new HyperBus(serviceBus)
 
-    hyperBus.on[TestRequest] { r⇒
+    hyperBus ~> { r: TestRequest ⇒
       Future.successful {
-        Ok(DynamicBody(Text(s"Received: ${r.body.toString}")))
+        Ok(DynamicBody(Text(s"Received content: ${r.body.content}")))
       }
     }
 
-    val actorSystem = ActorSystem()
-    val commandActor = actorSystem.actorOf(Props[CommandActor])
-
-    print(">")
+    out("")
+    val askCommand = "^~> (.+) (.+) (.+) (.+)$".r
+    val publishCommand = "^|> (.+) (.+) (.+) (.+)$".r
     breakable{ for (cmd ← stdInIterator()) {
       cmd match {
         case "quit" ⇒ break()
-        case _ ⇒ commandActor ! cmd
+
+        case askCommand(method, url, contentType, body) ⇒
+          val r = createDynamicRequest(method, url, Some(contentType), body)
+          out(s"<~$r")
+          val f = hyperBus <~ r
+          printResponse(f)
+
+        case publishCommand(method, url, contentType, body) ⇒
+          val r = createDynamicRequest(method, url, Some(contentType), body)
+          out(s"<|$r")
+          val f = hyperBus <| r
+
+        case _ ⇒
+          out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
+            |Example: ~> get /test application/vnd+test-body.json {"someValue":"abc"}""".stripMargin('|'))
       }
     }}
 
     println("Exiting...")
-    actorSystem.stop(commandActor)
-    Thread.sleep(100)
-    actorSystem.shutdown()
-    actorSystem.awaitTermination()
+  }
+
+  def createDynamicRequest(method: String, url: String, contentType: Option[String], body: String): DynamicRequest[DynamicBody] = {
+    val jf = new JsonFactory()
+    val jp = jf.createParser(body)
+    try {
+      eu.inn.hyperbus.impl.Helpers.decodeDynamicRequest(RequestHeader(url, method, contentType), jp)
+    } finally {
+      jp.close()
+    }
+  }
+
+  def printResponse(response: Future[Response[Body]]) = {
+    response map(out(_)) recover{ case x: Throwable ⇒ out(x.toString) }
   }
 
   def stdInIterator(): Iterator[String] = new Iterator[String] {
     override def hasNext: Boolean = true
-    override def next(): String = StdIn.readLine()
+    override def next(): String = StdIn.readLine().trim
+  }
+
+  def out(s: Any): Unit = {
+    println(s)
+    print(">")
   }
 }

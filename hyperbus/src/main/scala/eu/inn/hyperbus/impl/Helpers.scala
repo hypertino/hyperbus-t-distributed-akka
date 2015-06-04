@@ -102,7 +102,7 @@ object Helpers {
     }
   }
 
-  def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): Request[Body] = {
+  def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest[DynamicBody] = {
     val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       DynamicBody(deserializer.unbind[Value], requestHeader.contentType)
     }
