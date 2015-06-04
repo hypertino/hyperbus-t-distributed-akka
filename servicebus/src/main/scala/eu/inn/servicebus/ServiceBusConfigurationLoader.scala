@@ -12,17 +12,31 @@ object ServiceBusConfigurationLoader {
 
   def fromConfig(config: Config): ServiceBusConfiguration = {
     val sc = config.getConfig("service-bus")
+
+    val st = sc.getObject("transports")
+    val transportMap = st.entrySet().map { entry ⇒
+      val transportTag = entry.getKey
+      val transportConfig = sc.getConfig("transports."+transportTag)
+      val transport = createTransport(transportConfig)
+      transportTag → transport
+    }.toMap
+
     ServiceBusConfiguration(
       sc.getConfigList("client-routes").map{ li⇒
-        getTransportRoute[ClientTransport](li)
+        getTransportRoute[ClientTransport](transportMap, li)
       }.toSeq,
       sc.getConfigList("server-routes").map{ li⇒
-        getTransportRoute[ServerTransport](li)
+        getTransportRoute[ServerTransport](transportMap, li)
       }.toSeq
     )
   }
 
-  private def getTransportRoute[T](config: Config): TransportRoute[T] = {
+  private def getTransportRoute[T](transportMap: Map[String, Any], config: Config): TransportRoute[T] = {
+    val transportName = config.getString("transport")
+    val transport = transportMap.getOrElse(transportName,
+      throw new ServiceBusConfigurationError(s"Couldn't find transport '$transportName' at ${config.origin()}")
+    ).asInstanceOf[T]
+
     val urlArg = getPartitionArg(config.getOptionString("url").getOrElse(""), config.getOptionString("match-type"))
 
     val partitionArgs = config.getOptionObject("partition-args").map { c⇒
@@ -31,6 +45,10 @@ object ServiceBusConfigurationLoader {
       PartitionArgs(Map())
     }
 
+    TransportRoute[T](transport, urlArg, partitionArgs)
+  }
+
+  private def createTransport(config: Config): Any = {
     val className = {
       val s = config.getString("class-name")
       if (s.contains("."))
@@ -38,13 +56,11 @@ object ServiceBusConfigurationLoader {
       else
         "eu.inn.servicebus.transport." + s
     }
-
     val clazz = Class.forName(className)
     val transportConfig = config.getOptionConfig("configuration").getOrElse(
       ConfigFactory.parseString("")
     )
-    val transport = clazz.getConstructor(classOf[Config]).newInstance(transportConfig).asInstanceOf[T]
-    TransportRoute[T](transport, urlArg, partitionArgs)
+    clazz.getConstructor(classOf[Config]).newInstance(transportConfig)
   }
 
   private def getPartitionArg(value: String, matchType: Option[String]) = matchType match {

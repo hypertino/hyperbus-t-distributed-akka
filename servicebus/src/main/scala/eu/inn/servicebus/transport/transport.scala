@@ -1,9 +1,10 @@
 package eu.inn.servicebus.transport
 
-import java.util.concurrent.atomic.AtomicLong
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
+import eu.inn.servicebus.util.ConfigUtils._
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -68,7 +69,9 @@ trait ClientTransport {
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT], resultEncoder: Encoder[OUT])
 
 trait ServerTransport {
-  def on[OUT, IN](topic: Topic, inputDecoder: Decoder[IN], partitionArgsExtractor: PartitionArgsExtractor[IN])
+  def on[OUT, IN](topic: Topic,
+                  inputDecoder: Decoder[IN],
+                  partitionArgsExtractor: PartitionArgsExtractor[IN])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
   def subscribe[IN](topic: Topic, groupName: String,
@@ -81,18 +84,33 @@ trait ServerTransport {
 
 private[transport] case class SubKey(groupName: Option[String], partitionArgs: PartitionArgs)
 
-private[transport] case class Subscription[OUT, IN](
+private[transport] case class Subscription[OUT, IN](inputDecoder: Decoder[IN],
                                                      partitionArgsExtractor: PartitionArgsExtractor[IN],
                                                      handler: (IN) => SubscriptionHandlerResult[OUT])
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 
-class InprocTransport()(implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport {
+class InprocTransport(serialize: Boolean = false)
+                     (implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport {
 
-  def this(config: Config) = this()(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
+  def this(config: Config) = this(config.getOptionBoolean("serialize").getOrElse(false))(
+    scala.concurrent.ExecutionContext.global // todo: configurable ExecutionContext like in akka?
+  )
 
   protected val subscriptions = new Subscriptions[SubKey, Subscription[_, _]]
   protected val log = LoggerFactory.getLogger(this.getClass)
+
+  def reencodeMessage[IN,OUT](message: IN, encoder: Encoder[IN], decoder: Decoder[OUT]): OUT = {
+    if (serialize) {
+      val ba = new ByteArrayOutputStream()
+      encoder(message, ba)
+      val bi = new ByteArrayInputStream(ba.toByteArray)
+      decoder(bi)
+    }
+    else {
+      message.asInstanceOf[OUT]
+    }
+  }
 
   override def ask[OUT, IN](
                              topic: Topic,
@@ -109,32 +127,46 @@ class InprocTransport()(implicit val executionContext: ExecutionContext) extends
         if (subKey.groupName.isEmpty) {
           // default subscription (groupName="") returns reply
           val subscriber = subscriptionList.getRandomSubscription.asInstanceOf[Subscription[OUT, IN]]
-          val args = subscriber.partitionArgsExtractor(message)
+          val messageForSubscriber = reencodeMessage(message, inputEncoder, subscriber.inputDecoder)
+
+          val args = subscriber.partitionArgsExtractor(messageForSubscriber)
+
           if (subKey.partitionArgs.matchArgs(args)) {
             // todo: log if not matched?
-            result = subscriber.handler(message).futureResult
+            val handlerResult = subscriber.handler(messageForSubscriber)
+            result = if (serialize) {
+              handlerResult.futureResult map { out ⇒
+                reencodeMessage(out, handlerResult.resultEncoder, outputDecoder)
+              }
+            }
+            else {
+              handlerResult.futureResult
+            }
+
+
             if (log.isTraceEnabled) {
-              log.trace(s"Message ($message) is delivered to `on` @$subKey}")
+              log.trace(s"Message ($messageForSubscriber) is delivered to `on` @$subKey}")
             }
           }
         } else {
           val subscriber = subscriptionList.getRandomSubscription.asInstanceOf[Subscription[Unit, IN]]
-          val args = subscriber.partitionArgsExtractor(message)
+          val messageForSubscriber = reencodeMessage(message, inputEncoder, subscriber.inputDecoder)
+          val args = subscriber.partitionArgsExtractor(messageForSubscriber)
           if (subKey.partitionArgs.matchArgs(args)) {
             // todo: log if not matched?
-            subscriber.handler(message)
+            subscriber.handler(messageForSubscriber)
             if (result == null) {
               result = Future.successful({}.asInstanceOf[OUT])
             }
             if (log.isTraceEnabled) {
-              log.trace(s"Message ($message) is delivered to `subscriber` @$subKey}")
+              log.trace(s"Message ($messageForSubscriber) is delivered to `subscriber` @$subKey}")
             }
           }
         }
     }
 
     if (result == null) {
-      Future.failed[OUT](new NoTransportRouteException(s"Route to '$topic' isn't found"))
+      Future.failed[OUT](new NoTransportRouteException(s"Subscription on '$topic' isn't found"))
     }
     else {
       result
@@ -150,12 +182,14 @@ class InprocTransport()(implicit val executionContext: ExecutionContext) extends
     }
   }
 
-  def on[OUT, IN](topic: Topic, inputDecoder: Decoder[IN], partitionArgsExtractor: PartitionArgsExtractor[IN])
+  def on[OUT, IN](topic: Topic,
+                  inputDecoder: Decoder[IN],
+                  partitionArgsExtractor: PartitionArgsExtractor[IN])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
     subscriptions.add(
       topic.url,
       SubKey(None, topic.partitionArgs),
-      Subscription[OUT, IN](partitionArgsExtractor, handler)
+      Subscription[OUT, IN](inputDecoder, partitionArgsExtractor, handler)
     )
   }
 
@@ -167,7 +201,7 @@ class InprocTransport()(implicit val executionContext: ExecutionContext) extends
     subscriptions.add(
       topic.url,
       SubKey(Some(groupName), topic.partitionArgs),
-      Subscription[Unit, IN](partitionArgsExtractor, handler)
+      Subscription[Unit, IN](inputDecoder, partitionArgsExtractor, handler)
     )
   }
 
