@@ -77,7 +77,7 @@ case class NonAuthoritativeInformation[+B <: Body](body: B) extends Response[B] 
   override def status: Int = Status.NON_AUTHORITATIVE_INFORMATION
 }
 
-case class NoContent[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
+case class NoContent[+B <: Body](body: B = EmptyBody) extends Response[B] with NormalResponse[B] {
   override def status: Int = Status.NO_CONTENT
 }
 

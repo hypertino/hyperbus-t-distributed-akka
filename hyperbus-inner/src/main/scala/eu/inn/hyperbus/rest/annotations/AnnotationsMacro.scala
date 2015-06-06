@@ -12,7 +12,7 @@ private[hyperbus] object AnnotationsMacro {
     import c.universe._
     val (_ :: methodResult :: _) = c.prefix.tree.children
     defineMethod(c)("contentType",
-      q"new eu.inn.hyperbus.rest.annotations.impl.ContentTypeMarker($methodResult)",
+      q"new eu.inn.hyperbus.rest.annotations.contentTypeMarker($methodResult)",
       q"""Some($methodResult)""",
       annottees
     )
@@ -22,7 +22,7 @@ private[hyperbus] object AnnotationsMacro {
     import c.universe._
     val (_ :: methodResult :: _) = c.prefix.tree.children
     defineMethod(c)("url",
-      q"new eu.inn.hyperbus.rest.annotations.impl.UrlMarker($methodResult)",
+      q"new eu.inn.hyperbus.rest.annotations.urlMarker($methodResult)",
       q"""$methodResult""",
       annottees
     )

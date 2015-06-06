@@ -4,6 +4,7 @@ import java.util.UUID
 
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Value}
+import eu.inn.hyperbus.rest.annotations.{contentTypeMarker}
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
@@ -53,8 +54,11 @@ object DynamicBody {
 
 case class DynamicBodyContainer(content: Value, contentType: Option[String] = None) extends DynamicBody
 
-case object EmptyBody extends Body {
-  def contentType: Option[String] = None
+@contentTypeMarker("no-content")
+trait EmptyBody extends Body
+
+case object EmptyBody extends EmptyBody {
+  def contentType: Option[String] = Some("no-content")
 }
 
 // --------------- Response Groups ---------------

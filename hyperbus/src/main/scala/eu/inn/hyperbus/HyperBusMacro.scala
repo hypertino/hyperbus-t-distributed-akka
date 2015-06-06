@@ -1,8 +1,7 @@
 package eu.inn.hyperbus
 
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.impl.{ContentTypeMarker, UrlMarker}
-import eu.inn.hyperbus.rest.annotations.method
+import eu.inn.hyperbus.rest.annotations.{urlMarker, contentTypeMarker, method}
 import eu.inn.servicebus.serialization._
 
 import scala.concurrent.Future
@@ -140,8 +139,10 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
 
     val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
-    val bodyCases: Seq[c.Tree] = responseBodyTypes.filterNot {
-      _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
+    val emptyBodyTypeSig = typeOf[EmptyBody].typeSymbol.typeSignature
+    val bodyCases: Seq[c.Tree] = responseBodyTypes.filterNot { t ⇒
+      t.typeSymbol.typeSignature =:= dynamicBodyTypeSig ||
+        t.typeSymbol.typeSignature =:= emptyBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
       if (ta.isEmpty)
@@ -242,12 +243,12 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getUrlAnnotation(t: c.Type): String =
-    getStringAnnotation(t.typeSymbol, c.typeOf[UrlMarker]).getOrElse {
+    getStringAnnotation(t.typeSymbol, c.typeOf[urlMarker]).getOrElse {
       c.abort(c.enclosingPosition, s"@url annotation is not defined for $t.}")
     }
 
   private def getContentTypeAnnotation(t: c.Type): Option[String] =
-    getStringAnnotation(t.typeSymbol, c.typeOf[ContentTypeMarker])
+    getStringAnnotation(t.typeSymbol, c.typeOf[contentTypeMarker])
 
   private def getMethodAnnotation(t: c.Type): Option[String] =
     getStringAnnotation(t.typeSymbol, c.typeOf[method])

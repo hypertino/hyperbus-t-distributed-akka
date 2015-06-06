@@ -106,6 +106,11 @@ object InnerHelpers {
     }
   }
 
+  def decodeEmptyResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): EmptyBody = {
+    decodeDynamicResponseBody(responseHeader, jsonParser)
+    EmptyBody
+  }
+
   def decodeErrorResponseBody(responseHeader: ResponseHeader, jsonParser: JsonParser): ErrorBody = {
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       deserializer.unbind[ErrorBody]

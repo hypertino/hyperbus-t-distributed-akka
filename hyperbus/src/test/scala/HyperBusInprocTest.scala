@@ -38,6 +38,10 @@ with DefinedResponse[
   |[Ok[DynamicBody], |[Created[TestCreatedBody], !]]
   ]
 
+@url("/empty")
+case class TestPost4(body: TestBody1) extends StaticPost(body)
+with DefinedResponse[NoContent[EmptyBody]]
+
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "Send and Receive" in {

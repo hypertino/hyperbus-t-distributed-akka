@@ -60,6 +60,9 @@ private[hyperbus] object HyperSerializationMacro {
       if (t <:< typeOf[DynamicBody]) {
         q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeDynamicResponseBody(responseHeader, responseBodyJson)"
       }
+      else if (t <:< typeOf[EmptyBody]) {
+        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeEmptyResponseBody(responseHeader, responseBodyJson)"
+      }
       else if (t <:< typeOf[ErrorBody]) {
         q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeErrorResponseBody(responseHeader, responseBodyJson)"
       }

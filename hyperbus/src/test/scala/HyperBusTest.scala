@@ -1,9 +1,9 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import eu.inn.binders.dynamic.{Text, Obj}
+import eu.inn.binders.dynamic.{Null, Text, Obj}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, DynamicPost, Conflict, Created}
+import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, ResponseHeader}
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
@@ -109,6 +109,24 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       whenReady(f) { r =>
         r shouldBe a[Created[_]]
         r.body shouldBe a[DynamicCreatedBody]
+      }
+    }
+
+    "Send empty (serialize)" in {
+      val ct = new ClientTransportTest(
+        """{"response":{"status":204,"contentType":"no-content"},"body":{}}"""
+      )
+
+      val hyperBus = newHyperBus(ct, null)
+      val f = hyperBus <~ TestPost4(TestBody1("empty"))
+
+      ct.input should equal(
+        """{"request":{"url":"/empty","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"empty"}}"""
+      )
+
+      whenReady(f) { r =>
+        r shouldBe a[NoContent[_]]
+        r.body shouldBe a[EmptyBody]
       }
     }
     
