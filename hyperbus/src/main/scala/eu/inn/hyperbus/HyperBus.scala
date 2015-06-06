@@ -86,11 +86,8 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   def <~(request: DynamicRequest[DynamicBody]): Future[Response[Body]] = {
     import eu.inn.hyperbus.impl.Helpers._
     import eu.inn.hyperbus.{serialization=>hbs}
-
     ask(request, encodeDynamicRequest,
-      extractDynamicPartitionArgs, responseDecoder(_,_,{
-        case _ ⇒ hbs.createResponseBodyDecoder[DynamicBody]
-      })
+      extractDynamicPartitionArgs, responseDecoder(_,_,PartialFunction.empty)
     )
   }
 

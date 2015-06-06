@@ -81,7 +81,9 @@ object MainApp {
   }
 
   def printResponse(response: Future[Response[Body]]) = {
-    response map(out(_)) recover{ case x: Throwable ⇒ out(x.toString) }
+    response map(out(_)) recover{
+      case x: Throwable ⇒ out(x.toString)
+    }
   }
 
   def stdInIterator(): Iterator[String] = new Iterator[String] {
