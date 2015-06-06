@@ -1,7 +1,8 @@
 import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
-import eu.inn.servicebus.{TransportRoute, ServiceBus}
+import com.typesafe.config.ConfigFactory
+import eu.inn.servicebus.{ServiceBusConfigurationLoader, TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
@@ -15,22 +16,20 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
   var actorSystem: ActorSystem = null
 
   before {
-    actorSystem = ActorSystem()
+    //actorSystem = getOrCreate()
   }
 
   after {
-    actorSystem.shutdown()
-    actorSystem.awaitTermination()
+    ActorSystemRegistry.get("eu-inn") foreach { actorSystem ⇒
+      actorSystem.shutdown()
+      actorSystem.awaitTermination()
+    }
   }
 
   "DistributedAkkaTransport " - {
     "Send and Receive" in {
-      val clientTransport = new DistributedAkkaClientTransport(actorSystem)
-      val serverTransport = new DistributedAkkaServerTransport(actorSystem)
-
-      val cr = List(TransportRoute[ClientTransport](clientTransport, AnyArg))
-      val sr = List(TransportRoute[ServerTransport](serverTransport, AnyArg))
-      val serviceBus = new ServiceBus(cr, sr)
+      val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(ConfigFactory.load())
+      val serviceBus = new ServiceBus(serviceBusConfig)
       val cnt = new AtomicInteger(0)
 
       val id = serviceBus.on[String, Int](Topic("/topic/{abc}", PartitionArgs(Map())), mockExtractor[Int]) { s =>
