@@ -8,6 +8,7 @@ import org.scalatest.{FreeSpec, Matchers}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
+/*
 class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
   "ServiceBus " - {
     "Send and Receive" in {
@@ -40,3 +41,4 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
     (x: T) => PartitionArgs(Map())
   }
 }
+*/

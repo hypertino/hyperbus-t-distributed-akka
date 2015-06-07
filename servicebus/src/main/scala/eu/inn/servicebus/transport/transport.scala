@@ -8,7 +8,9 @@ import eu.inn.servicebus.util.ConfigUtils._
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
+import scala.Option
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 import scala.util.matching.Regex
 
 trait PartitionArg {
@@ -71,7 +73,8 @@ case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT], resultEncod
 trait ServerTransport {
   def on[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: PartitionArgsExtractor[IN])
+                  partitionArgsExtractor: PartitionArgsExtractor[IN],
+                  exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
   def subscribe[IN](topic: Topic, groupName: String,
@@ -86,6 +89,7 @@ private[transport] case class SubKey(groupName: Option[String], partitionArgs: P
 
 private[transport] case class Subscription[OUT, IN](inputDecoder: Decoder[IN],
                                                      partitionArgsExtractor: PartitionArgsExtractor[IN],
+                                                     exceptionEncoder: Encoder[Throwable],
                                                      handler: (IN) => SubscriptionHandlerResult[OUT])
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
@@ -120,6 +124,26 @@ class InprocTransport(serialize: Boolean = false)
                              ): Future[OUT] = {
     var result: Future[OUT] = null
 
+    def tryX[T] (failMsg: String, exceptionEncoder: Encoder[Throwable], code: ⇒ T): Option[T] = {
+      try {
+        Some(code)
+      }
+      catch {
+        case NonFatal(e) ⇒
+          result =
+            if (serialize)
+              Future.successful {
+                reencodeMessage(e, exceptionEncoder, outputDecoder)
+              }
+            else
+              Future.failed {
+                e
+              }
+          log.error(failMsg, e)
+          None
+      }
+    }
+
     // todo: filter is redundant for inproc?
     subscriptions.get(topic.url).subRoutes filter (_._1.partitionArgs.matchArgs(topic.partitionArgs)) foreach {
       case (subKey, subscriptionList) =>
@@ -127,39 +151,68 @@ class InprocTransport(serialize: Boolean = false)
         if (subKey.groupName.isEmpty) {
           // default subscription (groupName="") returns reply
           val subscriber = subscriptionList.getRandomSubscription.asInstanceOf[Subscription[OUT, IN]]
-          val messageForSubscriber = reencodeMessage(message, inputEncoder, subscriber.inputDecoder)
 
-          val args = subscriber.partitionArgsExtractor(messageForSubscriber)
+          tryX ("Decode failed", subscriber.exceptionEncoder,
+            reencodeMessage(message, inputEncoder, subscriber.inputDecoder)
+          ) foreach { messageForSubscriber ⇒
 
-          if (subKey.partitionArgs.matchArgs(args)) {
-            // todo: log if not matched?
-            val handlerResult = subscriber.handler(messageForSubscriber)
-            result = if (serialize) {
-              handlerResult.futureResult map { out ⇒
-                reencodeMessage(out, handlerResult.resultEncoder, outputDecoder)
+            tryX ("Decode failed", subscriber.exceptionEncoder,
+              subscriber.partitionArgsExtractor(messageForSubscriber)
+            ) foreach { args ⇒
+
+              if (subKey.partitionArgs.matchArgs(args)) {
+                // todo: log if not matched?
+                val handlerResult = subscriber.handler(messageForSubscriber)
+                result = if (serialize) {
+                  handlerResult.futureResult map { out ⇒
+                    reencodeMessage(out, handlerResult.resultEncoder, outputDecoder)
+                  } recoverWith {
+                    case NonFatal(e) ⇒
+                      log.error("`on` handler failed with", e)
+                      Future.successful {
+                        reencodeMessage(e, subscriber.exceptionEncoder, outputDecoder)
+                      }
+                  }
+                }
+                else {
+                  handlerResult.futureResult
+                }
+
+                if (log.isTraceEnabled) {
+                  log.trace(s"Message ($messageForSubscriber) is delivered to `on` @$subKey}")
+                }
               }
-            }
-            else {
-              handlerResult.futureResult
-            }
-
-
-            if (log.isTraceEnabled) {
-              log.trace(s"Message ($messageForSubscriber) is delivered to `on` @$subKey}")
             }
           }
         } else {
           val subscriber = subscriptionList.getRandomSubscription.asInstanceOf[Subscription[Unit, IN]]
-          val messageForSubscriber = reencodeMessage(message, inputEncoder, subscriber.inputDecoder)
-          val args = subscriber.partitionArgsExtractor(messageForSubscriber)
-          if (subKey.partitionArgs.matchArgs(args)) {
-            // todo: log if not matched?
-            subscriber.handler(messageForSubscriber)
-            if (result == null) {
-              result = Future.successful({}.asInstanceOf[OUT])
+
+          val ma =
+            try {
+              val messageForSubscriber = reencodeMessage(message, inputEncoder, subscriber.inputDecoder)
+              val args = subscriber.partitionArgsExtractor(messageForSubscriber)
+              Some((messageForSubscriber, args))
             }
-            if (log.isTraceEnabled) {
-              log.trace(s"Message ($messageForSubscriber) is delivered to `subscriber` @$subKey}")
+            catch {
+              case NonFatal(e) ⇒
+                log.error("`subscription` decoder failed with", e)
+                None
+            }
+
+          ma.foreach { case (messageForSubscriber, args) ⇒
+            if (subKey.partitionArgs.matchArgs(args)) {
+              // todo: log if not matched?
+              subscriber.handler(messageForSubscriber).futureResult.onFailure {
+                case NonFatal(e) ⇒
+                  log.error("`subscription` handler failed with", e)
+              }
+
+              if (result == null) {
+                result = Future.successful({}.asInstanceOf[OUT])
+              }
+              if (log.isTraceEnabled) {
+                log.trace(s"Message ($messageForSubscriber) is delivered to `subscriber` @$subKey}")
+              }
             }
           }
         }
@@ -184,12 +237,13 @@ class InprocTransport(serialize: Boolean = false)
 
   def on[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: PartitionArgsExtractor[IN])
+                  partitionArgsExtractor: PartitionArgsExtractor[IN],
+                  exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
     subscriptions.add(
       topic.url,
       SubKey(None, topic.partitionArgs),
-      Subscription[OUT, IN](inputDecoder, partitionArgsExtractor, handler)
+      Subscription[OUT, IN](inputDecoder, partitionArgsExtractor, exceptionEncoder, handler)
     )
   }
 
@@ -201,7 +255,7 @@ class InprocTransport(serialize: Boolean = false)
     subscriptions.add(
       topic.url,
       SubKey(Some(groupName), topic.partitionArgs),
-      Subscription[Unit, IN](inputDecoder, partitionArgsExtractor, handler)
+      Subscription[Unit, IN](inputDecoder, partitionArgsExtractor, null, handler)
     )
   }
 

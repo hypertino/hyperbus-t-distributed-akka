@@ -1,17 +1,18 @@
 package eu.inn.hyperbus
 
 import java.io.InputStream
+import java.util.UUID
 
 import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard.{DefError, DynamicCreatedBody, InternalServerError}
+import eu.inn.hyperbus.rest.standard.{BadRequest, DefError, DynamicCreatedBody, InternalServerError}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.InnerHelpers
 import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{PartitionArgs, SubscriptionHandlerResult, Topic}
 import eu.inn.servicebus.util.Subscriptions
-import org.slf4j.LoggerFactory
+import org.slf4j.{Marker, LoggerFactory}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -132,9 +133,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         }
       }
       catch {
+        case re: ErrorResponse[_] ⇒ throw re
         case NonFatal(e) =>
-          log.error("Can't decode request", e)
-          throw e
+          val errorId = UUID.randomUUID().toString
+          logError("Can't decode request", errorId, e)
+          throw BadRequest(ErrorBody(DefError.REQUEST_PARSE_ERROR, Some(e.toString), errorId))
       }
     }
   }
@@ -225,7 +228,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
         val pe: PartitionArgsExtractor[REQ] = uh.partitionArgsExtractor
-        val uid = underlyingBus.on[Response[Body], REQ](topic, d, pe)(uh.handler)
+        val uid = underlyingBus.on[Response[Body], REQ](topic, d, pe, exceptionEncoder)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -292,6 +295,16 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     }
   }
 
+  protected def exceptionEncoder(exception: Throwable, outputStream: java.io.OutputStream): Unit = {
+    exception match {
+      case r: ErrorResponse[Body] ⇒ defaultResponseEncoder(r, outputStream)
+      case t ⇒
+        val errorId = UUID.randomUUID().toString
+        val s = logError("Unhandled exception", errorId, exception)
+        defaultResponseEncoder(InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(t.getMessage), errorId)), outputStream)
+    }
+  }
+
   protected def defaultResponseBodyDecoder(responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser): Body = {
     val decoder =
       if (responseHeader.status >= 400 && responseHeader.status <= 599)
@@ -314,29 +327,36 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     Helpers.createResponse(responseHeader, body)
   }
 
-  def safeLogError(msg: String, request: Request[Body], routeKey: String, error: Throwable = null): String = {
+  def logError(msg: String, errorId: String, error: Throwable = null): Unit = {
+    log.error(msg + " #" + errorId, error)
+  }
+
+  def safeLogError(msg: String, request: Request[Body], routeKey: String, errorId: String, error: Throwable = null): String = {
     val s = msg + " " + safe(() => request.method) + routeKey +
       safe(() => request.body.contentType.map("@" + _).getOrElse(""))
-    log.error(s, error)
+    logError(s, errorId, error)
     s
   }
 
   def unhandledRequest(routeKey: String, request: Request[Body]): Future[Response[Body]] = {
-    val s = safeLogError("Unhandled request", request, routeKey)
+    val errorId = UUID.randomUUID().toString
+    val s = safeLogError("Unhandled request", request, routeKey, errorId)
     Future.successful {
-      InternalServerError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s)))
+      InternalServerError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s), errorId))
     }
   }
 
   def unhandledPublication(routeKey: String, request: Request[Body]): Future[Unit] = {
-    val s = safeLogError("Unhandled request", request, routeKey)
+    val errorId = UUID.randomUUID().toString
+    val s = safeLogError("Unhandled request", request, routeKey, errorId)
     Future.successful {}
   }
 
   def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Future[Response[Body]] = {
-    val s = safeLogError("Unhandled exception", request, routeKey)
+    val errorId = UUID.randomUUID().toString
+    val s = safeLogError("Unhandled exception", request, routeKey, errorId, exception)
     Future.successful {
-      InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(s)))
+      InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(s), errorId))
     }
   }
 

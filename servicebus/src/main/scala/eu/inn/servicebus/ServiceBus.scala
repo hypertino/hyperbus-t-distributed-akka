@@ -7,7 +7,7 @@ import eu.inn.servicebus.transport._
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
-import scala.language.experimental.macros
+//import scala.language.experimental.macros
 
 trait ServiceBusApi {
   def ask[OUT, IN](
@@ -24,7 +24,8 @@ trait ServiceBusApi {
                    ): Future[Unit]
 
   def on[OUT, IN](topic: Topic, inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: PartitionArgsExtractor[IN])
+                  partitionArgsExtractor: PartitionArgsExtractor[IN],
+                  exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
   def subscribe[IN](topic: Topic, groupName: String,
@@ -48,21 +49,21 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
   protected val subscriptions = new TrieMap[String, (Topic, String)]
   protected val idCounter = new AtomicLong(0)
 
-  def ask[OUT, IN](
-                    topic: Topic,
-                    message: IN
-                    ): Future[OUT] = macro ServiceBusMacro.ask[OUT, IN]
+  /*  def ask[OUT, IN](
+                      topic: Topic,
+                      message: IN
+                      ): Future[OUT] = macro ServiceBusMacro.ask[OUT, IN]
 
-  def publish[IN](
-                   topic: Topic,
-                   message: IN
-                   ): Future[Unit] = macro ServiceBusMacro.publish[IN]
+    def publish[IN](
+                     topic: Topic,
+                     message: IN
+                     ): Future[Unit] = macro ServiceBusMacro.publish[IN]
 
-  def on[OUT, IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
-                 (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT, IN]
+    def on[OUT, IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
+                   (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT, IN]
 
-  def subscribe[IN](topic: Topic, groupName: String, partitionArgsExtractor: PartitionArgsExtractor[IN])
-            (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]
+    def subscribe[IN](topic: Topic, groupName: String, partitionArgsExtractor: PartitionArgsExtractor[IN])
+              (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]*/
 
   def ask[OUT, IN](
                     topic: Topic,
@@ -88,13 +89,15 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
 
   def on[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: PartitionArgsExtractor[IN])
+                  partitionArgsExtractor: PartitionArgsExtractor[IN],
+                  exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     val underlyingSubscriptionId = lookupServerTransport(topic).on[OUT, IN](
       topic,
       inputDecoder,
-      partitionArgsExtractor)(handler)
+      partitionArgsExtractor,
+      exceptionEncoder)(handler)
 
     addSubscriptionLink(topic, underlyingSubscriptionId)
   }

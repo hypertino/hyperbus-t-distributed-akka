@@ -11,7 +11,8 @@ package object serialization {
   type Decoder[T] = Function1[InputStream, T]
   type PartitionArgsExtractor[T] = Function1[T, PartitionArgs]
 
+  // todo: move this to hyperbus
   def createDecoder[T]: Decoder[T] = macro JsonSerializationMacro.createDecoder[T]
-
+  // todo: move this to hyperbus
   def createEncoder[T]: Encoder[T] = macro JsonSerializationMacro.createEncoder[T]
 }

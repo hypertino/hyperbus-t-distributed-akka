@@ -43,15 +43,18 @@ class ServerTransportTest extends ServerTransport {
   var sInputDecoder: Decoder[Any] = null
   var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
   var sExtractor: PartitionArgsExtractor[Any] = null
+  var sExceptionEncoder: Encoder[Throwable] = null
 
   def on[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: PartitionArgsExtractor[IN])
+                  partitionArgsExtractor: PartitionArgsExtractor[IN],
+                  exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     sInputDecoder = inputDecoder
     sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
     sExtractor = partitionArgsExtractor.asInstanceOf[PartitionArgsExtractor[Any]]
+    sExceptionEncoder = exceptionEncoder
     ""
   }
 

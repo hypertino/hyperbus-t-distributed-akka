@@ -34,5 +34,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % akkaV,
   "com.typesafe.akka" %% "akka-contrib" % akkaV,
   "com.jsuereth" %% "scala-arm" % "1.4",
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.9" % "test"
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.9" % "test",
+  "org.apache.directory.studio" % "org.apache.commons.io" % "2.4" % "test"
 )
