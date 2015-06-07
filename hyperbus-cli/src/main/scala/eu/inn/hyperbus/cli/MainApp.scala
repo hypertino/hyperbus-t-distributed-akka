@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders.dynamic.{Text, Value}
 import eu.inn.binders.json.SerializerFactory
+import eu.inn.binders.naming.PlainConverter
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
@@ -44,8 +45,8 @@ object MainApp {
     }
 
     out("")
-    val askCommand = "^~> (.+) (.+) (.+) (.+)$".r
-    val publishCommand = "^|> (.+) (.+) (.+) (.+)$".r
+    val askCommand = """^~>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
+    val publishCommand = """^\|>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
     breakable{ for (cmd ← stdInIterator()) {
       cmd match {
         case "quit" ⇒ break()
@@ -58,7 +59,7 @@ object MainApp {
 
         case publishCommand(method, url, contentType, body) ⇒
           val r = createDynamicRequest(method, url, Some(contentType), body)
-          out(s"<|$r")
+          out(s"<!$r")
           val f = hyperBus <| r
 
         case _ ⇒
@@ -82,7 +83,7 @@ object MainApp {
 
   def printResponse(response: Future[Response[Body]]) = {
     response map out recover{
-      case x: Throwable ⇒ out(x.toString)
+      case x ⇒ out(x)
     }
   }
 
@@ -92,7 +93,32 @@ object MainApp {
   }
 
   def out(s: Any): Unit = {
-    println(s)
+    s match {
+      case r: Request[Body] ⇒ outx(r)
+      case r: Response[Body] ⇒ outx(r)
+      case _ ⇒ println(s)
+    }
     print(">")
+  }
+
+  def outx(r: Request[Body]): Unit = {
+    print(s"${r.getClass.getName}:{ ${r.method} ${r.url} @ ${r.body.contentType} /")
+    outx(r.body)
+    println("}")
+  }
+
+  def outx(r: Response[Body]): Unit = {
+    print(s"${r.getClass.getName}:{ ${r.status} @ ${r.body.contentType} /")
+    outx(r.body)
+    println("}")
+  }
+
+  def outx(r: Body): Unit = {
+    import eu.inn.binders.json._
+    implicit val defaultSerializerFactory = new DefaultSerializerFactory[PlainConverter](true)
+    r match {
+      case d: DynamicBody ⇒ println(d.content.toJson)
+      case t ⇒ println(t)
+    }
   }
 }
