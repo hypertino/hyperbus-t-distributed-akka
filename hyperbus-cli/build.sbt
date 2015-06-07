@@ -24,6 +24,7 @@ javacOptions ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  "jline" % "jline" % "2.12.1",
   "eu.inn" %% "hyperbus" % "0.0.1",
   "eu.inn" %% "servicebus-t-distributed-akka" % "0.0.1",
   "org.slf4j" % "slf4j-api" % "1.7.12",
