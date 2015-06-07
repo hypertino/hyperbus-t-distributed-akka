@@ -1,24 +1,42 @@
-import java.io.{InputStream, ByteArrayInputStream, ByteArrayOutputStream, OutputStream}
+import java.io.{InputStream, OutputStream}
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.actor.ActorSystem
+import akka.actor.{Actor, ActorSystem}
+import akka.cluster.Cluster
+import akka.cluster.ClusterEvent._
+import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
-import eu.inn.servicebus.{ServiceBusConfigurationLoader, TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
+import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
 import org.apache.commons.io.IOUtils
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future, Promise}
+
+class TestActorX extends Actor {
+  val membersUp = new AtomicInteger(0)
+  val memberUpPromise = Promise[Unit]()
+  val memberUpFuture: Future[Unit] = memberUpPromise.future
+  override def receive: Receive = {
+    case MemberUp(member) => {
+      membersUp.incrementAndGet()
+      memberUpPromise.success({})
+      println("Member is ready!")
+    }
+  }
+}
 
 class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
-  var actorSystem: ActorSystem = null
+  implicit var actorSystem: ActorSystem = null
 
   before {
-    //actorSystem = getOrCreate()
+    actorSystem = ActorSystemRegistry.getOrCreate("eu-inn")
+    val testActor = TestActorRef[TestActorX]
+    Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
+    Await.result(testActor.underlyingActor.memberUpFuture, 20.seconds)
   }
 
   after {

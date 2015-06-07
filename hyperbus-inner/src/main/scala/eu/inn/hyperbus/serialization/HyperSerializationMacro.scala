@@ -11,10 +11,21 @@ private[hyperbus] object HyperSerializationMacro {
     val t = weakTypeOf[T]
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
+    val bodyEncoder =
+      if (tBody <:< typeOf[DynamicBody]) {
+        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.dynamicBodyEncoder _"
+      }
+      else if (tBody <:< typeOf[EmptyBody]) {
+        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.emptyBodyEncoder _"
+      }
+      else {
+        q"eu.inn.servicebus.serialization.createEncoder[$tBody]"
+      }
+
     val obj = q"""
       (t: $t, out: java.io.OutputStream) => {
         import eu.inn.hyperbus.serialization.impl.InnerHelpers.bindOptions
-        val bodyEncoder = eu.inn.servicebus.serialization.createEncoder[$tBody]
+        val bodyEncoder = $bodyEncoder
         eu.inn.hyperbus.serialization.impl.InnerHelpers.encodeMessage(t, bodyEncoder, out)
       }
     """
@@ -34,11 +45,24 @@ private[hyperbus] object HyperSerializationMacro {
       if (to == NoSymbol) {
         c.abort(c.enclosingPosition, s"$t doesn't have a companion object (it's not a case class)")
       }
-      // todo: validate method & contentType?
-      q"""
-        val body = eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(requestBodyJson) { deserializer =>
-          deserializer.unbind[$tBody]
+
+      val bodyDecoder =
+        if (tBody <:< typeOf[DynamicBody]) {
+          q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeDynamicBody(requestHeader, requestBodyJson)"
         }
+        else if (tBody <:< typeOf[EmptyBody]) {
+          q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeEmptyBody(requestHeader, requestBodyJson)"
+        }
+        else {
+          // todo: validate method & contentType?
+          q"""
+            eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(requestBodyJson) { deserializer =>
+              deserializer.unbind[$tBody]
+            }
+          """
+        }
+      q"""
+        val body = $bodyDecoder
         $to.${TermName("apply")}(body)
       """
     }

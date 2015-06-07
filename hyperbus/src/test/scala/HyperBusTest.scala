@@ -75,7 +75,7 @@ class ServerTransportTest extends ServerTransport {
 
 class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
-    "Send (serialize)" in {
+    "<~ (client)" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
@@ -92,7 +92,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
-    "Send dynamic (serialize)" in {
+    "<~ dynamic (client)" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
@@ -115,13 +115,13 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
-    "Send empty (serialize)" in {
+    "<~ empty (client)" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":204,"contentType":"no-content"},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPost4(TestBody1("empty"))
+      val f = hyperBus <~ TestPostWithNoContent(TestBody1("empty"))
 
       ct.input should equal(
         """{"request":{"url":"/empty","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"empty"}}"""
@@ -132,8 +132,44 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         r.body shouldBe a[EmptyBody]
       }
     }
+
+    "<~ static request with dynamic body (client)" in {
+      val ct = new ClientTransportTest(
+        """{"response":{"status":204,"contentType":"no-content"},"body":{}}"""
+      )
+
+      val hyperBus = newHyperBus(ct, null)
+      val f = hyperBus <~ StaticPostWithDynamicBody(DynamicBody(Text("ha ha")))
+
+      ct.input should equal(
+        """{"request":{"url":"/empty","method":"post"},"body":"ha ha"}"""
+      )
+
+      whenReady(f) { r =>
+        r shouldBe a[NoContent[_]]
+        r.body shouldBe a[EmptyBody]
+      }
+    }
+
+    "<~ static request with empty body (client)" in {
+      val ct = new ClientTransportTest(
+        """{"response":{"status":204,"contentType":"no-content"},"body":{}}"""
+      )
+
+      val hyperBus = newHyperBus(ct, null)
+      val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody)
+
+      ct.input should equal(
+        """{"request":{"url":"/empty","method":"post","contentType":"no-content"},"body":null}"""
+      )
+
+      whenReady(f) { r =>
+        r shouldBe a[NoContent[_]]
+        r.body shouldBe a[EmptyBody]
+      }
+    }
     
-    "Send (serialize exception)" in {
+    "<~ client got exception" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
       )
@@ -150,7 +186,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
-    "Subscribe (serialize)" in {
+    "~> (server)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null,st)
       hyperBus ~> { post: TestPost1 =>
@@ -176,7 +212,59 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
-    "Subscribe (serialize exception)" in {
+    "~> static request with empty body (server)" in {
+      val st = new ServerTransportTest()
+      val hyperBus = newHyperBus(null,st)
+      hyperBus ~> { post: StaticPostWithEmptyBody =>
+        Future {
+          NoContent()
+        }
+      }
+
+      val req = """{"request":{"url":"/empty","method":"post","contentType":"no-content"},"body":null}"""
+      val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
+      val msg = st.sInputDecoder(ba)
+      msg should equal(StaticPostWithEmptyBody(EmptyBody))
+
+      val hres = st.sHandler(msg)
+      whenReady(hres.futureResult) { r =>
+        r should equal(NoContent())
+        val ba = new ByteArrayOutputStream()
+        hres.resultEncoder(r, ba)
+        val s = ba.toString("UTF-8")
+        s should equal(
+          """{"response":{"status":204,"contentType":"no-content"},"body":null}"""
+        )
+      }
+    }
+
+    "~> static request with dynamic body (server)" in {
+      val st = new ServerTransportTest()
+      val hyperBus = newHyperBus(null,st)
+      hyperBus ~> { post: StaticPostWithDynamicBody =>
+        Future {
+          NoContent()
+        }
+      }
+
+      val req = """{"request":{"url":"/empty","method":"post","contentType":"some-content"},"body":"haha"}"""
+      val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
+      val msg = st.sInputDecoder(ba)
+      msg should equal(StaticPostWithDynamicBody(DynamicBody(Text("haha"), Some("some-content"))))
+
+      val hres = st.sHandler(msg)
+      whenReady(hres.futureResult) { r =>
+        r should equal(NoContent())
+        val ba = new ByteArrayOutputStream()
+        hres.resultEncoder(r, ba)
+        val s = ba.toString("UTF-8")
+        s should equal(
+          """{"response":{"status":204,"contentType":"no-content"},"body":null}"""
+        )
+      }
+    }
+
+    "~> (server throw exception)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null,st)
       hyperBus ~> { post: TestPost1 =>

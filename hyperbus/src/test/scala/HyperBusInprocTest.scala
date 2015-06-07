@@ -39,7 +39,15 @@ with DefinedResponse[
   ]
 
 @url("/empty")
-case class TestPost4(body: TestBody1) extends StaticPost(body)
+case class TestPostWithNoContent(body: TestBody1) extends StaticPost(body)
+with DefinedResponse[NoContent[EmptyBody]]
+
+@url("/empty")
+case class StaticPostWithDynamicBody(body: DynamicBody) extends StaticPost(body)
+with DefinedResponse[NoContent[EmptyBody]]
+
+@url("/empty")
+case class StaticPostWithEmptyBody(body: EmptyBody) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {

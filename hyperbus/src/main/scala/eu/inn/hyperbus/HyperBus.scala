@@ -328,7 +328,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
   }
 
   def logError(msg: String, errorId: String, error: Throwable = null): Unit = {
-    log.error(msg + " #" + errorId, error)
+    log.error(msg + ". #" + errorId, error)
   }
 
   def safeLogError(msg: String, request: Request[Body], routeKey: String, errorId: String, error: Throwable = null): String = {

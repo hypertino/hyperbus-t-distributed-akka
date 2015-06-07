@@ -81,7 +81,7 @@ object MainApp {
   }
 
   def printResponse(response: Future[Response[Body]]) = {
-    response map(out(_)) recover{
+    response map out recover{
       case x: Throwable ⇒ out(x.toString)
     }
   }

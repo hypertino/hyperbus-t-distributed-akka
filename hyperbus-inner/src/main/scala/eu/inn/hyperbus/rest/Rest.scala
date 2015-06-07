@@ -87,7 +87,7 @@ case class ErrorBody(code: String,
                      description: Option[String] = None,
                      errorId: String = UUID.randomUUID().toString,
                      extra: Value = Null) extends ErrorBodyTrait with NoContentType {
-  def message = code + description.map(": " + _).getOrElse("")
+  def message = code + description.map(": " + _).getOrElse("") + ". #" + errorId
 }
 
 trait DefinedResponse[R <: Response[_]]

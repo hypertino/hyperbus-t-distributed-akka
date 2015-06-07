@@ -117,6 +117,24 @@ object InnerHelpers {
     }
   }
 
+  def decodeDynamicBody(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicBody = {
+    SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
+      val v = deserializer.unbind[Value]
+      DynamicBody(v, requestHeader.contentType)
+    }
+  }
+
+  def decodeEmptyBody(requestHeader: RequestHeader, requestBodyJson: JsonParser): EmptyBody = {
+    decodeDynamicBody(requestHeader, requestBodyJson)
+    EmptyBody
+  }
+
+  def dynamicBodyEncoder(body: DynamicBody, out: OutputStream): Unit =
+    eu.inn.servicebus.serialization.createEncoder[Value](body.content, out)
+
+  def emptyBodyEncoder(body: EmptyBody, out: OutputStream): Unit =
+    eu.inn.servicebus.serialization.createEncoder[String](null, out)
+
   private def expect(parser: JsonParser, token: JsonToken) = {
     val loc = parser.getCurrentLocation
     val next = parser.nextToken()
