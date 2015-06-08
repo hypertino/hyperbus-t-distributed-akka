@@ -36,11 +36,13 @@ trait Request[+B <: Body] extends Message[B] {
   def method: String
 }
 
-trait DynamicRequest[+B <: DynamicBody] extends Request[B]
+trait DynamicRequest[+B <: DynamicBody] extends Request[B] // todo: do we need here +B??
 
 trait Response[+B <: Body] extends Message[B] {
   def status: Int
 }
+
+// todo: we need DynamicResponse
 
 trait DynamicBody extends Body with Links {
   def content: Value
@@ -77,7 +79,7 @@ trait ErrorBodyTrait extends Body {
   def description: Option[String]
 }
 
-trait ErrorResponse[+B <: ErrorBodyTrait] extends Response[B]
+trait ErrorResponse[+B <: ErrorBodyTrait] extends Response[B] // is there a need for a +B type???
 
 trait ServerError[+B <: ErrorBodyTrait] extends ErrorResponse[B]
 
