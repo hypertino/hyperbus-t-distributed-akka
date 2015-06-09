@@ -38,7 +38,7 @@ private[hyperbus] object HyperSerializationMacro {
     val t = weakTypeOf[T]
     val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
 
-    val decoder = if (t <:< typeOf[DynamicRequest[_]]) {
+    val decoder = if (t <:< typeOf[DynamicRequest]) {
       q"eu.inn.hyperbus.serialization.impl.InnerHelpers.decodeDynamicRequest(requestHeader, requestBodyJson)"
     } else {
       val to = t.typeSymbol.companion

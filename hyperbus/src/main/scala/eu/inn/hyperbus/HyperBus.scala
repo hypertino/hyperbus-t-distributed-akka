@@ -84,7 +84,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   def ~>[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.on[REQ]
 
-  def <~(request: DynamicRequest[DynamicBody]): Future[Response[Body]] = {
+  def <~(request: DynamicRequest): Future[Response[Body]] = {
     import eu.inn.hyperbus.impl.Helpers._
     import eu.inn.hyperbus.{serialization=>hbs}
     ask(request, encodeDynamicRequest,
@@ -92,7 +92,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     )
   }
 
-  def <|(request: DynamicRequest[DynamicBody]): Future[Unit] = {
+  def <|(request: DynamicRequest): Future[Unit] = {
     import eu.inn.hyperbus.impl.Helpers._
     publish(request, encodeDynamicRequest, extractDynamicPartitionArgs)
   }

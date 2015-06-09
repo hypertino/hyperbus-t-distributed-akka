@@ -36,7 +36,7 @@ trait Request[+B <: Body] extends Message[B] {
   def method: String
 }
 
-trait DynamicRequest[+B <: DynamicBody] extends Request[B] // todo: do we need here +B??
+trait DynamicRequest extends Request[DynamicBody]
 
 trait Response[+B <: Body] extends Message[B] {
   def status: Int

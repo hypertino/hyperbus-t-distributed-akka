@@ -75,7 +75,7 @@ object MainApp {
     println("Exiting...")
   }
 
-  def createDynamicRequest(method: String, url: String, contentType: Option[String], body: String): DynamicRequest[DynamicBody] = {
+  def createDynamicRequest(method: String, url: String, contentType: Option[String], body: String): DynamicRequest = {
     val jf = new JsonFactory()
     val jp = jf.createParser(body)
     try {

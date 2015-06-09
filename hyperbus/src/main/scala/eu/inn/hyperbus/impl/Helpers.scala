@@ -102,7 +102,7 @@ object Helpers {
     }
   }
 
-  def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest[DynamicBody] = {
+  def decodeDynamicRequest(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
     val body = SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       DynamicBody(deserializer.unbind[Value], requestHeader.contentType)
     }
@@ -116,12 +116,12 @@ object Helpers {
     }
   }
 
-  def encodeDynamicRequest(request: DynamicRequest[DynamicBody], outputStream: OutputStream): Unit = {
+  def encodeDynamicRequest(request: DynamicRequest, outputStream: OutputStream): Unit = {
     val bodyEncoder: Encoder[DynamicBody] = dynamicBodyEncoder
     InnerHelpers.encodeMessage(request, bodyEncoder, outputStream)
   }
 
-  def extractDynamicPartitionArgs(request: DynamicRequest[DynamicBody]) = PartitionArgs(
+  def extractDynamicPartitionArgs(request: DynamicRequest) = PartitionArgs(
     impl.Helpers.extractParametersFromUrl(request.url).map { arg ⇒
       arg → ExactArg(request.body.content.asMap.get(arg).map(_.asString) getOrElse "") // todo: inner fields like abc.userId
     }.toMap
