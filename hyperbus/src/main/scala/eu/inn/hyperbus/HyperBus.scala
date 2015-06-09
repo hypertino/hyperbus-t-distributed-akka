@@ -309,8 +309,6 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     val decoder =
       if (responseHeader.status >= 400 && responseHeader.status <= 599)
         eu.inn.hyperbus.serialization.createResponseBodyDecoder[ErrorBody]
-      else if (responseHeader.contentType == EmptyBody.contentType)
-        eu.inn.hyperbus.serialization.createResponseBodyDecoder[EmptyBody] // todo: this should be also dynamic?
       else
         eu.inn.hyperbus.serialization.createResponseBodyDecoder[DynamicBody]
     decoder(responseHeader, responseBodyJson)

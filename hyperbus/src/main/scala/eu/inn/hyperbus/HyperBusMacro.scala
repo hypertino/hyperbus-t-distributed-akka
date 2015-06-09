@@ -139,10 +139,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
 
     val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
-    val emptyBodyTypeSig = typeOf[EmptyBody].typeSymbol.typeSignature
     val bodyCases: Seq[c.Tree] = responseBodyTypes.filterNot { t ⇒
-      t.typeSymbol.typeSignature =:= dynamicBodyTypeSig ||
-        t.typeSymbol.typeSignature =:= emptyBodyTypeSig
+      t.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
       if (ta.isEmpty)
