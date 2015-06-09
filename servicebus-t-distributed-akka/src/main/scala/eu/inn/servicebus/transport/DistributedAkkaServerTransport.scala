@@ -3,9 +3,11 @@ package eu.inn.servicebus.transport
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor._
+import akka.cluster.Cluster
+import akka.contrib.pattern.ClusterSingletonManager
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.distributedakka.{OnServerActor, Start, SubscribeServerActor}
+import eu.inn.servicebus.transport.distributedakka.{AutoDownControlActor, OnServerActor, Start, SubscribeServerActor}
 import eu.inn.servicebus.util.ConfigUtils._
 
 import scala.collection.concurrent.TrieMap
@@ -16,6 +18,15 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem) extends Serve
 
   val subscriptions = new TrieMap[String, ActorRef]
   protected val idCounter = new AtomicLong(0)
+
+  if (Cluster(actorSystem).getSelfRoles.contains("auto-down-controller")) {
+    actorSystem.actorOf(ClusterSingletonManager.props(
+      Props(classOf[AutoDownControlActor]),
+      "control-auto-down-singleton",
+      PoisonPill,
+      Some("auto-down-controller"))
+    )
+  }
 
   override def on[OUT, IN](topic: Topic,
                            inputDecoder: Decoder[IN],

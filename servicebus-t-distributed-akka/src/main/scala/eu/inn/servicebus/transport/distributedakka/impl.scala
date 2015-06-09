@@ -2,7 +2,9 @@ package eu.inn.servicebus.transport.distributedakka
 
 import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 
-import akka.actor.{ActorRef, ActorLogging, Actor}
+import akka.actor.{Actor, ActorRef, ActorLogging}
+import akka.cluster.Cluster
+import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{SubscribeAck, Subscribe}
 import eu.inn.servicebus.serialization._
@@ -103,5 +105,25 @@ private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] 
           case NonFatal(e) ⇒ log.error(e, "Subscriber handler failed")
         }
       }
+  }
+}
+
+private [transport] class AutoDownControlActor extends Actor with ActorLogging {
+
+  val cluster = Cluster(context.system)
+
+  override def preStart(): Unit = {
+    cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
+      classOf[MemberEvent], classOf[UnreachableMember])
+  }
+  override def postStop(): Unit = cluster.unsubscribe(self)
+
+  override def receive: Actor.Receive = {
+    case UnreachableMember(member) =>
+      if (member.roles.contains("auto-down")) {
+        log.warning(s"Downing unreachable member: {}", member)
+        Cluster(context.system).down(member.address)
+      }
+    case _: MemberEvent => // ignore
   }
 }
