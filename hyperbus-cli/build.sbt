@@ -23,6 +23,8 @@ javacOptions ++= Seq(
   "-Xlint:deprecation"
 )
 
+val akkaV = "2.3.11"
+
 libraryDependencies ++= Seq(
   "jline" % "jline" % "2.12.1",
   "eu.inn" %% "hyperbus" % "0.0.1",
@@ -33,8 +35,8 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.3",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test",
-  "com.typesafe.akka" %% "akka-actor" % "2.3.9",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.3.9",
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.9" % "test"
+  "com.typesafe.akka" %% "akka-actor" % akkaV,
+  "com.typesafe.akka" %% "akka-slf4j" % akkaV,
+  "com.typesafe.akka" %% "akka-testkit" % akkaV % "test"
 )
 

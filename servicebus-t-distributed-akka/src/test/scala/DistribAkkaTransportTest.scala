@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{ActorLogging, Actor, ActorSystem}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
+import akka.event.LoggingReceive
 import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
 import eu.inn.servicebus.serialization._
@@ -11,6 +12,7 @@ import eu.inn.servicebus.transport._
 import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
 import org.apache.commons.io.IOUtils
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.duration._
@@ -20,7 +22,7 @@ class TestActorX extends Actor with ActorLogging{
   val membersUp = new AtomicInteger(0)
   val memberUpPromise = Promise[Unit]()
   val memberUpFuture: Future[Unit] = memberUpPromise.future
-  override def receive: Receive = {
+  override def receive: Receive = LoggingReceive {
     case MemberUp(member) => {
       membersUp.incrementAndGet()
       memberUpPromise.success({})
@@ -36,11 +38,10 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
     actorSystem = ActorSystemRegistry.getOrCreate("eu-inn")
     val testActor = TestActorRef[TestActorX]
     Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
-    Await.result(testActor.underlyingActor.memberUpFuture, 20.seconds)
+    //Await.result(testActor.underlyingActor.memberUpFuture, 20.seconds)
   }
 
   after {
-    println("s1...")
     ActorSystemRegistry.get("eu-inn") foreach { actorSystem ⇒
       actorSystem.shutdown()
       actorSystem.awaitTermination()
@@ -56,7 +57,6 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       val id = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),
         mockDecoder, mockExtractor[String], null) { s =>
         cnt.incrementAndGet()
-        println("inc1...")
         mockResult(s.reverse)
       }
 
@@ -64,7 +64,6 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockDecoder,
         mockExtractor[String], null){ s =>
         cnt.incrementAndGet()
-        println("inc2...")
         mockResult(s.reverse)
       }
 
@@ -73,7 +72,6 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockExtractor[String]) { s =>
         s should equal("12345")
         cnt.incrementAndGet()
-        println("inc3...")
         mockResultU
       }
 
@@ -82,7 +80,6 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockExtractor[String]){ s =>
         s should equal("12345")
         cnt.incrementAndGet()
-        println("inc4...")
         mockResultU
       }
 
@@ -91,9 +88,10 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockExtractor[String]){ s =>
         s should equal("12345")
         cnt.incrementAndGet()
-        println("inc5...")
         mockResultU
       }
+
+      Thread.sleep(500) // we need to wait until subscriptions will go acros the
 
       val f: Future[String] = serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),
         "12345",
@@ -101,14 +99,25 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
       whenReady(f) { s =>
         s should equal("54321")
-        Thread.sleep(5000) // give chance to increment to another service (in case of wrong implementation)
+        Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(3)
-        /*
-        serviceBus.off(id)
 
-        todo: NoTransportRouteException doesn't work for DistribPubSub
-        val f2: Future[String] = serviceBus.ask[String, Int](Topic("topic", PartitionArgs(Map())), 1)
-        whenReady(f2.failed, timeout(Span(10, Seconds))) { e =>
+        serviceBus.off(id)
+        serviceBus.off(id2)
+
+        /*
+        Thread.sleep(500) // todo: find a way to know if the subscription is complete? future?
+        // todo: NoTransportRouteException doesn't work for DistribPubSub
+
+        val f2: Future[String] = serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map())), "12345",
+          mockEncoder, mockDecoder)
+        whenReady(f2.failed, timeout(Span(1, Seconds))) { e =>
+          e shouldBe a[NoTransportRouteException]
+        }
+
+        val f3: Future[String] = serviceBus.ask[String, String](Topic("not-existing-topic", PartitionArgs(Map())), "12345",
+          mockEncoder, mockDecoder)
+        whenReady(f3.failed, timeout(Span(1, Seconds))) { e =>
           e shouldBe a[NoTransportRouteException]
         }*/
       }

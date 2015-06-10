@@ -34,8 +34,8 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem) extends Serve
                            exceptionEncoder: Encoder[Throwable])
                           (handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = {
 
-    val actor = actorSystem.actorOf(Props[OnServerActor[OUT,IN]])
     val id = idCounter.incrementAndGet().toHexString
+    val actor = actorSystem.actorOf(Props[OnServerActor[OUT,IN]], "eu-inn-distr-on-server" + id)
     subscriptions.put(id, actor)
     actor ! Start(id, distributedakka.Subscription[OUT, IN](topic, None, inputDecoder, partitionArgsExtractor, exceptionEncoder, handler))
     id
@@ -46,8 +46,8 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem) extends Serve
                              inputDecoder: Decoder[IN],
                              partitionArgsExtractor: PartitionArgsExtractor[IN])
                             (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
-    val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]])
     val id = idCounter.incrementAndGet().toHexString
+    val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id)
     subscriptions.put(id, actor)
     actor ! Start(id, distributedakka.Subscription[Unit, IN](topic, Some(groupName), inputDecoder, partitionArgsExtractor, null, handler))
     id

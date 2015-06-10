@@ -2,12 +2,13 @@ package eu.inn.servicebus.transport
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import akka.actor.ActorSystem
+import akka.actor.{Props, ActorSystem}
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.typesafe.config.{ConfigFactory, Config}
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.transport.distributedakka.NoRouteWatcher
 import eu.inn.servicebus.util.ConfigUtils
 
 import scala.concurrent.duration.{FiniteDuration, Duration}
@@ -25,7 +26,12 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
-  val mediator = DistributedPubSubExtension(actorSystem).mediator
+  actorSystem.actorSelection("no-route-watcher").resolveOne().recover {
+    case _ ⇒ actorSystem.actorOf(Props(new NoRouteWatcher), "no-route-watcher")
+  }
+
+  protected [this] val mediator = DistributedPubSubExtension(actorSystem).mediator
+
 
   override def ask[OUT, IN](topic: Topic,
                             message: IN,

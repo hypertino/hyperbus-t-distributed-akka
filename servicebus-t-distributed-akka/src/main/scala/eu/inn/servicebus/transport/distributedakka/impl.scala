@@ -2,17 +2,18 @@ package eu.inn.servicebus.transport.distributedakka
 
 import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 
-import akka.actor.{Actor, ActorRef, ActorLogging}
+import akka.actor.{DeadLetter, Actor, ActorRef, ActorLogging}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.{SubscribeAck, Subscribe}
+import akka.contrib.pattern.DistributedPubSubMediator.{Publish, SubscribeAck, Subscribe}
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{Util, SubscriptionHandlerResult, Topic}
+import eu.inn.servicebus.transport.{NoTransportRouteException, Util, SubscriptionHandlerResult, Topic}
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 import akka.pattern.pipe
+import akka.pattern.ask
 
 private [transport] trait Command
 
@@ -125,5 +126,15 @@ private [transport] class AutoDownControlActor extends Actor with ActorLogging {
         Cluster(context.system).down(member.address)
       }
     case _: MemberEvent => // ignore
+  }
+}
+
+private [transport] class NoRouteWatcher extends Actor with ActorLogging {
+  import context._
+  system.eventStream.subscribe(self, classOf[DeadLetter])
+
+  override def receive: Receive = {
+    case deadMessage: DeadLetter ⇒
+      Future.failed(new NoTransportRouteException(deadMessage.recipient.toString())) pipeTo deadMessage.sender
   }
 }
