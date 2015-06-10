@@ -26,8 +26,6 @@ private [transport] case class Subscription[OUT, IN](topic: Topic,
 
 private [transport] case class Start[OUT,IN](id: String, subscription: Subscription[OUT,IN]) extends Command
 
-private [transport] case object StopServer extends Command
-
 private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorLogging {
   protected [this] val mediator = DistributedPubSubExtension(context.system).mediator
   protected [this] var subscription: Subscription[OUT,IN] = null

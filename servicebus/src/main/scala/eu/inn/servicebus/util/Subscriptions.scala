@@ -24,6 +24,9 @@ class SubscriptionList[T](private val seq: IndexedSeq[SubscriptionWithId[T]]) {
     seq(SubscriptionList.getNextRandomInt(seq.size)).subscription
   else
     seq.head.subscription
+
+  def foreach(code:T ⇒ Unit): Unit = seq.foreach(x ⇒ code(x.subscription))
+  def map[O](code:T ⇒ O): Iterable[O] = seq.map(x ⇒ code(x.subscription))
 }
 
 object SubscriptionList {
@@ -82,5 +85,13 @@ class Subscriptions[K, T] {
         routes.remove(routeKey, subscriptionId)
         routeKeyById.remove(subscriptionId)
     }
+  }
+
+  def foreach(code:T ⇒ Unit): Unit = routes.foreach(_._2.subRoutes.foreach(_._2.foreach(code)))
+  def map[O](code:T ⇒ O): Iterable[O] = routes.map(_._2.subRoutes.flatMap(_._2.map(code))).flatten
+
+  def clear(): Unit = {
+    routes.clear()
+    routeKeyById.clear()
   }
 }

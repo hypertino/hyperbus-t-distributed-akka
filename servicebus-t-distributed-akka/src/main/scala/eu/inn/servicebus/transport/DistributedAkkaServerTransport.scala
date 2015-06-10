@@ -5,12 +5,16 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.actor._
 import akka.cluster.Cluster
 import akka.contrib.pattern.ClusterSingletonManager
+import akka.util.Timeout
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.distributedakka.{AutoDownControlActor, OnServerActor, Start, SubscribeServerActor}
 import eu.inn.servicebus.util.ConfigUtils._
 
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.{Promise, Future}
+import scala.concurrent.duration.{FiniteDuration, Duration}
+import akka.pattern.gracefulStop
 
 class DistributedAkkaServerTransport(val actorSystem: ActorSystem) extends ServerTransport {
 
@@ -58,6 +62,26 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem) extends Serve
       actorSystem.stop(s)
       subscriptions.remove(subscriptionId)
     }
+  }
+
+  def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    val futures = subscriptions.map { s⇒
+      gracefulStop(s._2, duration)
+    }
+
+    futures.flatMap { list ⇒
+      list.
+    }
+
+    val promise = Promise[Boolean]()
+    if (!actorSystem.isTerminated && Cluster(actorSystem).getSelfRoles.contains("auto-down")) {
+      actorSystem.registerOnTermination(promise.success(true))
+      actorSystem.shutdown()
+    }
+    else {
+      promise.success(true)
+    }
+    promise.future
   }
 }
 

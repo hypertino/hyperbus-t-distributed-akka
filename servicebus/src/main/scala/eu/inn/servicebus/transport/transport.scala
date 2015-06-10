@@ -9,6 +9,7 @@ import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.Option
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
@@ -66,6 +67,8 @@ trait ClientTransport {
                    message: IN,
                    inputEncoder: Encoder[IN]
                    ): Future[Unit]
+
+  def shutdown(duration: Duration): Future[Boolean]
 }
 
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT], resultEncoder: Encoder[OUT])
@@ -83,6 +86,7 @@ trait ServerTransport {
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
+  def shutdown(duration: Duration): Future[Boolean]
 }
 
 private[transport] case class SubKey(groupName: Option[String], partitionArgs: PartitionArgs)
@@ -261,5 +265,10 @@ class InprocTransport(serialize: Boolean = false)
 
   def off(subscriptionId: String) = {
     subscriptions.remove(subscriptionId)
+  }
+
+  def shutdown(duration: Duration): Future[Boolean] = {
+    subscriptions.clear()
+    Future.successful(true)
   }
 }

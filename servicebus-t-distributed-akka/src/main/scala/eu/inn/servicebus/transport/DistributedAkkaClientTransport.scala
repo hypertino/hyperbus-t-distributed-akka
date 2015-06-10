@@ -1,8 +1,10 @@
 package eu.inn.servicebus.transport
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.{Props, ActorSystem}
+import akka.cluster.Cluster
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.util.Timeout
@@ -12,7 +14,7 @@ import eu.inn.servicebus.transport.distributedakka.NoRouteWatcher
 import eu.inn.servicebus.util.ConfigUtils
 
 import scala.concurrent.duration.{FiniteDuration, Duration}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Promise, ExecutionContext, Future}
 import ConfigUtils._
 
 class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
@@ -26,7 +28,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
-  actorSystem.actorSelection("no-route-watcher").resolveOne().recover {
+  val noRouteActor = actorSystem.actorSelection("no-route-watcher").resolveOne().recover {
     case _ ⇒ actorSystem.actorOf(Props(new NoRouteWatcher), "no-route-watcher")
   }
 
@@ -56,6 +58,18 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     val messageString = inputBytes.toString(Util.defaultEncoding)
     mediator ! Publish(topic.url, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?
     Future.successful{}
+  }
+
+  def shutdown(duration: Duration): Future[Boolean] = {
+    val promise = Promise[Boolean]()
+    if (!actorSystem.isTerminated && Cluster(actorSystem).getSelfRoles.contains("auto-down")) {
+      actorSystem.registerOnTermination(promise.success(true))
+      actorSystem.shutdown()
+    }
+    else {
+      promise.success(true)
+    }
+    promise.future
   }
 }
 

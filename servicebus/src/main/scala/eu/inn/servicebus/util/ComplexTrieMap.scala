@@ -38,4 +38,9 @@ class ComplexTrieMap[K, REMOVE, V <: ComplexElement[V, REMOVE]] {
       }
     }
   }
+
+  def foreach(code:((K,V)) ⇒ Unit): Unit = map.foreach(code)
+  def map[O](code:((K,V)) ⇒ O): Iterable[O] = map.map(code)
+
+  def clear() = map.clear()
 }
