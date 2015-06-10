@@ -92,18 +92,20 @@ object ErrorBody {
   def apply(code: String,
             description: Option[String] = None,
             errorId: String = ErrorUtils.createErrorId,
-            extra: Value = Null): ErrorBody =
-    ErrorBodyContainer(code, description, errorId, extra)
+            extra: Value = Null,
+            contentType: Option[String] = None): ErrorBody =
+    ErrorBodyContainer(code, description, errorId, extra, contentType)
 
   def unapply(errorBody: ErrorBody) = Some(
-    (errorBody.code, errorBody.description, errorBody.errorId, errorBody.extra)
+    (errorBody.code, errorBody.description, errorBody.errorId, errorBody.extra, errorBody.contentType)
   )
 }
 
 private [rest] case class ErrorBodyContainer(code: String,
-                     description: Option[String],
-                     errorId: String = ErrorUtils.createErrorId,
-                     extra: Value) extends ErrorBody with NoContentType {
+                                             description: Option[String],
+                                             errorId: String,
+                                             extra: Value,
+                                             contentType: Option[String]) extends ErrorBody {
   def message = code + description.map(": " + _).getOrElse("") + ". #" + errorId
 }
 
