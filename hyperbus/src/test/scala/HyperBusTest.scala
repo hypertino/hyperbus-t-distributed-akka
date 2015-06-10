@@ -13,6 +13,7 @@ import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder
@@ -36,6 +37,10 @@ class ClientTransportTest(output: String) extends ClientTransport {
   override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
     ask[Any, IN](topic, message, inputEncoder, null) map { x =>
     }
+  }
+
+  def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    Future.successful(true)
   }
 }
 
@@ -70,6 +75,10 @@ class ServerTransportTest extends ServerTransport {
     sInputDecoder = inputDecoder
     sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
     ""
+  }
+
+  def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    Future.successful(true)
   }
 }
 

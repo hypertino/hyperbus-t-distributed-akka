@@ -6,7 +6,9 @@ import eu.inn.servicebus.serialization.{Decoder, Encoder, PartitionArgsExtractor
 import eu.inn.servicebus.transport._
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.FiniteDuration
+
 //import scala.language.experimental.macros
 
 trait ServiceBusApi {
@@ -34,6 +36,8 @@ trait ServiceBusApi {
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String
 
   def off(subscriptionId: String): Unit
+
+  def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
 case class TransportRoute[T](transport: T, urlArg: PartitionArg, partitionArgs: PartitionArgs = PartitionArgs(Map()))
@@ -42,9 +46,11 @@ case class ServiceBusConfiguration(clientRoutes: Seq[TransportRoute[ClientTransp
                                    serverRoutes: Seq[TransportRoute[ServerTransport]])
 
 class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
-                 val serverRoutes: Seq[TransportRoute[ServerTransport]]) extends ServiceBusApi {
+                 val serverRoutes: Seq[TransportRoute[ServerTransport]],
+                 implicit val executionContext: ExecutionContext = ExecutionContext.global) extends ServiceBusApi {
 
-  def this(configuration: ServiceBusConfiguration) = this(configuration.clientRoutes, configuration.serverRoutes)
+  def this(configuration: ServiceBusConfiguration) = this(configuration.clientRoutes,
+    configuration.serverRoutes, ExecutionContext.global)
 
   protected val subscriptions = new TrieMap[String, (Topic, String)]
   protected val idCounter = new AtomicLong(0)
@@ -115,6 +121,15 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
     addSubscriptionLink(topic, underlyingSubscriptionId)
   }
 
+  def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    val client = Future.sequence(serverRoutes.map(_.transport.shutdown(duration)))
+    val server = Future.sequence(clientRoutes.map(_.transport.shutdown(duration)))
+    client flatMap { c ⇒
+      server map { s ⇒
+        s.forall(_ == true) && c.forall(_ == true)
+      }
+    }
+  }
   protected def addSubscriptionLink(topic: Topic, underlyingSubscriptionId: String) = {
     val subscriptionId = idCounter.incrementAndGet().toHexString
     subscriptions.put(subscriptionId, (topic, underlyingSubscriptionId))

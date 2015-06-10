@@ -14,6 +14,7 @@ import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.{Marker, LoggerFactory}
 
 import scala.collection.mutable
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.experimental.macros
 import scala.util.Try
@@ -64,9 +65,11 @@ trait HyperBusApi {
   def responseDecoder(responseHeader: ResponseHeader,
                       responseBodyJson: com.fasterxml.jackson.core.JsonParser,
                       bodyDecoder: PartialFunction[ResponseHeader, ResponseBodyDecoder]): Response[Body]
+
+  def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
-class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
   protected trait Subscription[REQ <: Request[Body]] {
     def requestDecoder: RequestDecoder[REQ]
   }
@@ -194,7 +197,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     val outputDecoder = InnerHelpers.decodeResponseWith(_: InputStream)(responseDecoder)
     val args = partitionArgsExtractor(request)
     val topic = Topic(request.url, args)
-    underlyingBus.ask[RESP, REQ](topic, request, requestEncoder, outputDecoder) map {
+    serviceBus.ask[RESP, REQ](topic, request, requestEncoder, outputDecoder) map {
       case throwable: Throwable ⇒ throw throwable
       case other ⇒ other
     }
@@ -205,7 +208,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
                                     partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit] = {
     val args = partitionArgsExtractor(request)
     val topic = Topic(request.url, args)
-    underlyingBus.publish[REQ](topic, request, requestEncoder)
+    serviceBus.publish[REQ](topic, request, requestEncoder)
   }
 
   def on[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
@@ -227,7 +230,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
         val pe: PartitionArgsExtractor[REQ] = uh.partitionArgsExtractor
-        val uid = underlyingBus.on[Response[Body], REQ](topic, d, pe, exceptionEncoder)(uh.handler)
+        val uid = serviceBus.on[Response[Body], REQ](topic, d, pe, exceptionEncoder)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -254,7 +257,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         val uh = new UnderlyingPubSubHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
         val pe: PartitionArgsExtractor[REQ] = uh.partitionArgsExtractor
-        val uid = underlyingBus.subscribe[REQ](topic, groupName, d, pe)(uh.handler)
+        val uid = serviceBus.subscribe[REQ](topic, groupName, d, pe)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -268,11 +271,15 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
           c + x._2.size
         }
         if (cnt <= 1) {
-          underlyingSubscriptions.get(routeKey).foreach(k => underlyingBus.off(k._1))
+          underlyingSubscriptions.get(routeKey).foreach(k => serviceBus.off(k._1))
         }
       }
       subscriptions.remove(subscriptionId)
     }
+  }
+
+  def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    serviceBus.shutdown(duration)
   }
 
   def responseEncoder(response: Response[Body],

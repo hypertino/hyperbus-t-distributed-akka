@@ -60,9 +60,9 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     Future.successful{}
   }
 
-  def shutdown(duration: Duration): Future[Boolean] = {
+  def shutdown(duration: FiniteDuration): Future[Boolean] = {
     val promise = Promise[Boolean]()
-    if (!actorSystem.isTerminated && Cluster(actorSystem).getSelfRoles.contains("auto-down")) {
+    if (!actorSystem.isTerminated) {
       actorSystem.registerOnTermination(promise.success(true))
       actorSystem.shutdown()
     }

@@ -10,18 +10,23 @@ import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.distributedakka.{AutoDownControlActor, OnServerActor, Start, SubscribeServerActor}
 import eu.inn.servicebus.util.ConfigUtils._
+import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.{FiniteDuration, Duration}
 import akka.pattern.gracefulStop
 
-class DistributedAkkaServerTransport(val actorSystem: ActorSystem) extends ServerTransport {
+class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
+                                     implicit val executionContext: ExecutionContext = ExecutionContext.global)
+  extends ServerTransport {
 
-  def this(config: Config) = this(ActorSystemRegistry.getOrCreate(config.getString("actor-system", "eu-inn")))
+  def this(config: Config) = this(ActorSystemRegistry.getOrCreate(config.getString("actor-system", "eu-inn")),
+    scala.concurrent.ExecutionContext.global)
 
   val subscriptions = new TrieMap[String, ActorRef]
   protected val idCounter = new AtomicLong(0)
+  protected val log = LoggerFactory.getLogger(this.getClass)
 
   if (Cluster(actorSystem).getSelfRoles.contains("auto-down-controller")) {
     actorSystem.actorOf(ClusterSingletonManager.props(
@@ -65,21 +70,24 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem) extends Serve
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    val futures = subscriptions.map { s⇒
-      gracefulStop(s._2, duration)
-    }
-
-    futures.flatMap { list ⇒
-      list.
-    }
-
+    val actorStopFutures = subscriptions.map(s ⇒
+      gracefulStop(s._2, duration) recover {
+        case t: Throwable ⇒
+          log.error("Shutting down ditributed akka", t)
+          false
+      }
+    )
     val promise = Promise[Boolean]()
-    if (!actorSystem.isTerminated && Cluster(actorSystem).getSelfRoles.contains("auto-down")) {
-      actorSystem.registerOnTermination(promise.success(true))
-      actorSystem.shutdown()
-    }
-    else {
-      promise.success(true)
+    Future.sequence(actorStopFutures) map { list ⇒
+      val result = list.forall(_ == true)
+      if (!actorSystem.isTerminated && Cluster(actorSystem).getSelfRoles.contains("auto-down")) {
+        actorSystem.registerOnTermination(promise.success(result))
+        actorSystem.shutdown()
+      }
+      else {
+        promise.success(result)
+      }
+      subscriptions.clear()
     }
     promise.future
   }

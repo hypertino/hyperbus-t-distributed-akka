@@ -34,7 +34,11 @@ class TestActorX extends Actor with ActorLogging{
 class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
   implicit var actorSystem: ActorSystem = null
 
+  var serviceBus: ServiceBus = null
   before {
+    val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(ConfigFactory.load())
+    serviceBus = new ServiceBus(serviceBusConfig)
+
     actorSystem = ActorSystemRegistry.getOrCreate("eu-inn")
     val testActor = TestActorRef[TestActorX]
     Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
@@ -42,16 +46,17 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
   }
 
   after {
-    ActorSystemRegistry.get("eu-inn") foreach { actorSystem ⇒
+    if (serviceBus != null) {
+      Await.result(serviceBus.shutdown(10.seconds), 10.seconds)
+    }
+    /*ActorSystemRegistry.get("eu-inn") foreach { actorSystem ⇒
       actorSystem.shutdown()
       actorSystem.awaitTermination()
-    }
+    }*/
   }
 
   "DistributedAkkaTransport " - {
     "Send and Receive" in {
-      val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(ConfigFactory.load())
-      val serviceBus = new ServiceBus(serviceBusConfig)
       val cnt = new AtomicInteger(0)
 
       val id = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),

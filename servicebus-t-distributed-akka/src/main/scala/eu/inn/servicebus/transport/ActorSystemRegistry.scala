@@ -11,7 +11,14 @@ object ActorSystemRegistry {
   import eu.inn.servicebus.util.ConfigUtils._
 
   def getOrCreate(actorSystemName: String): ActorSystem = {
-    get(actorSystemName) getOrElse {
+    get(actorSystemName) flatMap { actorSystem ⇒
+      if (actorSystem.isTerminated) {
+        registry.remove(actorSystemName)
+        None
+      }
+      else
+        Some(actorSystem)
+    } getOrElse {
       // specifically synchronize expensive operation despite the fact that we use TrieMap
       lock.synchronized {
         val as = createActorSystem(actorSystemName)
