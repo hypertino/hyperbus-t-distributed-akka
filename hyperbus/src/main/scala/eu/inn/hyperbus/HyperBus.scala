@@ -289,7 +289,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     response.body match {
       case _: ErrorBody => createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
       case _: DynamicCreatedBody => createEncoder[Response[DynamicCreatedBody]](response.asInstanceOf[Response[DynamicCreatedBody]], outputStream)
-      case _: DynamicBodyContainer => createEncoder[Response[DynamicBodyContainer]](response.asInstanceOf[Response[DynamicBodyContainer]], outputStream)
+      case _: DynamicBody => createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
       case _ => responseEncoderNotFound(response)
     }
   }
@@ -324,7 +324,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     Helpers.createResponse(responseHeader, body)
   }
 
-  def logError(msg: String, error: HyperBusException[ErrorBodyApi]): Unit = {
+  def logError(msg: String, error: HyperBusException[ErrorBody]): Unit = {
     log.error(msg + ". #" + error.body.errorId, error)
   }
 

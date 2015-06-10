@@ -135,6 +135,9 @@ object InnerHelpers {
   def emptyBodyEncoder(body: EmptyBody, out: OutputStream): Unit =
     eu.inn.servicebus.serialization.createEncoder[String](null, out)
 
+  def errorBodyEncoder(body: ErrorBody, out: OutputStream): Unit =
+    eu.inn.servicebus.serialization.createEncoder[ErrorBody](body, out)
+
   private def expect(parser: JsonParser, token: JsonToken) = {
     val loc = parser.getCurrentLocation
     val next = parser.nextToken()

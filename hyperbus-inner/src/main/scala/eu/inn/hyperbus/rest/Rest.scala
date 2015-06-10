@@ -52,9 +52,10 @@ trait DynamicBody extends Body with Links {
 
 object DynamicBody {
   def apply(content: Value, contentType: Option[String] = None): DynamicBody = DynamicBodyContainer(content, contentType)
+  def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.content, dynamicBody.contentType))
 }
 
-case class DynamicBodyContainer(content: Value, contentType: Option[String] = None) extends DynamicBody
+private [rest] case class DynamicBodyContainer(content: Value, contentType: Option[String] = None) extends DynamicBody
 
 @contentTypeMarker("no-content")
 trait EmptyBody extends Body
@@ -69,26 +70,40 @@ trait NormalResponse extends Response[Body]
 
 trait RedirectResponse extends Response[Body]
 
-trait ErrorBodyApi extends Body {
+trait ErrorBody extends Body {
   def code: String
 
-  def message: String
+  def description: Option[String]
 
   def errorId: String
 
-  def description: Option[String]
+  def extra: Value
+
+  def message: String
 }
 
-trait ErrorResponse extends Response[ErrorBodyApi]
+trait ErrorResponse extends Response[ErrorBody]
 
 trait ServerError extends ErrorResponse
 
 trait ClientError extends ErrorResponse
 
-case class ErrorBody(code: String,
-                     description: Option[String] = None,
+object ErrorBody {
+  def apply(code: String,
+            description: Option[String] = None,
+            errorId: String = ErrorUtils.createErrorId,
+            extra: Value = Null): ErrorBody =
+    ErrorBodyContainer(code, description, errorId, extra)
+
+  def unapply(errorBody: ErrorBody) = Some(
+    (errorBody.code, errorBody.description, errorBody.errorId, errorBody.extra)
+  )
+}
+
+private [rest] case class ErrorBodyContainer(code: String,
+                     description: Option[String],
                      errorId: String = ErrorUtils.createErrorId,
-                     extra: Value = Null) extends ErrorBodyApi with NoContentType {
+                     extra: Value) extends ErrorBody with NoContentType {
   def message = code + description.map(": " + _).getOrElse("") + ". #" + errorId
 }
 

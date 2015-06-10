@@ -28,8 +28,8 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "eu.inn" %% "binders-core" % "0.6.55",
-  "eu.inn" %% "binders-json" % "0.6.34",
+  "eu.inn" %% "binders-core" % "0.6.57",
+  "eu.inn" %% "binders-json" % "0.6.35",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test"

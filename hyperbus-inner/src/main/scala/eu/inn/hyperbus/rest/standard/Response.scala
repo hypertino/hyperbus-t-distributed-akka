@@ -127,131 +127,131 @@ case class TemporaryRedirect[+B <: Body](body: B) extends RedirectResponse with 
 
 // ----------------- Exception base classes -----------------
 
-abstract class HyperBusException[+B <: ErrorBodyApi](body: B, cause: Throwable = null)
-  extends RuntimeException(body.message, cause) with Response[B]
+abstract class HyperBusException[+B <: ErrorBody](body: B, cause: Throwable = null)
+  extends RuntimeException(body.toString, cause) with Response[B]
 
-abstract class HyperBusServerException[+B <: ErrorBodyApi](body: B, cause: Throwable = null) extends HyperBusException(body, cause)
+abstract class HyperBusServerException[+B <: ErrorBody](body: B, cause: Throwable = null) extends HyperBusException(body, cause)
 
-abstract class HyperBusClientException[+B <: ErrorBodyApi](body: B, cause: Throwable = null) extends HyperBusException(body, cause)
+abstract class HyperBusClientException[+B <: ErrorBody](body: B, cause: Throwable = null) extends HyperBusException(body, cause)
 
 // ----------------- Client Error responses -----------------
 
 
-case class BadRequest[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class BadRequest[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.BAD_REQUEST
 }
 
-case class Unauthorized[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class Unauthorized[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.UNAUTHORIZED
 }
 
-case class PaymentRequired[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class PaymentRequired[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.PAYMENT_REQUIRED
 }
 
-case class Forbidden[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class Forbidden[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.FORBIDDEN
 }
 
-case class NotFound[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class NotFound[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.NOT_FOUND
 }
 
-case class MethodNotAllowed[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class MethodNotAllowed[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.METHOD_NOT_ALLOWED
 }
 
-case class NotAcceptable[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class NotAcceptable[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.NOT_ACCEPTABLE
 }
 
-case class ProxyAuthenticationRequired[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class ProxyAuthenticationRequired[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.PROXY_AUTHENTICATION_REQUIRED
 }
 
-case class RequestTimeout[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class RequestTimeout[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.REQUEST_TIMEOUT
 }
 
-case class Conflict[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class Conflict[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.CONFLICT
 }
 
-case class Gone[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class Gone[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.GONE
 }
 
-case class LengthRequired[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class LengthRequired[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.LENGTH_REQUIRED
 }
 
-case class PreconditionFailed[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class PreconditionFailed[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.PRECONDITION_FAILED
 }
 
-case class RequestEntityTooLarge[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class RequestEntityTooLarge[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.REQUEST_ENTITY_TOO_LARGE
 }
 
-case class RequestUriTooLong[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class RequestUriTooLong[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.REQUEST_URI_TOO_LONG
 }
 
-case class UnsupportedMediaType[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class UnsupportedMediaType[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.UNSUPPORTED_MEDIA_TYPE
 }
 
-case class RequestedRangeNotSatisfiable[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class RequestedRangeNotSatisfiable[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.REQUESTED_RANGE_NOT_SATISFIABLE
 }
 
-case class ExpectationFailed[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class ExpectationFailed[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.EXPECTATION_FAILED
 }
 
-case class UnprocessableEntity[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class UnprocessableEntity[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.UNPROCESSABLE_ENTITY
 }
 
-case class Locked[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class Locked[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.LOCKED
 }
 
-case class FailedDependency[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class FailedDependency[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.FAILED_DEPENDENCY
 }
 
-case class TooManyRequest[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+case class TooManyRequest[+B <: ErrorBody](body: B) extends HyperBusClientException(body) {
   def status: Int = Status.TOO_MANY_REQUEST
 }
 
 // ----------------- Server Error responses -----------------
 
-case class InternalServerError[+B <: ErrorBodyApi](body: B, cause: Throwable = null)
+case class InternalServerError[+B <: ErrorBody](body: B, cause: Throwable = null)
   extends HyperBusServerException(body, cause) {
   def status: Int = Status.INTERNAL_SERVER_ERROR
 }
 
-case class NotImplemented[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+case class NotImplemented[+B <: ErrorBody](body: B) extends HyperBusServerException(body) {
   def status: Int = Status.NOT_IMPLEMENTED
 }
 
-case class BadGateway[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+case class BadGateway[+B <: ErrorBody](body: B) extends HyperBusServerException(body) {
   def status: Int = Status.BAD_GATEWAY
 }
 
-case class ServiceUnavailable[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+case class ServiceUnavailable[+B <: ErrorBody](body: B) extends HyperBusServerException(body) {
   def status: Int = Status.SERVICE_UNAVAILABLE
 }
 
-case class GatewayTimeout[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+case class GatewayTimeout[+B <: ErrorBody](body: B) extends HyperBusServerException(body) {
   def status: Int = Status.GATEWAY_TIMEOUT
 }
 
-case class HttpVersionNotSupported[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+case class HttpVersionNotSupported[+B <: ErrorBody](body: B) extends HyperBusServerException(body) {
   def status: Int = Status.HTTP_VERSION_NOT_SUPPORTED
 }
 
-case class InsufficientStorage[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+case class InsufficientStorage[+B <: ErrorBody](body: B) extends HyperBusServerException(body) {
   def status: Int = Status.INSUFFICIENT_STORAGE
 }

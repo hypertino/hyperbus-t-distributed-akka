@@ -3,7 +3,7 @@ import akka.actor.{Actor, ActorSystem}
 import akka.testkit.TestActorRef
 import akka.util.Timeout
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.Text
+import eu.inn.binders.dynamic.{Null, Text}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
 import eu.inn.hyperbus.akkaservice.annotations.group
@@ -35,8 +35,9 @@ case class TestCreatedBody(resourceId: String,
 @contentType("application/vnd+test-error-body.json")
 case class TestErrorBody(code: String,
                          description: Option[String] = None,
-                         errorId: String = ErrorUtils.createErrorId) extends ErrorBodyApi {
+                         errorId: String = ErrorUtils.createErrorId) extends ErrorBody {
   def message = code + description.map(": " + _).getOrElse("")
+  def extra = Null
 }
 
 

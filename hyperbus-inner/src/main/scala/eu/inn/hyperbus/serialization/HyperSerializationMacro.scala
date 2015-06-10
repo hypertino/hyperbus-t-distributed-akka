@@ -15,6 +15,9 @@ private[hyperbus] object HyperSerializationMacro {
       if (tBody <:< typeOf[DynamicBody]) {
         q"eu.inn.hyperbus.serialization.impl.InnerHelpers.dynamicBodyEncoder _"
       }
+      else if (tBody <:< typeOf[ErrorBody]) {
+        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.errorBodyEncoder _"
+      }
       else if (tBody <:< typeOf[EmptyBody]) {
         q"eu.inn.hyperbus.serialization.impl.InnerHelpers.emptyBodyEncoder _"
       }
