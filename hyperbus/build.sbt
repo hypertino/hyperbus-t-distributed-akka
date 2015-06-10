@@ -24,7 +24,7 @@ javacOptions ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "eu.inn" %% "hyperbus-inner" % "0.0.1",
+  "eu.inn" %% "hyperbus-inner" % "0.0.1-SNAPSHOT",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test"
 )

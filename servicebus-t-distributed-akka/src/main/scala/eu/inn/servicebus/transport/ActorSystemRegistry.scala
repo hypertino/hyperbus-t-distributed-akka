@@ -1,34 +1,41 @@
 package eu.inn.servicebus.transport
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import akka.actor.ActorSystem
 import com.typesafe.config.{ConfigFactory, Config}
 
 import scala.collection.concurrent.TrieMap
 
 object ActorSystemRegistry {
-  private val registry = new TrieMap[String, ActorSystem]
+  private val registry = new TrieMap[String, (ActorSystem, AtomicInteger)]
   private val lock = new Object
   import eu.inn.servicebus.util.ConfigUtils._
 
-  def getOrCreate(actorSystemName: String): ActorSystem = {
-    get(actorSystemName) flatMap { actorSystem ⇒
-      if (actorSystem.isTerminated) {
-        registry.remove(actorSystemName)
-        None
-      }
-      else
-        Some(actorSystem)
+  def addRef(actorSystemName: String): ActorSystem = {
+    registry.get(actorSystemName) map { as ⇒
+      as._2.incrementAndGet()
+      as._1
     } getOrElse {
-      // specifically synchronize expensive operation despite the fact that we use TrieMap
+      // synchronize expensive operation despite the fact that we use TrieMap
       lock.synchronized {
         val as = createActorSystem(actorSystemName)
-        registry.put(actorSystemName, as)
+        registry.put(actorSystemName, (as, new AtomicInteger(1)))
         as
       }
     }
   }
 
-  def get(actorSystemName: String): Option[ActorSystem] = registry.get(actorSystemName)
+  def release(actorSystemName: String) = {
+    registry.get(actorSystemName) map { a ⇒
+      if (a._2.decrementAndGet() <= 0) {
+        a._1.shutdown()
+        registry.remove(actorSystemName)
+      }
+    }
+  }
+
+  def get(actorSystemName: String): Option[ActorSystem] = registry.get(actorSystemName).map(_._1)
 
   private def createActorSystem(actorSystemName: String): ActorSystem = {
     val appConfig = ConfigFactory.load()

@@ -6,7 +6,7 @@ import akka.actor.{DeadLetter, Actor, ActorRef, ActorLogging}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.{Publish, SubscribeAck, Subscribe}
+import akka.contrib.pattern.DistributedPubSubMediator.{Unsubscribe, Publish, SubscribeAck, Subscribe}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{NoTransportRouteException, Util, SubscriptionHandlerResult, Topic}
 
@@ -37,6 +37,10 @@ private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorL
 
     case ack: SubscribeAck ⇒
       context become start
+  }
+
+  override def postStop() {
+    mediator ! Unsubscribe(subscription.topic.url, self)
   }
 
   def start: Receive
@@ -115,6 +119,7 @@ private [transport] class AutoDownControlActor extends Actor with ActorLogging {
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
       classOf[MemberEvent], classOf[UnreachableMember])
   }
+
   override def postStop(): Unit = cluster.unsubscribe(self)
 
   override def receive: Actor.Receive = {
@@ -126,7 +131,7 @@ private [transport] class AutoDownControlActor extends Actor with ActorLogging {
     case _: MemberEvent => // ignore
   }
 }
-
+/*
 private [transport] class NoRouteWatcher extends Actor with ActorLogging {
   import context._
   system.eventStream.subscribe(self, classOf[DeadLetter])
@@ -136,3 +141,4 @@ private [transport] class NoRouteWatcher extends Actor with ActorLogging {
       Future.failed(new NoTransportRouteException(deadMessage.recipient.toString())) pipeTo deadMessage.sender
   }
 }
+*/

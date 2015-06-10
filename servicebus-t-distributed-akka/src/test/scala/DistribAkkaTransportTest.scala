@@ -32,27 +32,22 @@ class TestActorX extends Actor with ActorLogging{
 }
 
 class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
-  implicit var actorSystem: ActorSystem = null
+  //implicit var actorSystem: ActorSystem = null
 
   var serviceBus: ServiceBus = null
   before {
     val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(ConfigFactory.load())
     serviceBus = new ServiceBus(serviceBusConfig)
-
-    actorSystem = ActorSystemRegistry.getOrCreate("eu-inn")
-    val testActor = TestActorRef[TestActorX]
-    Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
-    //Await.result(testActor.underlyingActor.memberUpFuture, 20.seconds)
+    ActorSystemRegistry.get("eu-inn").foreach { implicit actorSystem ⇒
+      val testActor = TestActorRef[TestActorX]
+      Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
+    }
   }
 
   after {
     if (serviceBus != null) {
       Await.result(serviceBus.shutdown(10.seconds), 10.seconds)
     }
-    /*ActorSystemRegistry.get("eu-inn") foreach { actorSystem ⇒
-      actorSystem.shutdown()
-      actorSystem.awaitTermination()
-    }*/
   }
 
   "DistributedAkkaTransport " - {

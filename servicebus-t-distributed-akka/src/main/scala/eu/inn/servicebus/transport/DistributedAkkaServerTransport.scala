@@ -17,18 +17,20 @@ import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.{FiniteDuration, Duration}
 import akka.pattern.gracefulStop
 
-class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
+class DistributedAkkaServerTransport(val actorSystemName: String,
                                      implicit val executionContext: ExecutionContext = ExecutionContext.global)
   extends ServerTransport {
 
-  def this(config: Config) = this(ActorSystemRegistry.getOrCreate(config.getString("actor-system", "eu-inn")),
+  def this(config: Config) = this(config.getString("actor-system", "eu-inn"),
     scala.concurrent.ExecutionContext.global)
 
-  val subscriptions = new TrieMap[String, ActorRef]
-  protected val idCounter = new AtomicLong(0)
-  protected val log = LoggerFactory.getLogger(this.getClass)
+  protected [this] val subscriptions = new TrieMap[String, ActorRef]
+  protected [this] val actorSystem = ActorSystemRegistry.addRef(actorSystemName)
+  protected [this] val cluster = Cluster(actorSystem)
+  protected [this] val idCounter = new AtomicLong(0)
+  protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  if (Cluster(actorSystem).getSelfRoles.contains("auto-down-controller")) {
+  if (cluster.getSelfRoles.contains("auto-down-controller")) {
     actorSystem.actorOf(ClusterSingletonManager.props(
       Props(classOf[AutoDownControlActor]),
       "control-auto-down-singleton",
@@ -77,19 +79,15 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
           false
       }
     )
-    val promise = Promise[Boolean]()
+
     Future.sequence(actorStopFutures) map { list ⇒
       val result = list.forall(_ == true)
-      if (!actorSystem.isTerminated) {
-        actorSystem.registerOnTermination(promise.success(result))
-        actorSystem.shutdown()
-      }
-      else {
-        promise.success(result)
-      }
       subscriptions.clear()
+      // cluster.leave(cluster.selfAddress) // todo: implement this
+
+      ActorSystemRegistry.release(actorSystemName)
+      true
     }
-    promise.future
   }
 }
 
