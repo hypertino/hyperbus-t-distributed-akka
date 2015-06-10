@@ -1,7 +1,7 @@
 import java.io.{InputStream, OutputStream}
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.{ActorLogging, Actor, ActorSystem}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.testkit.TestActorRef
@@ -16,7 +16,7 @@ import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
 
-class TestActorX extends Actor {
+class TestActorX extends Actor with ActorLogging{
   val membersUp = new AtomicInteger(0)
   val memberUpPromise = Promise[Unit]()
   val memberUpFuture: Future[Unit] = memberUpPromise.future
@@ -24,7 +24,7 @@ class TestActorX extends Actor {
     case MemberUp(member) => {
       membersUp.incrementAndGet()
       memberUpPromise.success({})
-      println("Member is ready!")
+      log.info("Member is ready!")
     }
   }
 }
@@ -40,6 +40,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
   }
 
   after {
+    println("s1...")
     ActorSystemRegistry.get("eu-inn") foreach { actorSystem ⇒
       actorSystem.shutdown()
       actorSystem.awaitTermination()
@@ -55,14 +56,15 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       val id = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),
         mockDecoder, mockExtractor[String], null) { s =>
         cnt.incrementAndGet()
+        println("inc1...")
         mockResult(s.reverse)
       }
-
 
       val id2 = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),
         mockDecoder,
         mockExtractor[String], null){ s =>
         cnt.incrementAndGet()
+        println("inc2...")
         mockResult(s.reverse)
       }
 
@@ -71,6 +73,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockExtractor[String]) { s =>
         s should equal("12345")
         cnt.incrementAndGet()
+        println("inc3...")
         mockResultU
       }
 
@@ -79,6 +82,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockExtractor[String]){ s =>
         s should equal("12345")
         cnt.incrementAndGet()
+        println("inc4...")
         mockResultU
       }
 
@@ -87,6 +91,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockExtractor[String]){ s =>
         s should equal("12345")
         cnt.incrementAndGet()
+        println("inc5...")
         mockResultU
       }
 
@@ -96,7 +101,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
       whenReady(f) { s =>
         s should equal("54321")
-        Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
+        Thread.sleep(5000) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(3)
         /*
         serviceBus.off(id)

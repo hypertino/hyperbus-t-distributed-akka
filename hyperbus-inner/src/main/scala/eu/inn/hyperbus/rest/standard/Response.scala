@@ -55,221 +55,203 @@ object Status {
 
 // ----------------- Normal responses -----------------
 
-case class Ok[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.OK
+case class Ok[+B <: Body](body: B) extends NormalResponse with Response[B] {
+  def status: Int = Status.OK
 }
 
 trait CreatedBody extends Body with Links {
   def location = links(DefLink.LOCATION)
 }
 
-case class Created[+B <: CreatedBody](body: B) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.CREATED
+case class Created[+B <: CreatedBody](body: B) extends NormalResponse with Response[B] {
+  def status: Int = Status.CREATED
 }
 
 case class DynamicCreatedBody(content: Value, contentType: Option[String] = None) extends DynamicBody with CreatedBody
 
-case class Accepted[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.ACCEPTED
+case class Accepted[+B <: Body](body: B) extends NormalResponse with Response[B] {
+  def status: Int = Status.ACCEPTED
 }
 
-case class NonAuthoritativeInformation[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.NON_AUTHORITATIVE_INFORMATION
+case class NonAuthoritativeInformation[+B <: Body](body: B) extends NormalResponse with Response[B] {
+  def status: Int = Status.NON_AUTHORITATIVE_INFORMATION
 }
 
-case class NoContent[+B <: Body](body: B = EmptyBody) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.NO_CONTENT
+case class NoContent[+B <: Body](body: B = EmptyBody) extends NormalResponse with Response[B] {
+  def status: Int = Status.NO_CONTENT
 }
 
-case class ResetContent[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.RESET_CONTENT
+case class ResetContent[+B <: Body](body: B) extends NormalResponse with Response[B] {
+  def status: Int = Status.RESET_CONTENT
 }
 
-case class PartialContent[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.PARTIAL_CONTENT
+case class PartialContent[+B <: Body](body: B) extends NormalResponse with Response[B] {
+  def status: Int = Status.PARTIAL_CONTENT
 }
 
-case class MultiStatus[+B <: Body](body: B) extends Response[B] with NormalResponse[B] {
-  override def status: Int = Status.MULTI_STATUS
+case class MultiStatus[+B <: Body](body: B) extends NormalResponse with Response[B] {
+  def status: Int = Status.MULTI_STATUS
 }
 
 // ----------------- Redirect responses -----------------
 
 // todo: URL for redirects like for created?
 
-case class MultipleChoices[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
-  override def status: Int = Status.MULTIPLE_CHOICES
+case class MultipleChoices[+B <: Body](body: B) extends RedirectResponse with Response[B] {
+  def status: Int = Status.MULTIPLE_CHOICES
 }
 
-case class MovedPermanently[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
-  override def status: Int = Status.MOVED_PERMANENTLY
+case class MovedPermanently[+B <: Body](body: B) extends RedirectResponse with Response[B] {
+  def status: Int = Status.MOVED_PERMANENTLY
 }
 
-case class Found[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
-  override def status: Int = Status.FOUND
+case class Found[+B <: Body](body: B) extends RedirectResponse with Response[B] {
+  def status: Int = Status.FOUND
 }
 
-case class SeeOther[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
-  override def status: Int = Status.SEE_OTHER
+case class SeeOther[+B <: Body](body: B) extends RedirectResponse with Response[B] {
+  def status: Int = Status.SEE_OTHER
 }
 
-case class NotModified[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
-  override def status: Int = Status.NOT_MODIFIED
+case class NotModified[+B <: Body](body: B) extends RedirectResponse with Response[B] {
+  def status: Int = Status.NOT_MODIFIED
 }
 
-case class UseProxy[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
-  override def status: Int = Status.USE_PROXY
+case class UseProxy[+B <: Body](body: B) extends RedirectResponse with Response[B] {
+  def status: Int = Status.USE_PROXY
 }
 
-case class TemporaryRedirect[+B <: Body](body: B) extends Response[B] with RedirectResponse[B] {
-  override def status: Int = Status.TEMPORARY_REDIRECT
+case class TemporaryRedirect[+B <: Body](body: B) extends RedirectResponse with Response[B] {
+  def status: Int = Status.TEMPORARY_REDIRECT
 }
+
+// ----------------- Exception base classes -----------------
+
+abstract class HyperBusException[+B <: ErrorBodyApi](body: B, cause: Throwable = null)
+  extends RuntimeException(body.message, cause) with Response[B]
+
+abstract class HyperBusServerException[+B <: ErrorBodyApi](body: B, cause: Throwable = null) extends HyperBusException(body, cause)
+
+abstract class HyperBusClientException[+B <: ErrorBodyApi](body: B, cause: Throwable = null) extends HyperBusException(body, cause)
 
 // ----------------- Client Error responses -----------------
 
-case class BadRequest[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.BAD_REQUEST
+
+case class BadRequest[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.BAD_REQUEST
 }
 
-case class Unauthorized[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.UNAUTHORIZED
+case class Unauthorized[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.UNAUTHORIZED
 }
 
-case class PaymentRequired[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.PAYMENT_REQUIRED
+case class PaymentRequired[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.PAYMENT_REQUIRED
 }
 
-case class Forbidden[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.FORBIDDEN
+case class Forbidden[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.FORBIDDEN
 }
 
-case class NotFound[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.NOT_FOUND
+case class NotFound[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.NOT_FOUND
 }
 
-case class MethodNotAllowed[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.METHOD_NOT_ALLOWED
+case class MethodNotAllowed[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.METHOD_NOT_ALLOWED
 }
 
-case class NotAcceptable[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.NOT_ACCEPTABLE
+case class NotAcceptable[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.NOT_ACCEPTABLE
 }
 
-case class ProxyAuthenticationRequired[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.PROXY_AUTHENTICATION_REQUIRED
+case class ProxyAuthenticationRequired[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.PROXY_AUTHENTICATION_REQUIRED
 }
 
-case class RequestTimeout[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.REQUEST_TIMEOUT
+case class RequestTimeout[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.REQUEST_TIMEOUT
 }
 
-case class Conflict[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.CONFLICT
+case class Conflict[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.CONFLICT
 }
 
-case class Gone[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.GONE
+case class Gone[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.GONE
 }
 
-case class LengthRequired[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.LENGTH_REQUIRED
+case class LengthRequired[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.LENGTH_REQUIRED
 }
 
-case class PreconditionFailed[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.PRECONDITION_FAILED
+case class PreconditionFailed[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.PRECONDITION_FAILED
 }
 
-case class RequestEntityTooLarge[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.REQUEST_ENTITY_TOO_LARGE
+case class RequestEntityTooLarge[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.REQUEST_ENTITY_TOO_LARGE
 }
 
-case class RequestUriTooLong[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.REQUEST_URI_TOO_LONG
+case class RequestUriTooLong[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.REQUEST_URI_TOO_LONG
 }
 
-case class UnsupportedMediaType[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.UNSUPPORTED_MEDIA_TYPE
+case class UnsupportedMediaType[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.UNSUPPORTED_MEDIA_TYPE
 }
 
-case class RequestedRangeNotSatisfiable[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.REQUESTED_RANGE_NOT_SATISFIABLE
+case class RequestedRangeNotSatisfiable[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.REQUESTED_RANGE_NOT_SATISFIABLE
 }
 
-case class ExpectationFailed[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.EXPECTATION_FAILED
+case class ExpectationFailed[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.EXPECTATION_FAILED
 }
 
-case class UnprocessableEntity[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.UNPROCESSABLE_ENTITY
+case class UnprocessableEntity[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.UNPROCESSABLE_ENTITY
 }
 
-case class Locked[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.LOCKED
+case class Locked[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.LOCKED
 }
 
-case class FailedDependency[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.FAILED_DEPENDENCY
+case class FailedDependency[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.FAILED_DEPENDENCY
 }
 
-case class TooManyRequest[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ClientError[B] {
-  override def status: Int = Status.TOO_MANY_REQUEST
+case class TooManyRequest[+B <: ErrorBodyApi](body: B) extends HyperBusClientException(body) {
+  def status: Int = Status.TOO_MANY_REQUEST
 }
 
 // ----------------- Server Error responses -----------------
 
-case class InternalServerError[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.INTERNAL_SERVER_ERROR
+case class InternalServerError[+B <: ErrorBodyApi](body: B, cause: Throwable = null)
+  extends HyperBusServerException(body, cause) {
+  def status: Int = Status.INTERNAL_SERVER_ERROR
 }
 
-case class NotImplemented[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.NOT_IMPLEMENTED
+case class NotImplemented[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+  def status: Int = Status.NOT_IMPLEMENTED
 }
 
-case class BadGateway[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.BAD_GATEWAY
+case class BadGateway[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+  def status: Int = Status.BAD_GATEWAY
 }
 
-case class ServiceUnavailable[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.SERVICE_UNAVAILABLE
+case class ServiceUnavailable[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+  def status: Int = Status.SERVICE_UNAVAILABLE
 }
 
-case class GatewayTimeout[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.GATEWAY_TIMEOUT
+case class GatewayTimeout[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+  def status: Int = Status.GATEWAY_TIMEOUT
 }
 
-case class HttpVersionNotSupported[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.HTTP_VERSION_NOT_SUPPORTED
+case class HttpVersionNotSupported[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+  def status: Int = Status.HTTP_VERSION_NOT_SUPPORTED
 }
 
-case class InsufficientStorage[+B <: ErrorBodyTrait](body: B)
-  extends RuntimeException(body.message) with Response[B] with ServerError[B] {
-  override def status: Int = Status.INSUFFICIENT_STORAGE
+case class InsufficientStorage[+B <: ErrorBodyApi](body: B) extends HyperBusServerException(body) {
+  def status: Int = Status.INSUFFICIENT_STORAGE
 }

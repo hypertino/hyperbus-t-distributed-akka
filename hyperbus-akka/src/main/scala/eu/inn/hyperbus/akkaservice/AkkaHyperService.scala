@@ -4,6 +4,7 @@ import akka.actor.Actor.Receive
 import akka.actor.ActorRef
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.akkaservice.annotations.group
+import eu.inn.hyperbus.rest.{DynamicBody, Body, Response}
 
 import scala.concurrent.Future
 import scala.language.experimental.macros
@@ -77,7 +78,14 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
         """
       } getOrElse {
         val resultType = m.returnType
-        val innerResultType = resultType.typeArgs.head
+        val responseBodyTypeSig = typeOf[Response[Body]]
+        val innerResultType = if (resultType.typeArgs.head <:< responseBodyTypeSig) {
+          resultType.typeArgs.head
+        }
+        else {
+          responseBodyTypeSig
+        }
+
         q"""
           h.~>[$argType]{ message =>
             akka.pattern.ask(a, message).mapTo[$innerResultType]

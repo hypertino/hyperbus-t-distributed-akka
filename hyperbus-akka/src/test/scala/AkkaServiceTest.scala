@@ -1,4 +1,3 @@
-import java.util.UUID
 
 import akka.actor.{Actor, ActorSystem}
 import akka.testkit.TestActorRef
@@ -11,6 +10,7 @@ import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.utils.ErrorUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.transport.{ServerTransport, AnyArg, ClientTransport, InprocTransport}
 import org.scalatest.concurrent.ScalaFutures
@@ -35,7 +35,7 @@ case class TestCreatedBody(resourceId: String,
 @contentType("application/vnd+test-error-body.json")
 case class TestErrorBody(code: String,
                          description: Option[String] = None,
-                         errorId: String = UUID.randomUUID().toString) extends ErrorBodyTrait {
+                         errorId: String = ErrorUtils.createErrorId) extends ErrorBodyApi {
   def message = code + description.map(": " + _).getOrElse("")
 }
 

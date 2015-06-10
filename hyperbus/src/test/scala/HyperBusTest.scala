@@ -269,7 +269,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null,st)
       hyperBus ~> { post: TestPost1 =>
         Future {
-          throw new Conflict(ErrorBody("failed", errorId = "abcde12345"))
+          throw Conflict(ErrorBody("failed", errorId = "abcde12345"))
         }
       }
 

@@ -1,11 +1,10 @@
 package eu.inn.hyperbus
 
 import java.io.InputStream
-import java.util.UUID
 
 import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard.{BadRequest, DefError, DynamicCreatedBody, InternalServerError}
+import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.InnerHelpers
 import eu.inn.servicebus.ServiceBus
@@ -84,12 +83,12 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   def ~>[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.on[REQ]
 
-  def <~(request: DynamicRequest): Future[Response[Body]] = {
+  def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
     import eu.inn.hyperbus.impl.Helpers._
     import eu.inn.hyperbus.{serialization=>hbs}
     ask(request, encodeDynamicRequest,
       extractDynamicPartitionArgs, responseDecoder(_,_,PartialFunction.empty)
-    )
+    ).asInstanceOf[Future[Response[DynamicBody]]]
   }
 
   def <|(request: DynamicRequest): Future[Unit] = {
@@ -133,11 +132,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         }
       }
       catch {
-        case re: ErrorResponse[_] ⇒ throw re
+        case re: ErrorResponse ⇒ throw re
         case NonFatal(e) =>
-          val errorId = UUID.randomUUID().toString
-          logError("Can't decode request", errorId, e)
-          throw BadRequest(ErrorBody(DefError.REQUEST_PARSE_ERROR, Some(e.toString), errorId))
+          val error = BadRequest(ErrorBody(DefError.REQUEST_PARSE_ERROR, Some(e.toString)))
+          logError("Can't decode request", error)
+          throw error
       }
     }
   }
@@ -150,11 +149,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
           val r = y.handler(in)
           val f = r.futureResult.recoverWith {
             case z: Response[_] ⇒ Future.successful(z)
-            case t: Throwable ⇒ unhandledException(routeKey, in, t)
+            case t: Throwable ⇒ Future.successful(unhandledException(routeKey, in, t))
           }
           SubscriptionHandlerResult[Response[Body]](f, r.resultEncoder)
       } getOrElse {
-        SubscriptionHandlerResult(unhandledRequest(routeKey, in), defaultResponseEncoder)
+        SubscriptionHandlerResult(Future.successful(unhandledRequest(routeKey, in)), defaultResponseEncoder)
       }
     }
 
@@ -174,7 +173,7 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
         case s: PubSubSubscription[REQ] ⇒
           s.handler(in)
       } getOrElse {
-        SubscriptionHandlerResult(unhandledPublication(routeKey, in), null)
+        SubscriptionHandlerResult(Future.successful(unhandledPublication(routeKey, in)), null)
       }
     }
 
@@ -297,11 +296,11 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
 
   protected def exceptionEncoder(exception: Throwable, outputStream: java.io.OutputStream): Unit = {
     exception match {
-      case r: ErrorResponse[Body] ⇒ defaultResponseEncoder(r, outputStream)
+      case r: ErrorResponse ⇒ defaultResponseEncoder(r, outputStream)
       case t ⇒
-        val errorId = UUID.randomUUID().toString
-        val s = logError("Unhandled exception", errorId, exception)
-        defaultResponseEncoder(InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(t.getMessage), errorId)), outputStream)
+        val error = InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(t.getMessage)))
+        logError("Unhandled exception", error)
+        defaultResponseEncoder(error, outputStream)
     }
   }
 
@@ -325,37 +324,30 @@ class HyperBus(val underlyingBus: ServiceBus)(implicit val executionContext: Exe
     Helpers.createResponse(responseHeader, body)
   }
 
-  def logError(msg: String, errorId: String, error: Throwable = null): Unit = {
-    log.error(msg + ". #" + errorId, error)
+  def logError(msg: String, error: HyperBusException[ErrorBodyApi]): Unit = {
+    log.error(msg + ". #" + error.body.errorId, error)
   }
 
-  def safeLogError(msg: String, request: Request[Body], routeKey: String, errorId: String, error: Throwable = null): String = {
-    val s = msg + " " + safe(() => request.method) + routeKey +
+  def safeErrorMessage(msg: String, request: Request[Body], routeKey: String): String = {
+    msg + " " + safe(() => request.method) + routeKey +
       safe(() => request.body.contentType.map("@" + _).getOrElse(""))
-    logError(s, errorId, error)
-    s
   }
 
-  def unhandledRequest(routeKey: String, request: Request[Body]): Future[Response[Body]] = {
-    val errorId = UUID.randomUUID().toString
-    val s = safeLogError("Unhandled request", request, routeKey, errorId)
-    Future.successful {
-      InternalServerError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s), errorId))
-    }
+  def unhandledRequest(routeKey: String, request: Request[Body]): Response[Body] = {
+    val s = safeErrorMessage("Unhandled request", request, routeKey)
+    InternalServerError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s)))
   }
 
-  def unhandledPublication(routeKey: String, request: Request[Body]): Future[Unit] = {
-    val errorId = UUID.randomUUID().toString
-    val s = safeLogError("Unhandled request", request, routeKey, errorId)
-    Future.successful {}
+  def unhandledPublication(routeKey: String, request: Request[Body]): Unit = {
+    log.error(safeErrorMessage("Unhandled publication", request, routeKey))
   }
 
-  def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Future[Response[Body]] = {
-    val errorId = UUID.randomUUID().toString
-    val s = safeLogError("Unhandled exception", request, routeKey, errorId, exception)
-    Future.successful {
-      InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(s), errorId))
-    }
+  def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Response[Body] = {
+    InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(
+        safeErrorMessage(s"Unhandled exception: ${exception.getMessage}", request, routeKey)
+      )),
+      exception
+    )
   }
 
   protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode response: {}", response)

@@ -78,7 +78,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
             Created(TestCreatedBody("100500"))
           else
           if (post.body.resourceData == -1)
-            throw new Conflict(ErrorBody("failed"))
+            throw Conflict(ErrorBody("failed"))
           else
           if (post.body.resourceData == -2)
             Conflict(ErrorBody("failed"))

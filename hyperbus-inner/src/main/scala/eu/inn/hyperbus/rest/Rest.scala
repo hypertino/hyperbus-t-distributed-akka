@@ -1,10 +1,10 @@
 package eu.inn.hyperbus.rest
 
-import java.util.UUID
-
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Value}
-import eu.inn.hyperbus.rest.annotations.{contentTypeMarker}
+import eu.inn.hyperbus.rest.annotations.contentTypeMarker
+import eu.inn.hyperbus.rest.standard.ContentType
+import eu.inn.hyperbus.utils.ErrorUtils
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
@@ -42,7 +42,7 @@ trait Response[+B <: Body] extends Message[B] {
   def status: Int
 }
 
-// todo: we need DynamicResponse
+//trait DynamicResponse extends Response[DynamicBody]
 
 trait DynamicBody extends Body with Links {
   def content: Value
@@ -60,16 +60,16 @@ case class DynamicBodyContainer(content: Value, contentType: Option[String] = No
 trait EmptyBody extends Body
 
 case object EmptyBody extends EmptyBody {
-  def contentType: Option[String] = Some("no-content")
+  def contentType: Option[String] = Some(ContentType.NO_CONTENT)
 }
 
 // --------------- Response Groups ---------------
 
-trait NormalResponse[+B <: Body] extends Response[B]
+trait NormalResponse extends Response[Body]
 
-trait RedirectResponse[+B <: Body] extends Response[B]
+trait RedirectResponse extends Response[Body]
 
-trait ErrorBodyTrait extends Body {
+trait ErrorBodyApi extends Body {
   def code: String
 
   def message: String
@@ -79,16 +79,16 @@ trait ErrorBodyTrait extends Body {
   def description: Option[String]
 }
 
-trait ErrorResponse[+B <: ErrorBodyTrait] extends Response[B] // is there a need for a +B type???
+trait ErrorResponse extends Response[ErrorBodyApi]
 
-trait ServerError[+B <: ErrorBodyTrait] extends ErrorResponse[B]
+trait ServerError extends ErrorResponse
 
-trait ClientError[+B <: ErrorBodyTrait] extends ErrorResponse[B]
+trait ClientError extends ErrorResponse
 
 case class ErrorBody(code: String,
                      description: Option[String] = None,
-                     errorId: String = UUID.randomUUID().toString,
-                     extra: Value = Null) extends ErrorBodyTrait with NoContentType {
+                     errorId: String = ErrorUtils.createErrorId,
+                     extra: Value = Null) extends ErrorBodyApi with NoContentType {
   def message = code + description.map(": " + _).getOrElse("") + ". #" + errorId
 }
 
