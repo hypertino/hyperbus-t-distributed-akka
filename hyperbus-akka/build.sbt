@@ -2,7 +2,7 @@ organization := "eu.inn"
 
 name := "hyperbus-akka"
 
-version := "0.0.1"
+version := "0.0.1-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 
@@ -24,7 +24,7 @@ javacOptions ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "eu.inn" %% "hyperbus" % "0.0.1",
+  "eu.inn" %% "hyperbus" % "0.0.1-SNAPSHOT",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test",

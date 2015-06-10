@@ -2,7 +2,7 @@ organization := "eu.inn"
 
 name := "hyperbus-cli"
 
-version := "0.0.1"
+version := "0.0.1-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 
@@ -27,8 +27,8 @@ val akkaV = "2.3.11"
 
 libraryDependencies ++= Seq(
   "jline" % "jline" % "2.12.1",
-  "eu.inn" %% "hyperbus" % "0.0.1",
-  "eu.inn" %% "servicebus-t-distributed-akka" % "0.0.1",
+  "eu.inn" %% "hyperbus" % "0.0.1-SNAPSHOT",
+  "eu.inn" %% "servicebus-t-distributed-akka" % "0.0.1-SNAPSHOT",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "com.typesafe" % "config" % "1.3.0",
   "com.github.scopt" %% "scopt" % "3.3.0",

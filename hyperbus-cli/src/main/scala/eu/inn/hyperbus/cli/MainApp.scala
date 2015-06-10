@@ -9,13 +9,10 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
-import eu.inn.servicebus.transport.ActorSystemRegistry
 import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
-
-import jline.UnixTerminal
-
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.util.control.Breaks._
 
 trait Commands
@@ -48,6 +45,18 @@ object MainApp {
       }
     }
 
+    def quit(): Unit = {
+      out("Exiting...")
+      val timeout = 30.seconds
+      Await.result(hyperBus.shutdown(timeout), timeout)
+    }
+
+    Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run() {
+        quit()
+      }
+    })
+
     val askCommand = """^~>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
     val publishCommand = """^\|>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
     breakable{ while(true) {
@@ -71,8 +80,7 @@ object MainApp {
       }
     }}
 
-    ActorSystemRegistry.get("eu-inn").foreach(_.shutdown()) // todo: normal shutdown without hack
-    println("Exiting...")
+    quit()
   }
 
   def createDynamicRequest(method: String, url: String, contentType: Option[String], body: String): DynamicRequest = {

@@ -2,7 +2,7 @@ organization := "eu.inn"
 
 name := "hyperbus-inner"
 
-version := "0.0.1"
+version := "0.0.1-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 
@@ -28,7 +28,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "eu.inn" %% "servicebus" % "0.0.1",
+  "eu.inn" %% "servicebus" % "0.0.1-SNAPSHOT",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test"

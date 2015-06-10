@@ -80,7 +80,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     val promise = Promise[Boolean]()
     Future.sequence(actorStopFutures) map { list ⇒
       val result = list.forall(_ == true)
-      if (!actorSystem.isTerminated && Cluster(actorSystem).getSelfRoles.contains("auto-down")) {
+      if (!actorSystem.isTerminated) {
         actorSystem.registerOnTermination(promise.success(result))
         actorSystem.shutdown()
       }
