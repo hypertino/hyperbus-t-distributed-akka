@@ -73,7 +73,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       getGroupAnnotation(m).map { groupName ⇒
         q"""
           h.|>[$argType]($groupName){ message =>
-            akka.pattern.ask(a, message).mapTo[Unit]
+            _root_.akka.pattern.ask(a, message).mapTo[Unit]
           }
         """
       } getOrElse {
@@ -88,7 +88,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
         q"""
           h.~>[$argType]{ message =>
-            akka.pattern.ask(a, message).mapTo[$innerResultType]
+            _root_.akka.pattern.ask(a, message).mapTo[$innerResultType]
           }
         """
       }
@@ -128,7 +128,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     }
 
     val obj = q"""{
-      import akka.pattern.pipe
+      import _root_.akka.pattern.pipe
       _ match {
         case ..$cases
       }
