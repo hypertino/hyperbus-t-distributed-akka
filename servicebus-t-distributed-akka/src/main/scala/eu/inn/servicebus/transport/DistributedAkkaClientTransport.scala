@@ -11,6 +11,7 @@ import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
 import eu.inn.servicebus.util.ConfigUtils
 import eu.inn.servicebus.util.ConfigUtils._
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -28,6 +29,8 @@ class DistributedAkkaClientTransport(val actorSystemName: String,
 
   protected [this] val actorSystem = ActorSystemRegistry.addRef(actorSystemName)
   protected [this] val cluster = Cluster(actorSystem)
+  protected [this] val log = LoggerFactory.getLogger(this.getClass)
+
   /*val noRouteActor = actorSystem.actorSelection("no-route-watcher").resolveOne().recover {
     case _ ⇒ actorSystem.actorOf(Props(new NoRouteWatcher), "no-route-watcher")
   }*/
@@ -61,7 +64,9 @@ class DistributedAkkaClientTransport(val actorSystemName: String,
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    ActorSystemRegistry.release(actorSystemName)
+    log.info("Shutting down DistributedAkkaClientTransport...")
+    log.debug(s"DistributedAkkaClientTransport: releasing ActorSystem($actorSystemName)")
+    ActorSystemRegistry.release(actorSystemName)(duration)
     Future.successful(true)
   }
 }

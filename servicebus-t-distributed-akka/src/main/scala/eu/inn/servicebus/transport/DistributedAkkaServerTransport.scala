@@ -72,6 +72,7 @@ class DistributedAkkaServerTransport(val actorSystemName: String,
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    log.info("Shutting down DistributedAkkaServerTransport...")
     val actorStopFutures = subscriptions.map(s ⇒
       gracefulStop(s._2, duration) recover {
         case t: Throwable ⇒
@@ -84,8 +85,8 @@ class DistributedAkkaServerTransport(val actorSystemName: String,
       val result = list.forall(_ == true)
       subscriptions.clear()
       // cluster.leave(cluster.selfAddress) // todo: implement this
-
-      ActorSystemRegistry.release(actorSystemName)
+      log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem($actorSystemName)")
+      ActorSystemRegistry.release(actorSystemName)(duration)
       true
     }
   }

@@ -4,12 +4,15 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.ActorSystem
 import com.typesafe.config.{ConfigFactory, Config}
+import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.duration.FiniteDuration
 
 object ActorSystemRegistry {
   private val registry = new TrieMap[String, (ActorSystem, AtomicInteger)]
   private val lock = new Object
+  private val log = LoggerFactory.getLogger(this.getClass)
   import eu.inn.servicebus.util.ConfigUtils._
 
   def addRef(actorSystemName: String): ActorSystem = {
@@ -26,11 +29,13 @@ object ActorSystemRegistry {
     }
   }
 
-  def release(actorSystemName: String) = {
-    registry.get(actorSystemName) map { a ⇒
+  def release(actorSystemName: String)(implicit timeout: FiniteDuration) = {
+    registry.get(actorSystemName) foreach { a ⇒
       if (a._2.decrementAndGet() <= 0) {
-        a._1.shutdown()
+        log.info(s"Shutting down ${a._1}")
         registry.remove(actorSystemName)
+        a._1.shutdown()
+        a._1.awaitTermination(timeout)
       }
     }
   }
