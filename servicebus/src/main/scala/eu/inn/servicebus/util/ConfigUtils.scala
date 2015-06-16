@@ -9,31 +9,29 @@ object ConfigUtils {
 
   implicit class ExtendConfig(config: Config) {
     def getOptionString(key: String): Option[String] =
-      if (hasNot(key)) None else Some(config.getString(key))
+      if (config.hasPath(key)) Some(config.getString(key)) else None
 
     def getString(key: String, default: String): String =
-      if (hasNot(key)) default else config.getString(key)
+      if (config.hasPath(key)) config.getString(key) else default
 
     def getOptionConfig(key: String): Option[Config] =
-      if (hasNot(key))  None else Some(config.getConfig(key))
+      if (config.hasPath(key)) Some(config.getConfig(key)) else None
 
     def getOptionObject(key: String): Option[ConfigObject] =
-      if (hasNot(key))  None else Some(config.getObject(key))
+      if (config.hasPath(key)) Some(config.getObject(key)) else None
 
     def getOptionList(key: String): Option[Seq[Config]] =
-      if (hasNot(key))  None else Some(config.getConfigList(key).toSeq)
+      if (config.hasPath(key)) Some(config.getConfigList(key).toSeq) else None
 
     def getOptionBoolean(key: String): Option[Boolean] =
-      if (hasNot(key))  None else Some(config.getBoolean(key))
+      if (config.hasPath(key)) Some(config.getBoolean(key)) else None
 
     def getOptionLong(key: String): Option[Long] =
-      if (hasNot(key))  None else Some(config.getLong(key))
+      if (config.hasPath(key)) Some(config.getLong(key)) else None
 
     def getOptionDuration(key: String): Option[scala.concurrent.duration.FiniteDuration] =
-      if (hasNot(key)) None else Some(
-        scala.concurrent.duration.Duration(config.getDuration(key).toMillis, TimeUnit.MILLISECONDS)
-      )
-    
-    def hasNot(key: String) = !config.hasPath(key) || config.getIsNull(key)
+      if (config.hasPath(key)) Some(
+        scala.concurrent.duration.Duration(config.getDuration(key, TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS)
+      ) else None
   }
 }

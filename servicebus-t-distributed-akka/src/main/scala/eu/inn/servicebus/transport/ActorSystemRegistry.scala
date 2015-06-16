@@ -44,10 +44,11 @@ object ActorSystemRegistry {
 
   private def createActorSystem(actorSystemName: String): ActorSystem = {
     val appConfig = ConfigFactory.load()
-    val akkaConfig = if (appConfig.hasNot(s"actor-system-registry.$actorSystemName"))
-      appConfig
-    else
+    val akkaConfig = if (appConfig.hasPath(s"actor-system-registry.$actorSystemName"))
       appConfig.getConfig(s"actor-system-registry.$actorSystemName")
+    else
+      appConfig
+
     val as = ActorSystem(actorSystemName, akkaConfig)
     as.registerOnTermination(registry.remove(actorSystemName))
     as
