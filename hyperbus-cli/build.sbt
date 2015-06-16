@@ -27,7 +27,6 @@ libraryDependencies ++= Seq(
   "eu.inn" %% "servicebus-t-distributed-akka" % version.value,
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "com.typesafe" % "config" % "1.3.0",
-  "com.github.scopt" %% "scopt" % "3.3.0",
   "ch.qos.logback" % "logback-classic" % "1.1.3",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test",
