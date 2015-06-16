@@ -1,6 +1,5 @@
 package eu.inn.servicebus.util
 
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 import com.typesafe.config.{ConfigObject, Config}
