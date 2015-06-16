@@ -2,6 +2,23 @@ organization := "eu.inn"
 
 name := "hyperbus-inner"
 
+scalacOptions ++= Seq(
+  "-feature",
+  "-deprecation",
+  "-unchecked",
+  "-optimise",
+  "-target:jvm-1.7",
+  "-encoding", "UTF-8"
+)
+
+javacOptions ++= Seq(
+  "-source", "1.7",
+  "-target", "1.7",
+  "-encoding", "UTF-8",
+  "-Xlint:unchecked",
+  "-Xlint:deprecation"
+)
+
 resolvers ++= Seq(
   Resolver.sonatypeRepo("public")
 )
