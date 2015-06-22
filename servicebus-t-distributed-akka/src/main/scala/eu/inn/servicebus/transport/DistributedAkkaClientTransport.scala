@@ -20,15 +20,15 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
               val localAffinity: Boolean = true,
               val logMessages: Boolean = false,
               val releaseActorSystem: Boolean = false,
-              implicit val executionContext: ExecutionContext = ExecutionContext.global,
-              implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
+              implicit val timeout: Timeout = Util.defaultTimeout,
+              implicit val executionContext: ExecutionContext = ExecutionContext.global) extends ClientTransport {
 
-  def this(config: Config) = this(ActorSystemRegistry.addRef(config.getString("actor-system", "eu-inn")),
+  def this(config: Config) = this(ActorSystemRegistry.addRef(config),
     config.getOptionBoolean("local-afinity") getOrElse true,
     config.getOptionBoolean("log-messages") getOrElse false,
     true,
-    scala.concurrent.ExecutionContext.global, // todo: configurable ExecutionContext like in akka?
-    new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
+    new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout),
+    scala.concurrent.ExecutionContext.global // todo: configurable ExecutionContext like in akka?
   )
 
   protected [this] val cluster = Cluster(actorSystem)

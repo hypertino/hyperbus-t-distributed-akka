@@ -15,14 +15,15 @@ object ActorSystemRegistry {
   private val log = LoggerFactory.getLogger(this.getClass)
   import eu.inn.servicebus.util.ConfigUtils._
 
-  def addRef(actorSystemName: String): ActorSystem = {
+  def addRef(config: Config): ActorSystem = {
+    val actorSystemName = config.getString("actor-system", "eu-inn")
     registry.get(actorSystemName) map { as ⇒
       as._2.incrementAndGet()
       as._1
     } getOrElse {
       // synchronize expensive operation despite the fact that we use TrieMap
       lock.synchronized {
-        val as = createActorSystem(actorSystemName)
+        val as = createActorSystem(actorSystemName, config)
         registry.put(actorSystemName, (as, new AtomicInteger(1)))
         as
       }
@@ -42,13 +43,7 @@ object ActorSystemRegistry {
 
   def get(actorSystemName: String): Option[ActorSystem] = registry.get(actorSystemName).map(_._1)
 
-  private def createActorSystem(actorSystemName: String): ActorSystem = {
-    val appConfig = ConfigFactory.load()
-    val akkaConfig = if (appConfig.hasPath(s"actor-system-registry.$actorSystemName"))
-      appConfig.getConfig(s"actor-system-registry.$actorSystemName")
-    else
-      appConfig
-
+  private def createActorSystem(actorSystemName: String, akkaConfig: Config): ActorSystem = {
     val as = ActorSystem(actorSystemName, akkaConfig)
     as.registerOnTermination(registry.remove(actorSystemName))
     as
