@@ -52,7 +52,11 @@ case class PartitionArgs(args: Map[String, PartitionArg]) {
   }
 }
 
-case class Topic(url: String, partitionArgs: PartitionArgs)
+case class Topic(url: String, partitionArgs: PartitionArgs) {
+  override def toString() = s"Topic($url$formatPartitionArgs)"
+  private def formatPartitionArgs = if(partitionArgs.args.isEmpty) "" else
+    partitionArgs.args.mkString("#",",","")
+}
 
 trait ClientTransport {
   def ask[OUT, IN](

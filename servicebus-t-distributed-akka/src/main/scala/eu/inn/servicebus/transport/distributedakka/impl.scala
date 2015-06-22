@@ -24,15 +24,17 @@ private [transport] case class Subscription[OUT, IN](topic: Topic,
                                                      exceptionEncoder: Encoder[Throwable],
                                                      handler: (IN) => SubscriptionHandlerResult[OUT])
 
-private [transport] case class Start[OUT,IN](id: String, subscription: Subscription[OUT,IN]) extends Command
+private [transport] case class Start[OUT,IN](id: String, subscription: Subscription[OUT,IN], logMessages: Boolean) extends Command
 
 private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorLogging {
   protected [this] val mediator = DistributedPubSubExtension(context.system).mediator
   protected [this] var subscription: Subscription[OUT,IN] = null
+  protected [this] var logMessages = false
 
   override def receive: Receive = {
     case start: Start[OUT,IN] ⇒
       subscription = start.subscription
+      logMessages = start.logMessages
       mediator ! Subscribe(subscription.topic.url, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
 
     case ack: SubscribeAck ⇒
@@ -80,11 +82,15 @@ private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorL
   }
 }
 
-private [transport] class OnServerActor[OUT,IN] extends ServerActor[OUT,IN] {
+private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN] {
   import context._
 
   def start: Receive = {
     case input: String ⇒
+      if (logMessages) {
+        log.info(s"~> #${subscription.handler.hashCode}: REQ#${input.hashCode} $input")
+      }
+
       decodeMessage(input, sendReply = true) map { inputMessage ⇒
         val result = subscription.handler(inputMessage)
         val futureMessage = result.futureResult.map { out ⇒
@@ -94,7 +100,15 @@ private [transport] class OnServerActor[OUT,IN] extends ServerActor[OUT,IN] {
         } recover {
           case NonFatal(e) ⇒ handleException(e, sendReply = false).getOrElse(throw e) // todo: test this scenario
         }
-        futureMessage pipeTo sender
+        if (logMessages) {
+          futureMessage map { s ⇒
+            log.info(s"#${subscription.handler.hashCode}: RES#${input.hashCode}: $s")
+            s
+          } pipeTo sender
+        }
+        else {
+          futureMessage pipeTo sender
+        }
       }
   }
 }
@@ -103,6 +117,9 @@ private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] 
   import context._
   def start: Receive = {
     case input: String ⇒
+      if (logMessages) {
+        log.info(s"|> #${subscription.handler.hashCode}: REQ#${input.hashCode} $input")
+      }
       decodeMessage(input, sendReply = false) map { inputMessage ⇒
         subscription.handler(inputMessage).futureResult.recover {
           case NonFatal(e) ⇒ log.error(e, "Subscriber handler failed")

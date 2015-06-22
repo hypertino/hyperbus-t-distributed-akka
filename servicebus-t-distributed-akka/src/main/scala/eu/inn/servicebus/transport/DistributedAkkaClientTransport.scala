@@ -18,11 +18,13 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 
 class DistributedAkkaClientTransport(val actorSystemName: String,
               val localAffinity: Boolean = true,
+              val logMessages: Boolean = false,
               implicit val executionContext: ExecutionContext = ExecutionContext.global,
               implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
 
   def this(config: Config) = this(config.getString("actor-system", "eu-inn"),
     config.getOptionBoolean("local-afinity") getOrElse true,
+    config.getOptionBoolean("log-messages") getOrElse false,
     scala.concurrent.ExecutionContext.global, // todo: configurable ExecutionContext like in akka?
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
@@ -47,8 +49,15 @@ class DistributedAkkaClientTransport(val actorSystemName: String,
     inputEncoder(message, inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
 
+    if (logMessages) {
+      log.info(s"hyperBus <~ $topic: REQ#${messageString.hashCode} $messageString")
+    }
+
     akka.pattern.ask(mediator, Publish(topic.url, messageString, sendOneMessageToEachGroup = true)) map {
       case result: String ⇒
+        if (logMessages) {
+          log.info(s"RES#${messageString.hashCode}: $result")
+        }
         val outputBytes = new ByteArrayInputStream(result.getBytes(Util.defaultEncoding))
         outputDecoder(outputBytes)
       // todo: case _ ⇒
@@ -59,6 +68,11 @@ class DistributedAkkaClientTransport(val actorSystemName: String,
     val inputBytes = new ByteArrayOutputStream()
     inputEncoder(message, inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
+
+    if (logMessages) {
+      log.info(s"hyperBus <| $topic: $messageString")
+    }
+
     mediator ! Publish(topic.url, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?
     Future.successful{}
   }

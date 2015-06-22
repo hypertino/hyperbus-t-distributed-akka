@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.servicebus.serialization.{Decoder, Encoder, PartitionArgsExtractor}
 import eu.inn.servicebus.transport._
+import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
@@ -54,6 +55,7 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
 
   protected val subscriptions = new TrieMap[String, (Topic, String)]
   protected val idCounter = new AtomicLong(0)
+  protected val log = LoggerFactory.getLogger(this.getClass)
 
   def ask[OUT, IN](
                     topic: Topic,
@@ -89,7 +91,9 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
       partitionArgsExtractor,
       exceptionEncoder)(handler)
 
-    addSubscriptionLink(topic, underlyingSubscriptionId)
+    val result = addSubscriptionLink(topic, underlyingSubscriptionId)
+    log.info(s"New processor on $topic: #${handler.hashCode}. Id = $result")
+    result
   }
 
   def subscribe[IN](topic: Topic,
@@ -102,7 +106,9 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
       groupName,
       inputDecoder,
       partitionArgsExtractor)(handler)
-    addSubscriptionLink(topic, underlyingSubscriptionId)
+    val result = addSubscriptionLink(topic, underlyingSubscriptionId)
+    log.info(s"New subscription on $topic($groupName): #${handler.hashCode}. Id = $result")
+    result
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {

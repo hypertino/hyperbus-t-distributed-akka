@@ -1,28 +1,28 @@
 package eu.inn.servicebus.transport
 
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor._
 import akka.cluster.Cluster
 import akka.contrib.pattern.ClusterSingletonManager
-import akka.util.Timeout
+import akka.pattern.gracefulStop
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.distributedakka.{AutoDownControlActor, OnServerActor, Start, SubscribeServerActor}
+import eu.inn.servicebus.transport.distributedakka.{AutoDownControlActor, ProcessServerActor, Start, SubscribeServerActor}
 import eu.inn.servicebus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.{ExecutionContext, Promise, Future}
-import scala.concurrent.duration.{FiniteDuration, Duration}
-import akka.pattern.gracefulStop
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, Future}
 
 class DistributedAkkaServerTransport(val actorSystemName: String,
+                                     val logMessages: Boolean = false,
                                      implicit val executionContext: ExecutionContext = ExecutionContext.global)
   extends ServerTransport {
 
   def this(config: Config) = this(config.getString("actor-system", "eu-inn"),
+    config.getOptionBoolean("log-messages") getOrElse false,
     scala.concurrent.ExecutionContext.global)
 
   protected [this] val subscriptions = new TrieMap[String, ActorRef]
@@ -47,9 +47,12 @@ class DistributedAkkaServerTransport(val actorSystemName: String,
                           (handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = {
 
     val id = idCounter.incrementAndGet().toHexString
-    val actor = actorSystem.actorOf(Props[OnServerActor[OUT,IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
+    val actor = actorSystem.actorOf(Props[ProcessServerActor[OUT,IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
-    actor ! Start(id, distributedakka.Subscription[OUT, IN](topic, None, inputDecoder, partitionArgsExtractor, exceptionEncoder, handler))
+    actor ! Start(id,
+      distributedakka.Subscription[OUT, IN](topic, None, inputDecoder, partitionArgsExtractor, exceptionEncoder, handler),
+      logMessages
+    )
     id
   }
 
@@ -61,7 +64,10 @@ class DistributedAkkaServerTransport(val actorSystemName: String,
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
-    actor ! Start(id, distributedakka.Subscription[Unit, IN](topic, Some(groupName), inputDecoder, partitionArgsExtractor, null, handler))
+    actor ! Start(id,
+      distributedakka.Subscription[Unit, IN](topic, Some(groupName), inputDecoder, partitionArgsExtractor, null, handler),
+      logMessages
+    )
     id
   }
 

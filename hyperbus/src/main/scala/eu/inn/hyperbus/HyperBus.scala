@@ -1,9 +1,8 @@
 package eu.inn.hyperbus
 
-import java.io.{OutputStream, InputStream}
+import java.io.InputStream
 
-import com.fasterxml.jackson.core.JsonParser
-import eu.inn.hyperbus.impl.{MacroApi, Helpers}
+import eu.inn.hyperbus.impl.{Helpers, MacroApi}
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization._
@@ -12,7 +11,7 @@ import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{PartitionArgs, SubscriptionHandlerResult, Topic}
 import eu.inn.servicebus.util.Subscriptions
-import org.slf4j.{Marker, LoggerFactory}
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
@@ -81,7 +80,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
     import eu.inn.hyperbus.impl.Helpers._
-    import eu.inn.hyperbus.{serialization=>hbs}
+    import eu.inn.hyperbus.{serialization ⇒ hbs}
     ask(request, encodeDynamicRequest,
       extractDynamicPartitionArgs, macroApiImpl.responseDecoder(_,_,PartialFunction.empty)
     ).asInstanceOf[Future[Response[DynamicBody]]]
