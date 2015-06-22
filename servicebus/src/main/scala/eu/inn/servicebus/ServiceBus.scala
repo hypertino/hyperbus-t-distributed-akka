@@ -55,22 +55,6 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
   protected val subscriptions = new TrieMap[String, (Topic, String)]
   protected val idCounter = new AtomicLong(0)
 
-  /*  def ask[OUT, IN](
-                      topic: Topic,
-                      message: IN
-                      ): Future[OUT] = macro ServiceBusMacro.ask[OUT, IN]
-
-    def publish[IN](
-                     topic: Topic,
-                     message: IN
-                     ): Future[Unit] = macro ServiceBusMacro.publish[IN]
-
-    def process[OUT, IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
-                   (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.process[OUT, IN]
-
-    def subscribe[IN](topic: Topic, groupName: String, partitionArgsExtractor: PartitionArgsExtractor[IN])
-              (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]*/
-
   def ask[OUT, IN](
                     topic: Topic,
                     message: IN,
