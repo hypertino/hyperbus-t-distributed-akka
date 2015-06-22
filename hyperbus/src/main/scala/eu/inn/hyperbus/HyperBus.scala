@@ -331,25 +331,25 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
     Helpers.createResponse(responseHeader, body)
   }
 
-  def logError(msg: String, error: HyperBusException[ErrorBody]): Unit = {
+  protected def logError(msg: String, error: HyperBusException[ErrorBody]): Unit = {
     log.error(msg + ". #" + error.body.errorId, error)
   }
 
-  def safeErrorMessage(msg: String, request: Request[Body], routeKey: String): String = {
+  protected def safeErrorMessage(msg: String, request: Request[Body], routeKey: String): String = {
     msg + " " + safe(() => request.method) + routeKey +
       safe(() => request.body.contentType.map("@" + _).getOrElse(""))
   }
 
-  def unhandledRequest(routeKey: String, request: Request[Body]): Response[Body] = {
+  protected def unhandledRequest(routeKey: String, request: Request[Body]): Response[Body] = {
     val s = safeErrorMessage("Unhandled request", request, routeKey)
     InternalServerError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s)))
   }
 
-  def unhandledPublication(routeKey: String, request: Request[Body]): Unit = {
+  protected def unhandledPublication(routeKey: String, request: Request[Body]): Unit = {
     log.error(safeErrorMessage("Unhandled publication", request, routeKey))
   }
 
-  def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Response[Body] = {
+  protected def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Response[Body] = {
     InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(
         safeErrorMessage(s"Unhandled exception: ${exception.getMessage}", request, routeKey)
       )),
