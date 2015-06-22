@@ -82,7 +82,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val thiz = $thiz
       val requestDecoder = hbs.createRequestDecoder[$in]
       val extractor = ${defineExtractor[IN](url)}
-      val responseEncoder = thiz.responseEncoder(
+      val responseEncoder = thiz.macroApiImpl.responseEncoder(
         _: Response[Body],
         _: java.io.OutputStream,
         _.body match {
@@ -160,7 +160,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val thiz = $thiz
       val requestEncoder = hbs.createEncoder[$in]
       val extractor = ${defineExtractor[IN](url)}
-      val responseDecoder = thiz.responseDecoder(
+      val responseDecoder = thiz.macroApiImpl.responseDecoder(
         _: hbs.ResponseHeader,
         _: com.fasterxml.jackson.core.JsonParser,
         _.contentType match {

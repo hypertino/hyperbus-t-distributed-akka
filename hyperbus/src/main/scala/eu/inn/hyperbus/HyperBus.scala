@@ -1,8 +1,9 @@
 package eu.inn.hyperbus
 
-import java.io.InputStream
+import java.io.{OutputStream, InputStream}
 
-import eu.inn.hyperbus.impl.Helpers
+import com.fasterxml.jackson.core.JsonParser
+import eu.inn.hyperbus.impl.{MacroApi, Helpers}
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization._
@@ -58,14 +59,6 @@ trait HyperBusApi {
                                       partitionArgsExtractor: PartitionArgsExtractor[REQ])
                                      (handler: (REQ) => SubscriptionHandlerResult[Unit]): String
 
-  def responseEncoder(response: Response[Body],
-                      outputStream: java.io.OutputStream,
-                      bodyEncoder: PartialFunction[Response[Body], Encoder[Response[Body]]]): Unit
-
-  def responseDecoder(responseHeader: ResponseHeader,
-                      responseBodyJson: com.fasterxml.jackson.core.JsonParser,
-                      bodyDecoder: PartialFunction[ResponseHeader, ResponseBodyDecoder]): Response[Body]
-
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
@@ -90,7 +83,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
     import eu.inn.hyperbus.impl.Helpers._
     import eu.inn.hyperbus.{serialization=>hbs}
     ask(request, encodeDynamicRequest,
-      extractDynamicPartitionArgs, responseDecoder(_,_,PartialFunction.empty)
+      extractDynamicPartitionArgs, macroApiImpl.responseDecoder(_,_,PartialFunction.empty)
     ).asInstanceOf[Future[Response[DynamicBody]]]
   }
 
@@ -282,15 +275,6 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
     serviceBus.shutdown(duration)
   }
 
-  def responseEncoder(response: Response[Body],
-                      outputStream: java.io.OutputStream,
-                      bodyEncoder: PartialFunction[Response[Body], Encoder[Response[Body]]]): Unit = {
-    if (bodyEncoder.isDefinedAt(response))
-      bodyEncoder(response)(response, outputStream)
-    else
-      defaultResponseEncoder(response, outputStream)
-  }
-
   protected def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit = {
     import eu.inn.hyperbus.serialization._
     response.body match {
@@ -320,15 +304,26 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
     decoder(responseHeader, responseBodyJson)
   }
 
-  def responseDecoder(responseHeader: ResponseHeader,
-                      responseBodyJson: com.fasterxml.jackson.core.JsonParser,
-                      bodyDecoder: PartialFunction[ResponseHeader, ResponseBodyDecoder]): Response[Body] = {
-    val body =
-      if (bodyDecoder.isDefinedAt(responseHeader))
-        bodyDecoder(responseHeader)(responseHeader, responseBodyJson)
+  val macroApiImpl = new MacroApi {
+    def responseDecoder(responseHeader: ResponseHeader,
+                        responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                        bodyDecoder: PartialFunction[ResponseHeader, ResponseBodyDecoder]): Response[Body] = {
+      val body =
+        if (bodyDecoder.isDefinedAt(responseHeader))
+          bodyDecoder(responseHeader)(responseHeader, responseBodyJson)
+        else
+          defaultResponseBodyDecoder(responseHeader, responseBodyJson)
+      Helpers.createResponse(responseHeader, body)
+    }
+
+    def responseEncoder(response: Response[Body],
+                        outputStream: java.io.OutputStream,
+                        bodyEncoder: PartialFunction[Response[Body], Encoder[Response[Body]]]): Unit = {
+      if (bodyEncoder.isDefinedAt(response))
+        bodyEncoder(response)(response, outputStream)
       else
-        defaultResponseBodyDecoder(responseHeader, responseBodyJson)
-    Helpers.createResponse(responseHeader, body)
+        defaultResponseEncoder(response, outputStream)
+    }
   }
 
   protected def logError(msg: String, error: HyperBusException[ErrorBody]): Unit = {
