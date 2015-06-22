@@ -1,5 +1,7 @@
 package eu.inn.hyperbus.cli
 
+import akka.actor.Address
+import akka.cluster.Cluster
 import com.fasterxml.jackson.core.JsonFactory
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders.dynamic.Text
@@ -9,6 +11,7 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
+import eu.inn.servicebus.transport.ActorSystemRegistry
 import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -59,6 +62,8 @@ object MainApp {
 
     val askCommand = """^~>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
     val publishCommand = """^\|>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
+    val removeMember = """^remove (.+)://(.+)@(.+):(\d+)$""".r
+
     breakable{ while(true) {
       console.readLine(">") match {
         case "quit" ⇒ break()
@@ -73,6 +78,16 @@ object MainApp {
           val r = createDynamicRequest(method, url, Some(contentType), body)
           out(s"<!$r")
           val f = hyperBus <| r
+
+        case removeMember(protocol,system,host,port) ⇒
+          ActorSystemRegistry.get("eu-inn").map { actorSystem ⇒
+            val cluster = Cluster(actorSystem)
+            val address = Address(protocol,system,host,port.toInt)
+            out("Removing: " + address)
+            cluster.down(address)
+          } getOrElse {
+            out("Can't find eu-inn actorsystem")
+          }
 
         case cmd ⇒
           out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
