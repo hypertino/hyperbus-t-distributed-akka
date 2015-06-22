@@ -66,7 +66,7 @@ class Subscriptions[K, T] {
   protected val routeKeyById = new TrieMap[String, String]
   protected val idCounter = new AtomicLong(0)
 
-  def get(routeKey: String): SubscriptionMap = routes.getOrElse(routeKey, SubscriptionMap(Map()))
+  def get(routeKey: String): SubscriptionMap = routes.getOrElse(routeKey, SubscriptionMap(Map.empty))
 
   def getRouteKeyById(subscriptionId: String) = routeKeyById.get(subscriptionId)
 

@@ -42,7 +42,7 @@ object ServiceBusConfigurationLoader {
     val partitionArgs = config.getOptionObject("partition-args").map { c⇒
       readPartitionArgs(c, config)
     } getOrElse {
-      PartitionArgs(Map())
+      PartitionArgs(Map.empty)
     }
 
     TransportRoute[T](transport, urlArg, partitionArgs)

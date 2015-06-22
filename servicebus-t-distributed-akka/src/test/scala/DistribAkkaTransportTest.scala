@@ -54,20 +54,20 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
     "Send and Receive" in {
       val cnt = new AtomicInteger(0)
 
-      val id = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),
+      val id = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
         mockDecoder, mockExtractor[String], null) { s =>
         cnt.incrementAndGet()
         mockResult(s.reverse)
       }
 
-      val id2 = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),
+      val id2 = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
         mockDecoder,
         mockExtractor[String], null){ s =>
         cnt.incrementAndGet()
         mockResult(s.reverse)
       }
 
-      serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map())), "sub1",
+      serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map.empty)), "sub1",
         mockDecoder,
         mockExtractor[String]) { s =>
         s should equal("12345")
@@ -75,7 +75,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockResultU
       }
 
-      serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map())), "sub1",
+      serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map.empty)), "sub1",
         mockDecoder,
         mockExtractor[String]){ s =>
         s should equal("12345")
@@ -83,7 +83,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockResultU
       }
 
-      serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map())), "sub2",
+      serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map.empty)), "sub2",
         mockDecoder,
         mockExtractor[String]){ s =>
         s should equal("12345")
@@ -93,7 +93,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
       Thread.sleep(500) // we need to wait until subscriptions will go acros the
 
-      val f: Future[String] = serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map())),
+      val f: Future[String] = serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
         "12345",
         mockEncoder, mockDecoder)
 
@@ -109,13 +109,13 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         Thread.sleep(500) // todo: find a way to know if the subscription is complete? future?
         // todo: NoTransportRouteException doesn't work for DistribPubSub
 
-        val f2: Future[String] = serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map())), "12345",
+        val f2: Future[String] = serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)), "12345",
           mockEncoder, mockDecoder)
         whenReady(f2.failed, timeout(Span(1, Seconds))) { e =>
           e shouldBe a[NoTransportRouteException]
         }
 
-        val f3: Future[String] = serviceBus.ask[String, String](Topic("not-existing-topic", PartitionArgs(Map())), "12345",
+        val f3: Future[String] = serviceBus.ask[String, String](Topic("not-existing-topic", PartitionArgs(Map.empty)), "12345",
           mockEncoder, mockDecoder)
         whenReady(f3.failed, timeout(Span(1, Seconds))) { e =>
           e shouldBe a[NoTransportRouteException]
@@ -125,7 +125,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
   }
 
   def mockExtractor[T]: PartitionArgsExtractor[T] = {
-    (x: T) => PartitionArgs(Map())
+    (x: T) => PartitionArgs(Map.empty)
   }
 
   def mockEncoder(in: String, out: OutputStream) = {

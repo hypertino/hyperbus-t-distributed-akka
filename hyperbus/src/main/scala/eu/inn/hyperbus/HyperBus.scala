@@ -164,7 +164,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
       getSubscription(t) map {
         case y: RequestReplySubscription[REQ] ⇒ y.partitionArgsExtractor(t)
       } getOrElse {
-        PartitionArgs(Map()) // todo: is this ok?
+        PartitionArgs(Map.empty) // todo: is this ok?
       }
     }
   }
@@ -184,7 +184,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
       getSubscription(t) map {
         case y: PubSubSubscription[REQ] ⇒ y.partitionArgsExtractor(t)
       } getOrElse {
-        PartitionArgs(Map()) // todo: is this ok?
+        PartitionArgs(Map.empty) // todo: is this ok?
       }
     }
   }

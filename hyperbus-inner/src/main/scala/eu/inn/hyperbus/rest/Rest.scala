@@ -47,7 +47,7 @@ trait Response[+B <: Body] extends Message[B] {
 trait DynamicBody extends Body with Links {
   def content: Value
 
-  lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map()
+  lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]] getOrElse Map.empty
 }
 
 object DynamicBody {

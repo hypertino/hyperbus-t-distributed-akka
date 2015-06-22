@@ -220,7 +220,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     t.baseClasses.find(_.typeSignature <:< tDefined) map { responses =>
       getResponsesIn(t.baseType(responses).typeArgs)
     } getOrElse {
-      Seq()
+      Seq.empty
     }
   }
 
@@ -233,7 +233,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
         getResponsesIn(t.typeArgs)
       } else
       if (t.typeSymbol.typeSignature <:< tAsk) {
-        Seq()
+        Seq.empty
       } else {
         Seq(t)
       }

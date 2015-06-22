@@ -46,7 +46,7 @@ private[hyperbus] object AnnotationsMacro {
     val (outputs, rest) = inputs match {
       case (cls: ClassDef) :: tail =>
         val ClassDef(Modifiers(modFlugs, uName, annotations), name, tparams, Template(parents, self, body)) = cls
-        val defMethod = DefDef(Modifiers(Flag.OVERRIDE), TermName(methodName), List(), List(), TypeTree(), result)
+        val defMethod = DefDef(Modifiers(Flag.OVERRIDE), TermName(methodName), List.empty, List.empty, TypeTree(), result)
         val newClass = ClassDef(Modifiers(modFlugs, uName, annotations ++ Seq(annotation)),
           name, tparams, Template(parents, self, body ++ Seq(defMethod)))
         (newClass, tail)

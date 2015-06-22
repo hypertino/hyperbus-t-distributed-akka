@@ -40,7 +40,7 @@ trait ServiceBusApi {
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
-case class TransportRoute[T](transport: T, urlArg: PartitionArg, partitionArgs: PartitionArgs = PartitionArgs(Map()))
+case class TransportRoute[T](transport: T, urlArg: PartitionArg, partitionArgs: PartitionArgs = PartitionArgs(Map.empty))
 
 case class ServiceBusConfiguration(clientRoutes: Seq[TransportRoute[ClientTransport]],
                                    serverRoutes: Seq[TransportRoute[ServerTransport]])
