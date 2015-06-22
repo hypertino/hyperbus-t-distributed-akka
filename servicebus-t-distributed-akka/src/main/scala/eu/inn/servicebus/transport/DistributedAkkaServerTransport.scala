@@ -16,17 +16,18 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
-class DistributedAkkaServerTransport(val actorSystemName: String,
+class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                                      val logMessages: Boolean = false,
+                                     val releaseActorSystem: Boolean = false,
                                      implicit val executionContext: ExecutionContext = ExecutionContext.global)
   extends ServerTransport {
 
-  def this(config: Config) = this(config.getString("actor-system", "eu-inn"),
+  def this(config: Config) = this(ActorSystemRegistry.addRef(config.getString("actor-system", "eu-inn")),
     config.getOptionBoolean("log-messages") getOrElse false,
+    true,
     scala.concurrent.ExecutionContext.global)
 
   protected [this] val subscriptions = new TrieMap[String, ActorRef]
-  protected [this] val actorSystem = ActorSystemRegistry.addRef(actorSystemName)
   protected [this] val cluster = Cluster(actorSystem)
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
@@ -93,8 +94,10 @@ class DistributedAkkaServerTransport(val actorSystemName: String,
       subscriptions.clear()
       cluster.leave(cluster.selfAddress)
       Thread.sleep(500) // todo: replace this with event, wait while cluster.leave completes
-      log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem($actorSystemName)")
-      ActorSystemRegistry.release(actorSystemName)(duration)
+      if (releaseActorSystem) {
+        log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name})")
+        ActorSystemRegistry.release(actorSystem.name)(duration)
+      }
       true
     }
   }

@@ -16,20 +16,21 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-class DistributedAkkaClientTransport(val actorSystemName: String,
+class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
               val localAffinity: Boolean = true,
               val logMessages: Boolean = false,
+              val releaseActorSystem: Boolean = false,
               implicit val executionContext: ExecutionContext = ExecutionContext.global,
               implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
 
-  def this(config: Config) = this(config.getString("actor-system", "eu-inn"),
+  def this(config: Config) = this(ActorSystemRegistry.addRef(config.getString("actor-system", "eu-inn")),
     config.getOptionBoolean("local-afinity") getOrElse true,
     config.getOptionBoolean("log-messages") getOrElse false,
+    true,
     scala.concurrent.ExecutionContext.global, // todo: configurable ExecutionContext like in akka?
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
-  protected [this] val actorSystem = ActorSystemRegistry.addRef(actorSystemName)
   protected [this] val cluster = Cluster(actorSystem)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
@@ -79,8 +80,10 @@ class DistributedAkkaClientTransport(val actorSystemName: String,
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
     log.info("Shutting down DistributedAkkaClientTransport...")
-    log.debug(s"DistributedAkkaClientTransport: releasing ActorSystem($actorSystemName)")
-    ActorSystemRegistry.release(actorSystemName)(duration)
+    if (releaseActorSystem) {
+      log.debug(s"DistributedAkkaClientTransport: releasing ActorSystem(${actorSystem.name})")
+      ActorSystemRegistry.release(actorSystem.name)(duration)
+    }
     Future.successful(true)
   }
 }
