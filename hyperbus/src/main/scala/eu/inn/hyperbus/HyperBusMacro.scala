@@ -9,14 +9,14 @@ import scala.reflect.macros.blackbox.Context
 
 private[hyperbus] object HyperBusMacro {
 
-  def on[IN <: Request[Body] : c.WeakTypeTag]
+  def process[IN <: Request[Body] : c.WeakTypeTag]
   (c: Context)
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.on[IN](handler)
+    bundle.process[IN](handler)
   }
 
   def subscribe[IN <: Request[Body] : c.WeakTypeTag]
@@ -56,7 +56,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
   import c.universe._
 
-  def on[IN <: Request[Body] : c.WeakTypeTag]
+  def process[IN <: Request[Body] : c.WeakTypeTag]
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
@@ -90,7 +90,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
         }
       )
       val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
-      thiz.on[Response[Body],$in](topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
+      thiz.process[Response[Body],$in](topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
     }"""

@@ -15,7 +15,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
   "InprocTransport " - {
     "Simple Test" in {
       val t = new InprocTransport
-      t.on[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
@@ -30,7 +30,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "NoTransportRouteException Test" in {
       val t = new InprocTransport
-      t.on[String, String](Topic("notexists", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("notexists", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
@@ -45,7 +45,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Complex Test (Service and Subscribers)" in {
       val t = new InprocTransport
-      t.on[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
@@ -140,14 +140,14 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       val t = new InprocTransport
       val receivers = new AtomicInteger(0)
 
-      t.on[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
         }, null)
       }
 
-      t.on[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
@@ -177,13 +177,13 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Unsubscribe Test" in {
       val t = new InprocTransport
-      val id1 = t.on[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
+      val id1 = t.process[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
       }
 
-      val id2 = t.on[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
+      val id2 = t.process[String, String](Topic("a", PartitionArgs(Map.empty)), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)

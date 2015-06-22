@@ -43,7 +43,7 @@ private[servicebus] object ServiceBusMacro {
     c.Expr[Future[Unit]](obj)
   }
 
-  def on[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]
+  def process[OUT: c.WeakTypeTag, IN: c.WeakTypeTag]
   (c: Context)
   (topic: c.Expr[Topic], partitionArgsExtractor: c.Expr[PartitionArgsExtractor[IN]])
   (handler: c.Expr[(IN) => Future[OUT]]): c.Expr[String] = {
@@ -60,7 +60,7 @@ private[servicebus] object ServiceBusMacro {
       val encoder = eu.inn.servicebus.serialization.createEncoder[$out]
       val thiz = $thiz
       val handler = $handler
-      val id = thiz.on[$out,$in]($topic,decoder,$partitionArgsExtractor){
+      val id = thiz.process[$out,$in]($topic,decoder,$partitionArgsExtractor){
         (in:$in) => eu.inn.servicebus.transport.SubscriptionHandlerResult(handler(in), encoder)
       }
       id

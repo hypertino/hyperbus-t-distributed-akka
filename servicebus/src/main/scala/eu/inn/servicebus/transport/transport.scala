@@ -74,7 +74,7 @@ trait ClientTransport {
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT], resultEncoder: Encoder[OUT])
 
 trait ServerTransport {
-  def on[OUT, IN](topic: Topic,
+  def process[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
                   partitionArgsExtractor: PartitionArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
@@ -172,7 +172,7 @@ class InprocTransport(serialize: Boolean = false)
                     reencodeMessage(out, handlerResult.resultEncoder, outputDecoder)
                   } recoverWith {
                     case NonFatal(e) ⇒
-                      log.error("`on` handler failed with", e)
+                      log.error("`process` handler failed with", e)
                       Future.successful {
                         reencodeMessage(e, subscriber.exceptionEncoder, outputDecoder)
                       }
@@ -183,7 +183,7 @@ class InprocTransport(serialize: Boolean = false)
                 }
 
                 if (log.isTraceEnabled) {
-                  log.trace(s"Message ($messageForSubscriber) is delivered to `on` @$subKey}")
+                  log.trace(s"Message ($messageForSubscriber) is delivered to `process` @$subKey}")
                 }
               }
             }
@@ -239,7 +239,7 @@ class InprocTransport(serialize: Boolean = false)
     }
   }
 
-  def on[OUT, IN](topic: Topic,
+  def process[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
                   partitionArgsExtractor: PartitionArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])

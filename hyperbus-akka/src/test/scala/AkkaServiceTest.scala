@@ -60,14 +60,14 @@ class TestActor extends Actor {
 
   def receive = AkkaHyperService.dispatch(this)
 
-  def on(testPost1: TestPost1) = {
+  def ~>(testPost1: TestPost1) = {
     count += 1
     Future {
       Created(TestCreatedBody("100500"))
     }
   }
 
-  def on(testPost3: TestPost3) = {
+  def ~>(testPost3: TestPost3) = {
     count += 1
     Future {
       if (testPost3.body.resourceData == 1)
@@ -93,7 +93,7 @@ class TestGroupActor extends Actor {
   def receive = AkkaHyperService.dispatch(this)
 
   @group("group1")
-  def subscribe(testPost1: TestPost1) = {
+  def |>(testPost1: TestPost1) = {
     count += 1
     Future.successful {}
   }

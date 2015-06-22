@@ -1,5 +1,6 @@
 package eu.inn.servicebus.transport
 
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
 import akka.actor._
@@ -39,14 +40,14 @@ class DistributedAkkaServerTransport(val actorSystemName: String,
     )
   }
 
-  override def on[OUT, IN](topic: Topic,
+  override def process[OUT, IN](topic: Topic,
                            inputDecoder: Decoder[IN],
                            partitionArgsExtractor: PartitionArgsExtractor[IN],
                            exceptionEncoder: Encoder[Throwable])
                           (handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = {
 
     val id = idCounter.incrementAndGet().toHexString
-    val actor = actorSystem.actorOf(Props[OnServerActor[OUT,IN]], "eu-inn-distr-on-server" + id)
+    val actor = actorSystem.actorOf(Props[OnServerActor[OUT,IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id, distributedakka.Subscription[OUT, IN](topic, None, inputDecoder, partitionArgsExtractor, exceptionEncoder, handler))
     id
@@ -58,7 +59,7 @@ class DistributedAkkaServerTransport(val actorSystemName: String,
                              partitionArgsExtractor: PartitionArgsExtractor[IN])
                             (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
     val id = idCounter.incrementAndGet().toHexString
-    val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id)
+    val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id, distributedakka.Subscription[Unit, IN](topic, Some(groupName), inputDecoder, partitionArgsExtractor, null, handler))
     id

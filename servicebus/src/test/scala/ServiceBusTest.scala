@@ -17,7 +17,7 @@ class ServiceBusTest extends FreeSpec with ScalaFutures with Matchers {
       val sr = List(TransportRoute[ServerTransport](tr, AnyArg))
       val serviceBus = new ServiceBus(cr, sr)
 
-      val id = serviceBus.on[String, Int](Topic("topic", PartitionArgs(Map.empty)), mockExtractor[Int]) { s =>
+      val id = serviceBus.process[String, Int](Topic("topic", PartitionArgs(Map.empty)), mockExtractor[Int]) { s =>
         Future {
           s.toString.reverse
         }

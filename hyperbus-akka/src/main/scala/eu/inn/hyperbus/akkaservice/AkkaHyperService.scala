@@ -61,7 +61,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   def route[A: c.WeakTypeTag](hyperBus: c.Tree, actorRef: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
-      c.abort(c.enclosingPosition, s"No suitable 'on' or 'subscribe' method is defined in ${weakTypeOf[A]}")
+      c.abort(c.enclosingPosition, s"No suitable 'process' / '~>' or 'subscribe' / '|>' method is defined in ${weakTypeOf[A]}")
     }
 
     val typ = weakTypeOf[A]
@@ -109,7 +109,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   def dispatch[A: c.WeakTypeTag](actor: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
-      c.abort(c.enclosingPosition, s"No suitable 'on' or 'subscribe' method is defined in ${weakTypeOf[A]}")
+      c.abort(c.enclosingPosition, s"No suitable 'process' / '~>' or 'subscribe' / '|>' method is defined in ${weakTypeOf[A]}")
     }
 
     val typ = weakTypeOf[A]
@@ -140,8 +140,10 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   protected def extractOnMethods[A: c.WeakTypeTag]: List[MethodSymbol] = {
     val fts = weakTypeOf[Future[_]].typeSymbol.typeSignature
     weakTypeOf[A].members.filter(member => member.isMethod &&
-      (member.name.decodedName.toString.startsWith("on") ||
-        member.name.decodedName.toString.startsWith("subscribe")) &&
+      (member.name.decodedName.toString.startsWith("process") ||
+        member.name.decodedName.toString.startsWith("subscribe") ||
+        member.name.decodedName.toString.startsWith("~>") || // ~>
+        member.name.decodedName.toString.startsWith("|>")) &&  // |>
       member.isPublic && {
       val m = member.asInstanceOf[MethodSymbol]
       //println("method: " + member.name.decoded + " params: " + m.paramss)

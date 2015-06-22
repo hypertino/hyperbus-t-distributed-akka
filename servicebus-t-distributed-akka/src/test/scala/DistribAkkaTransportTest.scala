@@ -54,13 +54,13 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
     "Send and Receive" in {
       val cnt = new AtomicInteger(0)
 
-      val id = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
+      val id = serviceBus.process[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
         mockDecoder, mockExtractor[String], null) { s =>
         cnt.incrementAndGet()
         mockResult(s.reverse)
       }
 
-      val id2 = serviceBus.on[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
+      val id2 = serviceBus.process[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
         mockDecoder,
         mockExtractor[String], null){ s =>
         cnt.incrementAndGet()

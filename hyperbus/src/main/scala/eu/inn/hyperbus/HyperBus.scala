@@ -43,7 +43,7 @@ trait HyperBusApi {
                                     requestEncoder: Encoder[REQ],
                                     partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit]
 
-  def on[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
+  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
                                                        method: String,
                                                        contentType: Option[String],
                                                        requestDecoder: RequestDecoder[REQ],
@@ -84,7 +84,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
   def |>[IN <: Request[Body]](groupName: String)
                                     (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
-  def ~>[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.on[REQ]
+  def ~>[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
     import eu.inn.hyperbus.impl.Helpers._
@@ -211,7 +211,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
     serviceBus.publish[REQ](topic, request, requestEncoder)
   }
 
-  def on[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
+  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
                                                        method: String,
                                                        contentType: Option[String],
                                                        requestDecoder: RequestDecoder[REQ],
@@ -230,7 +230,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
         val pe: PartitionArgsExtractor[REQ] = uh.partitionArgsExtractor
-        val uid = serviceBus.on[Response[Body], REQ](topic, d, pe, exceptionEncoder)(uh.handler)
+        val uid = serviceBus.process[Response[Body], REQ](topic, d, pe, exceptionEncoder)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r

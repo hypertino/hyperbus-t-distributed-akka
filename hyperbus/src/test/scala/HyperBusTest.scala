@@ -50,7 +50,7 @@ class ServerTransportTest extends ServerTransport {
   var sExtractor: PartitionArgsExtractor[Any] = null
   var sExceptionEncoder: Encoder[Throwable] = null
 
-  def on[OUT, IN](topic: Topic,
+  def process[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
                   partitionArgsExtractor: PartitionArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])

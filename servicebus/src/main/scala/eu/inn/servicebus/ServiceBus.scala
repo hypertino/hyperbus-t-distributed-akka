@@ -25,7 +25,7 @@ trait ServiceBusApi {
                    inputEncoder: Encoder[IN]
                    ): Future[Unit]
 
-  def on[OUT, IN](topic: Topic, inputDecoder: Decoder[IN],
+  def process[OUT, IN](topic: Topic, inputDecoder: Decoder[IN],
                   partitionArgsExtractor: PartitionArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String
@@ -65,8 +65,8 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
                      message: IN
                      ): Future[Unit] = macro ServiceBusMacro.publish[IN]
 
-    def on[OUT, IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
-                   (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.on[OUT, IN]
+    def process[OUT, IN](topic: Topic, partitionArgsExtractor: PartitionArgsExtractor[IN])
+                   (handler: (IN) => Future[OUT]): String = macro ServiceBusMacro.process[OUT, IN]
 
     def subscribe[IN](topic: Topic, groupName: String, partitionArgsExtractor: PartitionArgsExtractor[IN])
               (handler: (IN) => Future[Unit]): String = macro ServiceBusMacro.subscribe[IN]*/
@@ -93,13 +93,13 @@ class ServiceBus(val clientRoutes: Seq[TransportRoute[ClientTransport]],
     subscriptions.remove(subscriptionId)
   }
 
-  def on[OUT, IN](topic: Topic,
+  def process[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
                   partitionArgsExtractor: PartitionArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
-    val underlyingSubscriptionId = lookupServerTransport(topic).on[OUT, IN](
+    val underlyingSubscriptionId = lookupServerTransport(topic).process[OUT, IN](
       topic,
       inputDecoder,
       partitionArgsExtractor,
