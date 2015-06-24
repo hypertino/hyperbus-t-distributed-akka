@@ -9,7 +9,6 @@ import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.util.ConfigUtils
 import eu.inn.servicebus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
 
@@ -49,15 +48,16 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     val inputBytes = new ByteArrayOutputStream()
     inputEncoder(message, inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
+    import eu.inn.servicebus.util.LogUtils._
 
     if (logMessages) {
-      log.info(s"hyperBus <~ $topic: REQ#${messageString.hashCode} $messageString")
+      log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus <~ $topic: $messageString")
     }
 
     akka.pattern.ask(mediator, Publish(topic.url, messageString, sendOneMessageToEachGroup = true)) map {
       case result: String ⇒
         if (logMessages) {
-          log.info(s"RES#${messageString.hashCode}: $result")
+          log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus ~(R)~> $result")
         }
         val outputBytes = new ByteArrayInputStream(result.getBytes(Util.defaultEncoding))
         outputDecoder(outputBytes)
@@ -71,7 +71,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     val messageString = inputBytes.toString(Util.defaultEncoding)
 
     if (logMessages) {
-      log.info(s"hyperBus <| $topic: $messageString")
+      log.trace(s"hyperBus <| $topic: $messageString")
     }
 
     mediator ! Publish(topic.url, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?

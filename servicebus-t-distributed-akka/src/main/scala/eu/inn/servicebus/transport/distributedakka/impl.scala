@@ -9,11 +9,13 @@ import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Unsubscribe, Publish, SubscribeAck, Subscribe}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport.{NoTransportRouteException, Util, SubscriptionHandlerResult, Topic}
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 import akka.pattern.pipe
 import akka.pattern.ask
+
 
 private [transport] trait Command
 
@@ -26,10 +28,11 @@ private [transport] case class Subscription[OUT, IN](topic: Topic,
 
 private [transport] case class Start[OUT,IN](id: String, subscription: Subscription[OUT,IN], logMessages: Boolean) extends Command
 
-private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorLogging {
+private [transport] abstract class ServerActor[OUT,IN] extends Actor {
   protected [this] val mediator = DistributedPubSubExtension(context.system).mediator
   protected [this] var subscription: Subscription[OUT,IN] = null
   protected [this] var logMessages = false
+  protected [this] var log = LoggerFactory.getLogger(getClass)
 
   override def receive: Receive = {
     case start: Start[OUT,IN] ⇒
@@ -54,7 +57,7 @@ private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorL
       Some(outputBytes.toString(Util.defaultEncoding))
     } catch {
       case NonFatal(e2) ⇒
-        log.error(e2, "Can't encode exception: " + e)
+        log.error("Can't encode exception: " + e, e2)
         None
     }
 
@@ -84,11 +87,13 @@ private [transport] abstract class ServerActor[OUT,IN] extends Actor with ActorL
 
 private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN] {
   import context._
+  import eu.inn.servicebus.util.LogUtils._
 
   def start: Receive = {
     case input: String ⇒
       if (logMessages) {
-        log.info(s"~> #${subscription.handler.hashCode}: REQ#${input.hashCode} $input")
+        log.trace(Map("requestId" → input.hashCode.toHexString,
+          "subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus ~> $input")
       }
 
       decodeMessage(input, sendReply = true) map { inputMessage ⇒
@@ -102,7 +107,8 @@ private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN]
         }
         if (logMessages) {
           futureMessage map { s ⇒
-            log.info(s"#${subscription.handler.hashCode}: RES#${input.hashCode}: $s")
+            log.trace(Map("requestId" → input.hashCode.toHexString,
+              "subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus <~(R)~ $s")
             s
           } pipeTo sender
         }
@@ -115,14 +121,16 @@ private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN]
 
 private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] {
   import context._
+  import eu.inn.servicebus.util.LogUtils._
   def start: Receive = {
     case input: String ⇒
       if (logMessages) {
-        log.info(s"|> #${subscription.handler.hashCode}: REQ#${input.hashCode} $input")
+        log.trace(Map("subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus |> $input")
       }
       decodeMessage(input, sendReply = false) map { inputMessage ⇒
         subscription.handler(inputMessage).futureResult.recover {
-          case NonFatal(e) ⇒ log.error(e, "Subscriber handler failed")
+          case NonFatal(e) ⇒ log.error(Map("subscriptionId" → subscription.handler.hashCode.toHexString),
+            "Subscriber handler failed", e)
         }
       }
   }
