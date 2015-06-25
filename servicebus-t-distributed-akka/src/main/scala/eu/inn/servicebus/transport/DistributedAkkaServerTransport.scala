@@ -84,7 +84,6 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
       val result = list.forall(_ == true)
       subscriptions.clear()
       cluster.down(cluster.selfAddress)
-      cluster.leave(cluster.selfAddress)
       Thread.sleep(500) // todo: replace this with event, wait while cluster.leave completes
       if (releaseActorSystem) {
         log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name})")
