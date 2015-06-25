@@ -8,7 +8,7 @@ import akka.contrib.pattern.ClusterSingletonManager
 import akka.pattern.gracefulStop
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.distributedakka.{AutoDownControlActor, ProcessServerActor, Start, SubscribeServerActor}
+import eu.inn.servicebus.transport.distributedakka.{ProcessServerActor, Start, SubscribeServerActor}
 import eu.inn.servicebus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
 
