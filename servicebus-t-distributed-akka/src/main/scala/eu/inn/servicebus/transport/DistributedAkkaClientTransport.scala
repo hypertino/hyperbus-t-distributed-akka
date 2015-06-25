@@ -23,8 +23,8 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
               implicit val executionContext: ExecutionContext = ExecutionContext.global) extends ClientTransport {
 
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
-    config.getOptionBoolean("local-afinity") getOrElse true,
-    config.getOptionBoolean("log-messages") getOrElse false,
+    localAffinity = config.getOptionBoolean("local-afinity") getOrElse true,
+    logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     true,
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout),
     scala.concurrent.ExecutionContext.global // todo: configurable ExecutionContext like in akka?

@@ -23,7 +23,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   extends ServerTransport {
 
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
-    config.getOptionBoolean("log-messages") getOrElse false,
+    logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     true,
     scala.concurrent.ExecutionContext.global)
 
