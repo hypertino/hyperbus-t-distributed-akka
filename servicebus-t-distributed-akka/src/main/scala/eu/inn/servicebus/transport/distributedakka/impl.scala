@@ -136,26 +136,6 @@ private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] 
   }
 }
 
-private [transport] class AutoDownControlActor extends Actor with ActorLogging {
-
-  val cluster = Cluster(context.system)
-
-  override def preStart(): Unit = {
-    cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
-      classOf[MemberEvent], classOf[UnreachableMember])
-  }
-
-  override def postStop(): Unit = cluster.unsubscribe(self)
-
-  override def receive: Actor.Receive = {
-    case UnreachableMember(member) =>
-      if (member.roles.contains("auto-down")) {
-        log.warning(s"Downing unreachable member: {}", member)
-        Cluster(context.system).down(member.address)
-      }
-    case _: MemberEvent => // ignore
-  }
-}
 /*
 private [transport] class NoRouteWatcher extends Actor with ActorLogging {
   import context._

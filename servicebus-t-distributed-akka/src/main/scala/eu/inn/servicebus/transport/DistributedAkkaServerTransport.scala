@@ -32,15 +32,6 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  if (cluster.getSelfRoles.contains("auto-down-controller")) {
-    actorSystem.actorOf(ClusterSingletonManager.props(
-      Props(classOf[AutoDownControlActor]),
-      "control-auto-down-singleton",
-      PoisonPill,
-      Some("auto-down-controller"))
-    )
-  }
-
   override def process[OUT, IN](topic: Topic,
                            inputDecoder: Decoder[IN],
                            partitionArgsExtractor: PartitionArgsExtractor[IN],
@@ -92,6 +83,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     Future.sequence(actorStopFutures) map { list ⇒
       val result = list.forall(_ == true)
       subscriptions.clear()
+      cluster.down(cluster.selfAddress)
       cluster.leave(cluster.selfAddress)
       Thread.sleep(500) // todo: replace this with event, wait while cluster.leave completes
       if (releaseActorSystem) {
