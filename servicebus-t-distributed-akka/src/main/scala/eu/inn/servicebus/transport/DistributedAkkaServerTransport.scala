@@ -83,7 +83,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     Future.sequence(actorStopFutures) map { list ⇒
       val result = list.forall(_ == true)
       subscriptions.clear()
-      cluster.down(cluster.selfAddress)
+      //cluster.down(cluster.selfAddress)
       Thread.sleep(500) // todo: replace this with event, wait while cluster.leave completes
       if (releaseActorSystem) {
         log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name})")
