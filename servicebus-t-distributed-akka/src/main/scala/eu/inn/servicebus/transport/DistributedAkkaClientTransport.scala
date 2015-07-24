@@ -19,15 +19,13 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
               val localAffinity: Boolean = true,
               val logMessages: Boolean = false,
               val releaseActorSystem: Boolean = false,
-              implicit val timeout: Timeout = Util.defaultTimeout,
-              implicit val executionContext: ExecutionContext = ExecutionContext.global) extends ClientTransport {
+              implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
 
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
     localAffinity = config.getOptionBoolean("local-afinity") getOrElse true,
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     true,
-    new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout),
-    scala.concurrent.ExecutionContext.global // todo: configurable ExecutionContext like in akka?
+    new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
   protected [this] val cluster = Cluster(actorSystem)
@@ -54,6 +52,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
       log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus <~ $topic: $messageString")
     }
 
+    import actorSystem.dispatcher
     akka.pattern.ask(mediator, Publish(topic.url, messageString, sendOneMessageToEachGroup = true)) map {
       case result: String ⇒
         if (logMessages) {

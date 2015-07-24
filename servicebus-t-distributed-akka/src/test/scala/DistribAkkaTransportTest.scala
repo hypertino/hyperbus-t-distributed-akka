@@ -122,6 +122,33 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         }*/
       }
     }
+
+    /*"Dispatcher test" in {
+      val cnt = new AtomicInteger(0)
+
+      val id = serviceBus.process[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
+        mockDecoder, mockExtractor[String], null) { s =>
+        cnt.incrementAndGet()
+        Thread.sleep(15000)
+        mockResult(s.reverse)
+      }
+
+      val futures = 0 to 300 map { _ ⇒
+        serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
+          "12345",
+          mockEncoder, mockDecoder)
+      }
+      import scala.concurrent.ExecutionContext.Implicits.global
+      val f = Future.sequence(futures)
+
+      val result = Await.ready(f, 120.seconds)
+      println(result)
+      /*whenReady(f) { s =>
+        s should equal("54321")
+        Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
+        cnt.get should equal(100)
+      }*/
+    }*/
   }
 
   def mockExtractor[T]: PartitionArgsExtractor[T] = {

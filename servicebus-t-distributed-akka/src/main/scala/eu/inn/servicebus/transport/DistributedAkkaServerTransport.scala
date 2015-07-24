@@ -18,14 +18,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                                      val logMessages: Boolean = false,
-                                     val releaseActorSystem: Boolean = false,
-                                     implicit val executionContext: ExecutionContext = ExecutionContext.global)
+                                     val releaseActorSystem: Boolean = false)
   extends ServerTransport {
 
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
-    true,
-    scala.concurrent.ExecutionContext.global)
+    true)
 
   protected [this] val subscriptions = new TrieMap[String, ActorRef]
   protected [this] val cluster = Cluster(actorSystem)
@@ -72,6 +70,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
     log.info("Shutting down DistributedAkkaServerTransport...")
+    import actorSystem.dispatcher
     val actorStopFutures = subscriptions.map(s ⇒
       gracefulStop(s._2, duration) recover {
         case t: Throwable ⇒
