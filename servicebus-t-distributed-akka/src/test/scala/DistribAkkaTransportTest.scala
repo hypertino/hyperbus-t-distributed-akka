@@ -123,7 +123,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       }
     }
 
-    "Dispatcher test" in {
+    /*"Dispatcher test" in {
       val cnt = new AtomicInteger(0)
 
       val id = serviceBus.process[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)),
@@ -148,7 +148,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(100)
       }*/
-    }
+    }*/
   }
 
   def mockExtractor[T]: PartitionArgsExtractor[T] = {
