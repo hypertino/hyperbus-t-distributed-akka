@@ -25,29 +25,41 @@ case class TestCreatedBody(resourceId: String,
   extends CreatedBody with NoContentType
 
 @url("/resources")
-case class TestPost1(body: TestBody1) extends StaticPost(body)
+case class TestPost1(body: TestBody1,
+                     messageId: String = MessagingContext.newMessageId,
+                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
-case class TestPost2(body: TestBody2) extends StaticPost(body)
+case class TestPost2(body: TestBody2,
+                     messageId: String = MessagingContext.newMessageId,
+                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
-case class TestPost3(body: TestBody2) extends StaticPost(body)
+case class TestPost3(body: TestBody2,
+                     messageId: String = MessagingContext.newMessageId,
+                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[
   |[Ok[DynamicBody], |[Created[TestCreatedBody], !]]
   ]
 
 @url("/empty")
-case class TestPostWithNoContent(body: TestBody1) extends StaticPost(body)
+case class TestPostWithNoContent(body: TestBody1,
+                                 messageId: String = MessagingContext.newMessageId,
+                                 correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
 @url("/empty")
-case class StaticPostWithDynamicBody(body: DynamicBody) extends StaticPost(body)
+case class StaticPostWithDynamicBody(body: DynamicBody,
+                                     messageId: String = MessagingContext.newMessageId,
+                                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
 @url("/empty")
-case class StaticPostWithEmptyBody(body: EmptyBody) extends StaticPost(body)
+case class StaticPostWithEmptyBody(body: EmptyBody,
+                                   messageId: String = MessagingContext.newMessageId,
+                                   correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {

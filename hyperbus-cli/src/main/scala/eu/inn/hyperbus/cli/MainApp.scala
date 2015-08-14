@@ -26,7 +26,9 @@ case class InputCommand(message: String) extends Commands
 case class TestBody(content: Option[String]) extends Body
 
 @url("/test")
-case class TestRequest(body: TestBody) extends StaticGet(body)
+case class TestRequest(body: TestBody,
+                       messageId: String = MessagingContext.newMessageId,
+                       correlationId: Option[String] = MessagingContext.correlationId) extends StaticGet(body)
 with DefinedResponse[Ok[TestBody]]
 
 object MainApp {

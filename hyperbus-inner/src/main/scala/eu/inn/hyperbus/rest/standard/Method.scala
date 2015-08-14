@@ -1,7 +1,7 @@
 package eu.inn.hyperbus.rest.standard
 
 import eu.inn.hyperbus.rest.annotations.method
-import eu.inn.hyperbus.rest.{Body, DynamicBody, DynamicRequest, Request}
+import eu.inn.hyperbus.rest._
 
 object Method {
   val GET = "get"
@@ -18,7 +18,12 @@ trait Get[+B <: Body] extends Request[B] {
 
 abstract class StaticGet[+B <: Body](initBody: B) extends Get[B]
 
-case class DynamicGet(url: String, body: DynamicBody) extends Get[DynamicBody] with DynamicRequest
+case class DynamicGet(
+                       url: String,
+                       body: DynamicBody,
+                       messageId: String = MessagingContext.newMessageId,
+                       correlationId: Option[String] = MessagingContext.correlationId
+                       ) extends Get[DynamicBody] with DynamicRequest
 
 @method("delete")
 trait Delete[+B <: Body] extends Request[B] {
@@ -27,7 +32,12 @@ trait Delete[+B <: Body] extends Request[B] {
 
 abstract class StaticDelete[+B <: Body](initBody: B) extends Delete[B]
 
-case class DynamicDelete(url: String, body: DynamicBody) extends Delete[DynamicBody] with DynamicRequest
+case class DynamicDelete(
+                          url: String,
+                          body: DynamicBody,
+                          messageId: String = MessagingContext.newMessageId,
+                          correlationId: Option[String] = MessagingContext.correlationId
+                          ) extends Delete[DynamicBody] with DynamicRequest
 
 @method("post")
 trait Post[+B <: Body] extends Request[B] {
@@ -36,7 +46,11 @@ trait Post[+B <: Body] extends Request[B] {
 
 abstract class StaticPost[+B <: Body](initBody: B) extends Post[B]
 
-case class DynamicPost(url: String, body: DynamicBody) extends Post[DynamicBody] with DynamicRequest
+case class DynamicPost(url: String,
+                       body: DynamicBody,
+                       messageId: String = MessagingContext.newMessageId,
+                       correlationId: Option[String] = MessagingContext.correlationId
+                        ) extends Post[DynamicBody] with DynamicRequest
 
 @method("put")
 trait Put[+B <: Body] extends Request[B] {
@@ -45,7 +59,12 @@ trait Put[+B <: Body] extends Request[B] {
 
 abstract class StaticPut[+B <: Body](initBody: B) extends Put[B]
 
-case class DynamicPut(url: String, body: DynamicBody) extends Put[DynamicBody] with DynamicRequest
+case class DynamicPut(
+                       url: String,
+                       body: DynamicBody,
+                       messageId: String = MessagingContext.newMessageId,
+                       correlationId: Option[String] = MessagingContext.correlationId
+                       ) extends Put[DynamicBody] with DynamicRequest
 
 @method("patch")
 trait Patch[+B <: Body] extends Request[B] {
@@ -54,4 +73,9 @@ trait Patch[+B <: Body] extends Request[B] {
 
 abstract class StaticPatch[+B <: Body](initBody: B) extends Patch[B]
 
-case class DynamicPatch(url: String, body: DynamicBody) extends Patch[DynamicBody] with DynamicRequest
+case class DynamicPatch(
+                         url: String,
+                         body: DynamicBody,
+                         messageId: String = MessagingContext.newMessageId,
+                         correlationId: Option[String] = MessagingContext.correlationId
+                         ) extends Patch[DynamicBody] with DynamicRequest

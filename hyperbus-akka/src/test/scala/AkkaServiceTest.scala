@@ -42,15 +42,21 @@ case class TestErrorBody(code: String,
 
 
 @url("/resources")
-case class TestPost1(body: TestBody1) extends StaticPost(body)
+case class TestPost1(body: TestBody1,
+                     messageId: String = MessagingContext.newMessageId,
+                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
-case class TestPost2(body: TestBody2) extends StaticPost(body)
+case class TestPost2(body: TestBody2,
+                     messageId: String = MessagingContext.newMessageId,
+                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
-case class TestPost3(body: TestBody2) extends StaticPost(body)
+case class TestPost3(body: TestBody2,
+                     messageId: String = MessagingContext.newMessageId,
+                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[
   |[Ok[DynamicBody], |[Created[TestCreatedBody], |[NotFound[TestErrorBody], !]]]
   ]

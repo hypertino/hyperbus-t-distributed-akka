@@ -17,7 +17,9 @@ import scala.concurrent.Future
 case class TestPartition(partitionId: String, data: String) extends Body
 
 @url("/resources/{partitionId}")
-case class TestPostPartition1(body: TestPartition) extends StaticPost(body)
+case class TestPostPartition1(body: TestPartition,
+                              messageId: String = MessagingContext.newMessageId,
+                              correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Ok[DynamicBody]]
 
 

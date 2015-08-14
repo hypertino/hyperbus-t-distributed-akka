@@ -1,5 +1,7 @@
 package eu.inn.hyperbus.rest
 
+import java.util.UUID
+
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.rest.annotations.contentTypeMarker
@@ -26,6 +28,8 @@ object Body {
 
 trait Message[+B <: Body] {
   def body: B
+  def messageId: String
+  def correlationId: Option[String] //todo: check spelling
 }
 
 trait Request[+B <: Body] extends Message[B] {
@@ -115,3 +119,18 @@ trait |[L <: Response[Body], R <: Response[Body]] extends Response[Body]
 
 trait ! extends Response[Body]
 
+trait MessagingContext {
+  def newMessageId(): String
+  def correlationId: Option[String]
+}
+
+object MessagingContext {
+  implicit val defaultMessagingContext = new MessagingContext {
+    override def newMessageId(): String = UUID.randomUUID().toString
+    override def correlationId: Option[String] = None
+  }
+
+  def findContext(implicit context: MessagingContext): MessagingContext = context
+  def newMessageId(implicit context: MessagingContext): String = findContext(context).newMessageId()
+  def correlationId(implicit context: MessagingContext): Option[String] = findContext(context).correlationId
+}
