@@ -66,7 +66,7 @@ private[hyperbus] object HyperSerializationMacro {
         }
       q"""
         val body = $bodyDecoder
-        $to.${TermName("apply")}(body)
+        $to.${TermName("apply")}(body, requestHeader.messageId, requestHeader.correlationId)
       """
     }
 

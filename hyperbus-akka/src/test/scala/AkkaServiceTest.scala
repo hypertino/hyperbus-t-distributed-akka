@@ -10,7 +10,7 @@ import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.hyperbus.utils.ErrorUtils
+import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.transport.{ServerTransport, AnyArg, ClientTransport, InprocTransport}
 import org.scalatest.concurrent.ScalaFutures
@@ -35,7 +35,7 @@ case class TestCreatedBody(resourceId: String,
 @contentType("application/vnd+test-error-body.json")
 case class TestErrorBody(code: String,
                          description: Option[String] = None,
-                         errorId: String = ErrorUtils.createErrorId) extends ErrorBody {
+                         errorId: String = IdUtils.createId) extends ErrorBody {
   def message = code + description.map(": " + _).getOrElse("")
   def extra = Null
 }
@@ -43,19 +43,19 @@ case class TestErrorBody(code: String,
 
 @url("/resources")
 case class TestPost1(body: TestBody1,
-                     messageId: String = MessagingContext.newMessageId,
+                     messageId: String = IdUtils.createId,
                      correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
 case class TestPost2(body: TestBody2,
-                     messageId: String = MessagingContext.newMessageId,
+                     messageId: String = IdUtils.createId,
                      correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
 case class TestPost3(body: TestBody2,
-                     messageId: String = MessagingContext.newMessageId,
+                     messageId: String = IdUtils.createId,
                      correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[
   |[Ok[DynamicBody], |[Created[TestCreatedBody], |[NotFound[TestErrorBody], !]]]
@@ -69,7 +69,7 @@ class TestActor extends Actor {
   def ~>(testPost1: TestPost1) = {
     count += 1
     Future {
-      Created(TestCreatedBody("100500"))
+      Created(TestCreatedBody("100500"), messageId="123")
     }
   }
 
@@ -77,7 +77,7 @@ class TestActor extends Actor {
     count += 1
     Future {
       if (testPost3.body.resourceData == 1)
-        Created(TestCreatedBody("100500"))
+        Created(TestCreatedBody("100500"), messageId="123")
       else
       if (testPost3.body.resourceData == -1)
         throw new Conflict(ErrorBody("failed"))
@@ -88,7 +88,7 @@ class TestActor extends Actor {
       if (testPost3.body.resourceData == -3)
         NotFound(TestErrorBody("not_found"))
       else
-        Ok(DynamicBody(Text("another result")))
+        Ok(DynamicBody(Text("another result")), messageId="123")
     }
   }
 }
@@ -153,13 +153,13 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost3(TestBody2(1))
 
       whenReady(f) { r =>
-        r should equal(Created(TestCreatedBody("100500")))
+        r should equal(Created(TestCreatedBody("100500"), messageId = "123"))
       }
 
       val f2 = hyperBus <~ TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result"))))
+        r should equal(Ok(DynamicBody(Text("another result")), messageId = "123"))
       }
 
       val f3 = hyperBus <~ TestPost3(TestBody2(-1))

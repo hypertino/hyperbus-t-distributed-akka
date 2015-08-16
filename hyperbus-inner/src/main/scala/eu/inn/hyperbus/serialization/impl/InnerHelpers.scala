@@ -17,7 +17,7 @@ object InnerHelpers {
   implicit val bindOptions = new BindOptions(true)
 
   def encodeMessage[B <: Body](request: Request[B], bodyEncoder: Encoder[B], out: OutputStream) = {
-    val req = RequestHeader(request.url, request.method, request.body.contentType)
+    val req = RequestHeader(request.url, request.method, request.body.contentType, request.messageId, request.correlationId)
     writeUtf8("""{"request":""", out)
     req.writeJson(out)
     writeUtf8(""","body":""", out)
@@ -26,7 +26,7 @@ object InnerHelpers {
   }
 
   def encodeMessage[B <: Body](response: Response[B], bodyEncoder: Encoder[B], out: OutputStream) = {
-    val resp = ResponseHeader(response.status, response.body.contentType)
+    val resp = ResponseHeader(response.status, response.body.contentType, response.messageId, response.correlationId)
     writeUtf8("""{"response":""", out)
     resp.writeJson(out)
     writeUtf8(""","body":""", out)

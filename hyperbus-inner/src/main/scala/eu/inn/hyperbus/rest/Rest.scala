@@ -1,12 +1,10 @@
 package eu.inn.hyperbus.rest
 
-import java.util.UUID
-
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.rest.annotations.contentTypeMarker
 import eu.inn.hyperbus.rest.standard.ContentType
-import eu.inn.hyperbus.utils.ErrorUtils
+import eu.inn.hyperbus.utils.IdUtils
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
@@ -95,7 +93,7 @@ trait ClientError extends ErrorResponse
 object ErrorBody {
   def apply(code: String,
             description: Option[String] = None,
-            errorId: String = ErrorUtils.createErrorId,
+            errorId: String = IdUtils.createId,
             extra: Value = Null,
             contentType: Option[String] = None): ErrorBody =
     ErrorBodyContainer(code, description, errorId, extra, contentType)
@@ -120,17 +118,14 @@ trait |[L <: Response[Body], R <: Response[Body]] extends Response[Body]
 trait ! extends Response[Body]
 
 trait MessagingContext {
-  def newMessageId(): String
   def correlationId: Option[String]
 }
 
 object MessagingContext {
   implicit val defaultMessagingContext = new MessagingContext {
-    override def newMessageId(): String = UUID.randomUUID().toString
     override def correlationId: Option[String] = None
   }
 
   def findContext(implicit context: MessagingContext): MessagingContext = context
-  def newMessageId(implicit context: MessagingContext): String = findContext(context).newMessageId()
   def correlationId(implicit context: MessagingContext): Option[String] = findContext(context).correlationId
 }

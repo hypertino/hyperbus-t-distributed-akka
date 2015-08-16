@@ -2,6 +2,7 @@ package eu.inn.hyperbus.rest.standard
 
 import eu.inn.hyperbus.rest.annotations.method
 import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.utils.IdUtils
 
 object Method {
   val GET = "get"
@@ -21,7 +22,7 @@ abstract class StaticGet[+B <: Body](initBody: B) extends Get[B]
 case class DynamicGet(
                        url: String,
                        body: DynamicBody,
-                       messageId: String = MessagingContext.newMessageId,
+                       messageId: String = IdUtils.createId,
                        correlationId: Option[String] = MessagingContext.correlationId
                        ) extends Get[DynamicBody] with DynamicRequest
 
@@ -35,7 +36,7 @@ abstract class StaticDelete[+B <: Body](initBody: B) extends Delete[B]
 case class DynamicDelete(
                           url: String,
                           body: DynamicBody,
-                          messageId: String = MessagingContext.newMessageId,
+                          messageId: String = IdUtils.createId,
                           correlationId: Option[String] = MessagingContext.correlationId
                           ) extends Delete[DynamicBody] with DynamicRequest
 
@@ -48,7 +49,7 @@ abstract class StaticPost[+B <: Body](initBody: B) extends Post[B]
 
 case class DynamicPost(url: String,
                        body: DynamicBody,
-                       messageId: String = MessagingContext.newMessageId,
+                       messageId: String = IdUtils.createId,
                        correlationId: Option[String] = MessagingContext.correlationId
                         ) extends Post[DynamicBody] with DynamicRequest
 
@@ -62,7 +63,7 @@ abstract class StaticPut[+B <: Body](initBody: B) extends Put[B]
 case class DynamicPut(
                        url: String,
                        body: DynamicBody,
-                       messageId: String = MessagingContext.newMessageId,
+                       messageId: String = IdUtils.createId,
                        correlationId: Option[String] = MessagingContext.correlationId
                        ) extends Put[DynamicBody] with DynamicRequest
 
@@ -76,6 +77,6 @@ abstract class StaticPatch[+B <: Body](initBody: B) extends Patch[B]
 case class DynamicPatch(
                          url: String,
                          body: DynamicBody,
-                         messageId: String = MessagingContext.newMessageId,
+                         messageId: String = IdUtils.createId,
                          correlationId: Option[String] = MessagingContext.correlationId
                          ) extends Patch[DynamicBody] with DynamicRequest

@@ -86,14 +86,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "<~ (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
+        """{"response":{"status":201,"contentType":"application/vnd+created-body.json","messageId":"123"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
 
       val hyperBus = newHyperBus(ct,null)
-      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f) { r =>
@@ -103,7 +103,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "<~ dynamic (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
+        """{"response":{"status":201,"contentType":"application/vnd+created-body.json","messageId":"123"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
@@ -111,11 +111,12 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         DynamicBody(
           Obj(Map("resourceData" → Text("ha ha"))),
           Some("application/vnd+test-1.json")
-        )
+        ),
+        messageId = "123"
       )
 
       ct.input should equal(
-        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f) { r =>
@@ -126,14 +127,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "<~ empty (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":204,"contentType":"no-content"},"body":{}}"""
+        """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPostWithNoContent(TestBody1("empty"))
+      val f = hyperBus <~ TestPostWithNoContent(TestBody1("empty"), messageId = "123", None)
 
       ct.input should equal(
-        """{"request":{"url":"/empty","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"empty"}}"""
+        """{"request":{"url":"/empty","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"empty"}}"""
       )
 
       whenReady(f) { r =>
@@ -144,14 +145,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "<~ static request with dynamic body (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":204,"contentType":"no-content"},"body":{}}"""
+        """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ StaticPostWithDynamicBody(DynamicBody(Text("ha ha")))
+      val f = hyperBus <~ StaticPostWithDynamicBody(DynamicBody(Text("ha ha")), messageId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/empty","method":"post"},"body":"ha ha"}"""
+        """{"request":{"url":"/empty","method":"post","messageId":"123"},"body":"ha ha"}"""
       )
 
       whenReady(f) { r =>
@@ -162,14 +163,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "<~ static request with empty body (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":204,"contentType":"no-content"},"body":{}}"""
+        """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody)
+      val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody, messageId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/empty","method":"post","contentType":"no-content"},"body":null}"""
+        """{"request":{"url":"/empty","method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
       )
 
       whenReady(f) { r =>
@@ -180,14 +181,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     
     "<~ client got exception" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
+        """{"response":{"status":409,"messageId":"abcde12345"},"body":{"code":"failed","errorId":"abcde12345"}}"""
       )
 
       val hyperBus = newHyperBus(ct,null)
-      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f.failed) { r =>
@@ -200,23 +201,23 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null,st)
       hyperBus ~> { post: TestPost1 =>
         Future {
-          Created(TestCreatedBody("100500"))
+          Created(TestCreatedBody("100500"), messageId = "123")
         }
       }
 
-      val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+      val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDecoder(ba)
-      msg should equal(TestPost1(TestBody1("ha ha")))
+      msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123"))
 
       val hres = st.sHandler(msg)
       whenReady(hres.futureResult) { r =>
-        r should equal(Created(TestCreatedBody("100500")))
+        r should equal(Created(TestCreatedBody("100500"), messageId = "123"))
         val ba = new ByteArrayOutputStream()
         hres.resultEncoder(r, ba)
         val s = ba.toString("UTF-8")
         s should equal(
-          """{"response":{"status":201,"contentType":"application/vnd+created-body.json"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
+          """{"response":{"status":201,"contentType":"application/vnd+created-body.json","messageId":"123"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
         )
       }
     }
@@ -226,23 +227,23 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null,st)
       hyperBus ~> { post: StaticPostWithEmptyBody =>
         Future {
-          NoContent()
+          NoContent(messageId = "123")
         }
       }
 
-      val req = """{"request":{"url":"/empty","method":"post","contentType":"no-content"},"body":null}"""
+      val req = """{"request":{"url":"/empty","method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDecoder(ba)
-      msg should equal(StaticPostWithEmptyBody(EmptyBody))
+      msg should equal(StaticPostWithEmptyBody(EmptyBody, messageId = "123"))
 
       val hres = st.sHandler(msg)
       whenReady(hres.futureResult) { r =>
-        r should equal(NoContent())
+        r should equal(NoContent(messageId = "123"))
         val ba = new ByteArrayOutputStream()
         hres.resultEncoder(r, ba)
         val s = ba.toString("UTF-8")
         s should equal(
-          """{"response":{"status":204,"contentType":"no-content"},"body":null}"""
+          """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":null}"""
         )
       }
     }
@@ -252,23 +253,23 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null,st)
       hyperBus ~> { post: StaticPostWithDynamicBody =>
         Future {
-          NoContent()
+          NoContent(messageId = "123")
         }
       }
 
-      val req = """{"request":{"url":"/empty","method":"post","contentType":"some-content"},"body":"haha"}"""
+      val req = """{"request":{"url":"/empty","method":"post","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDecoder(ba)
-      msg should equal(StaticPostWithDynamicBody(DynamicBody(Text("haha"), Some("some-content"))))
+      msg should equal(StaticPostWithDynamicBody(DynamicBody(Text("haha"), Some("some-content")), messageId = "123"))
 
       val hres = st.sHandler(msg)
       whenReady(hres.futureResult) { r =>
-        r should equal(NoContent())
+        r should equal(NoContent(messageId = "123"))
         val ba = new ByteArrayOutputStream()
         hres.resultEncoder(r, ba)
         val s = ba.toString("UTF-8")
         s should equal(
-          """{"response":{"status":204,"contentType":"no-content"},"body":null}"""
+          """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":null}"""
         )
       }
     }
@@ -282,10 +283,10 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json"},"body":{"resourceData":"ha ha"}}"""
+      val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDecoder(ba)
-      msg should equal(TestPost1(TestBody1("ha ha")))
+      msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123"))
 
       val hres = st.sHandler(msg)
       whenReady(hres.futureResult) { r =>
@@ -294,7 +295,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         hres.resultEncoder(r, ba)
         val s = ba.toString("UTF-8")
         s should equal(
-          """{"response":{"status":409},"body":{"code":"failed","errorId":"abcde12345"}}"""
+          """{"response":{"status":409,"messageId":"abcde12345"},"body":{"code":"failed","errorId":"abcde12345"}}"""
         )
       }
     }

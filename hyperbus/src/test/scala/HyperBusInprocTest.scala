@@ -4,6 +4,7 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest.{Link, _}
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.transport.{ServerTransport, AnyArg, ClientTransport, InprocTransport}
 import org.scalatest.concurrent.ScalaFutures
@@ -26,19 +27,19 @@ case class TestCreatedBody(resourceId: String,
 
 @url("/resources")
 case class TestPost1(body: TestBody1,
-                     messageId: String = MessagingContext.newMessageId,
+                     messageId: String = IdUtils.createId,
                      correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
 case class TestPost2(body: TestBody2,
-                     messageId: String = MessagingContext.newMessageId,
+                     messageId: String = IdUtils.createId,
                      correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
 @url("/resources")
 case class TestPost3(body: TestBody2,
-                     messageId: String = MessagingContext.newMessageId,
+                     messageId: String = IdUtils.createId,
                      correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[
   |[Ok[DynamicBody], |[Created[TestCreatedBody], !]]
@@ -46,19 +47,19 @@ with DefinedResponse[
 
 @url("/empty")
 case class TestPostWithNoContent(body: TestBody1,
-                                 messageId: String = MessagingContext.newMessageId,
+                                 messageId: String = IdUtils.createId,
                                  correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
 @url("/empty")
 case class StaticPostWithDynamicBody(body: DynamicBody,
-                                     messageId: String = MessagingContext.newMessageId,
+                                     messageId: String = IdUtils.createId,
                                      correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
 @url("/empty")
 case class StaticPostWithEmptyBody(body: EmptyBody,
-                                   messageId: String = MessagingContext.newMessageId,
+                                   messageId: String = IdUtils.createId,
                                    correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
@@ -102,13 +103,13 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost3(TestBody2(1))
 
       whenReady(f) { r =>
-        r should equal(Created(TestCreatedBody("100500")))
+        r should equal(Created(TestCreatedBody("100500"), messageId = r.messageId))
       }
 
       val f2 = hyperBus <~ TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result"))))
+        r should equal(Ok(DynamicBody(Text("another result")), messageId = r.messageId))
       }
 
       val f3 = hyperBus <~ TestPost3(TestBody2(-1))

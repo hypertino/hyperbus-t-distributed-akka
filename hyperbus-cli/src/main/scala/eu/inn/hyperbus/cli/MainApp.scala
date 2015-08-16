@@ -11,6 +11,7 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
+import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.transport.ActorSystemRegistry
 import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
 import scala.concurrent.duration._
@@ -27,7 +28,7 @@ case class TestBody(content: Option[String]) extends Body
 
 @url("/test")
 case class TestRequest(body: TestBody,
-                       messageId: String = MessagingContext.newMessageId,
+                       messageId: String = IdUtils.createId,
                        correlationId: Option[String] = MessagingContext.correlationId) extends StaticGet(body)
 with DefinedResponse[Ok[TestBody]]
 
@@ -104,7 +105,7 @@ object MainApp {
     val jf = new JsonFactory()
     val jp = jf.createParser(body)
     try {
-      eu.inn.hyperbus.impl.Helpers.decodeDynamicRequest(RequestHeader(url, method, contentType), jp)
+      eu.inn.hyperbus.impl.Helpers.decodeDynamicRequest(RequestHeader(url, method, contentType, IdUtils.createId, None), jp)
     } finally {
       jp.close()
     }

@@ -2,6 +2,7 @@ package eu.inn.hyperbus.rest.standard
 
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.utils.IdUtils
 
 //todo: !format code
 
@@ -58,7 +59,7 @@ object Status {
 // ----------------- Normal responses -----------------
 
 case class Ok[+B <: Body](body: B,
-                          messageId: String = MessagingContext.newMessageId,
+                          messageId: String = IdUtils.createId,
                           correlationId: Option[String] = MessagingContext.correlationId
                           ) extends NormalResponse with Response[B] {
   def status: Int = Status.OK
@@ -69,7 +70,7 @@ trait CreatedBody extends Body with Links {
 }
 
 case class Created[+B <: CreatedBody](body: B,
-                                      messageId: String = MessagingContext.newMessageId,
+                                      messageId: String = IdUtils.createId,
                                       correlationId: Option[String] = MessagingContext.correlationId) extends NormalResponse with Response[B] {
   def status: Int = Status.CREATED
 }
@@ -77,37 +78,37 @@ case class Created[+B <: CreatedBody](body: B,
 case class DynamicCreatedBody(content: Value, contentType: Option[String] = None) extends DynamicBody with CreatedBody
 
 case class Accepted[+B <: Body](body: B,
-                                messageId: String = MessagingContext.newMessageId,
+                                messageId: String = IdUtils.createId,
                                 correlationId: Option[String] = MessagingContext.correlationId) extends NormalResponse with Response[B] {
   def status: Int = Status.ACCEPTED
 }
 
 case class NonAuthoritativeInformation[+B <: Body](body: B,
-                                                   messageId: String = MessagingContext.newMessageId,
+                                                   messageId: String = IdUtils.createId,
                                                    correlationId: Option[String] = MessagingContext.correlationId) extends NormalResponse with Response[B] {
   def status: Int = Status.NON_AUTHORITATIVE_INFORMATION
 }
 
 case class NoContent[+B <: Body](body: B = EmptyBody,
-                                 messageId: String = MessagingContext.newMessageId,
+                                 messageId: String = IdUtils.createId,
                                  correlationId: Option[String] = MessagingContext.correlationId) extends NormalResponse with Response[B] {
   def status: Int = Status.NO_CONTENT
 }
 
 case class ResetContent[+B <: Body](body: B,
-                                    messageId: String = MessagingContext.newMessageId,
+                                    messageId: String = IdUtils.createId,
                                     correlationId: Option[String] = MessagingContext.correlationId) extends NormalResponse with Response[B] {
   def status: Int = Status.RESET_CONTENT
 }
 
 case class PartialContent[+B <: Body](body: B,
-                                      messageId: String = MessagingContext.newMessageId,
+                                      messageId: String = IdUtils.createId,
                                       correlationId: Option[String] = MessagingContext.correlationId) extends NormalResponse with Response[B] {
   def status: Int = Status.PARTIAL_CONTENT
 }
 
 case class MultiStatus[+B <: Body](body: B,
-                                   messageId: String = MessagingContext.newMessageId,
+                                   messageId: String = IdUtils.createId,
                                    correlationId: Option[String] = MessagingContext.correlationId) extends NormalResponse with Response[B] {
   def status: Int = Status.MULTI_STATUS
 }
@@ -117,43 +118,43 @@ case class MultiStatus[+B <: Body](body: B,
 // todo: URL for redirects like for created?
 
 case class MultipleChoices[+B <: Body](body: B,
-                                       messageId: String = MessagingContext.newMessageId,
+                                       messageId: String = IdUtils.createId,
                                        correlationId: Option[String] = MessagingContext.correlationId) extends RedirectResponse with Response[B] {
   def status: Int = Status.MULTIPLE_CHOICES
 }
 
 case class MovedPermanently[+B <: Body](body: B,
-                                        messageId: String = MessagingContext.newMessageId,
+                                        messageId: String = IdUtils.createId,
                                         correlationId: Option[String] = MessagingContext.correlationId) extends RedirectResponse with Response[B] {
   def status: Int = Status.MOVED_PERMANENTLY
 }
 
 case class Found[+B <: Body](body: B,
-                             messageId: String = MessagingContext.newMessageId,
+                             messageId: String = IdUtils.createId,
                              correlationId: Option[String] = MessagingContext.correlationId) extends RedirectResponse with Response[B] {
   def status: Int = Status.FOUND
 }
 
 case class SeeOther[+B <: Body](body: B,
-                                messageId: String = MessagingContext.newMessageId,
+                                messageId: String = IdUtils.createId,
                                 correlationId: Option[String] = MessagingContext.correlationId) extends RedirectResponse with Response[B] {
   def status: Int = Status.SEE_OTHER
 }
 
 case class NotModified[+B <: Body](body: B,
-                                   messageId: String = MessagingContext.newMessageId,
+                                   messageId: String = IdUtils.createId,
                                    correlationId: Option[String] = MessagingContext.correlationId) extends RedirectResponse with Response[B] {
   def status: Int = Status.NOT_MODIFIED
 }
 
 case class UseProxy[+B <: Body](body: B,
-                                messageId: String = MessagingContext.newMessageId,
+                                messageId: String = IdUtils.createId,
                                 correlationId: Option[String] = MessagingContext.correlationId) extends RedirectResponse with Response[B] {
   def status: Int = Status.USE_PROXY
 }
 
 case class TemporaryRedirect[+B <: Body](body: B,
-                                         messageId: String = MessagingContext.newMessageId,
+                                         messageId: String = IdUtils.createId,
                                          correlationId: Option[String] = MessagingContext.correlationId) extends RedirectResponse with Response[B] {
   def status: Int = Status.TEMPORARY_REDIRECT
 }

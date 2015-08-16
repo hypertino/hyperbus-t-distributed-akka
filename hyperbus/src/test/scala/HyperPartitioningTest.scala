@@ -6,6 +6,7 @@ import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{contentType, url}
 import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
+import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
@@ -18,7 +19,7 @@ case class TestPartition(partitionId: String, data: String) extends Body
 
 @url("/resources/{partitionId}")
 case class TestPostPartition1(body: TestPartition,
-                              messageId: String = MessagingContext.newMessageId,
+                              messageId: String = IdUtils.createId,
                               correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
 with DefinedResponse[Ok[DynamicBody]]
 
@@ -30,11 +31,11 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
   "HyperPartitioning " - {
     "Partitioning when asking" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":200},"body":{}}"""
+        """{"response":{"status":200,"messageId":"123"},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPostPartition1(TestPartition("1", "ha"))
+      val f = hyperBus <~ TestPostPartition1(TestPartition("1", "ha"), messageId = "123")
 
       ct.inputTopic should equal(
         Topic("/resources/{partitionId}", PartitionArgs(Map("partitionId" → ExactArg("1"))))
@@ -54,10 +55,10 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
         }
       }
 
-      val req = """{"request":{"url":"/resources/{partitionId}","method":"post","contentType":"application/vnd+parition.json"},"body":{"partitionId":"123","data":"abc"}}"""
+      val req = """{"request":{"url":"/resources/{partitionId}","method":"post","contentType":"application/vnd+parition.json","messageId":"123"},"body":{"partitionId":"123","data":"abc"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDecoder(ba)
-      msg should equal(TestPostPartition1(TestPartition("123", "abc")))
+      msg should equal(TestPostPartition1(TestPartition("123", "abc"), messageId = "123"))
 
       val partitionArgs = st.sExtractor(msg)
       partitionArgs should equal(
