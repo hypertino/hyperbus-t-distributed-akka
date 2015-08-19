@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 @compileTimeOnly("enable macro paradise to expand macro annotations")
-class response extends StaticAnnotation {
+class response(status: Int) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro ResponseMacro.response
 }
 
@@ -25,32 +25,42 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
 
   def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
 
-    val q"case class $className[..$args](..$fields) extends ..$bases { ..$body }" = existingClass
+    val q"case class $className[..$typeArgs](..$fields) extends ..$bases { ..$body }" = existingClass
 
     val fieldsExcept = fields.filterNot { f ⇒
       f.name.toString == "correlationId" || f.name.toString == "messageId"
     }
 
+    // eliminate contravariance
+    val methodTypeArgs = typeArgs.map { t: TypeDef ⇒
+      TypeDef(Modifiers(), t.name, t.tparams, t.rhs)
+    }
+    val classTypeNames = typeArgs.map { t: TypeDef ⇒
+      t.name
+    }
+
     val newClass = q"""
-        case class $className(..$fieldsExcept,
+        case class $className[..$typeArgs](..$fieldsExcept,
           messageId: String,
           correlationId: Option[String]) extends ..$bases {
           ..$body
+          def status: Int = $annotationArgument
         }
       """
 
     val companionExtra = q"""
-        def apply(..$fieldsExcept)
-                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className =
-                 ${className.toTermName}(
+        def apply[..$methodTypeArgs](..$fieldsExcept)
+                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className[..$classTypeNames] =
+                 ${className.toTermName}[..$classTypeNames](
                     ..${fieldsExcept.map(_.name)},
                     messageId = eu.inn.hyperbus.utils.IdUtils.createId,
                     correlationId = context.correlationId
                  )
 
-        def apply(..$fieldsExcept, messageId: String)
-                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className =
-                 ${className.toTermName}(..${fieldsExcept.map(_.name)}, messageId = messageId, correlationId = context.correlationId)
+        def apply[..$methodTypeArgs](..$fieldsExcept, messageId: String)
+                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className[..$classTypeNames] =
+                 ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)}, messageId = messageId, correlationId = context.correlationId)
+        def status: Int = $annotationArgument
     """
 
     val newCompanion = clzCompanion map { existingCompanion =>

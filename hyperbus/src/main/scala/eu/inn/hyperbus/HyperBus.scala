@@ -76,7 +76,7 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
   def |>[IN <: Request[Body]](groupName: String)
                                     (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
-  def ~>[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
+  def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
     import eu.inn.hyperbus.impl.Helpers._

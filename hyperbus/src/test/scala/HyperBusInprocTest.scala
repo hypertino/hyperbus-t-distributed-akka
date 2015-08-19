@@ -59,13 +59,16 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
       hyperBus ~> { post: TestPost1 =>
         Future {
-          new Created(TestCreatedBody("100500"))
+          //implicit val context = MessagingContext.apply(post.correlationId)
+          Created(TestCreatedBody("100500"))
         }
       }
 
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       whenReady(f) { r =>
+        //r.messageId should equal("abc")
+        r.correlationId should equal(Some("xyz"))
         r.body should equal(TestCreatedBody("100500"))
       }
     }

@@ -59,20 +59,13 @@ object Status {
 
 // ----------------- Normal responses -----------------
 
-@response case class Ok[+B <: Body](body: B) extends NormalResponse with Response[B] {
-  def status: Int = Status.OK
-}
+@response(Status.OK) case class Ok[+B <: Body](body: B) extends NormalResponse with Response[B]
 
 trait CreatedBody extends Body with Links {
   def location = links(DefLink.LOCATION)
 }
 
-case class Created[+B <: CreatedBody](body: B,
-                                      messageId: String = IdUtils.createId,
-                                      correlationId: Option[String] = Some("TODO: fixme")
-                          ) extends NormalResponse with Response[B] {
-  def status: Int = Status.CREATED
-}
+@response(Status.CREATED) case class Created[+B <: CreatedBody](body: B) extends NormalResponse with Response[B]
 
 case class DynamicCreatedBody(content: Value, contentType: Option[String] = None) extends DynamicBody with CreatedBody
 
