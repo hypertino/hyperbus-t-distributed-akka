@@ -4,7 +4,7 @@ import eu.inn.binders.dynamic.Obj
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{contentType, url}
+import eu.inn.hyperbus.rest.annotations.{contentType, request}
 import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
 import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
@@ -17,10 +17,8 @@ import scala.concurrent.Future
 @contentType("application/vnd+parition.json")
 case class TestPartition(partitionId: String, data: String) extends Body
 
-@url("/resources/{partitionId}")
-case class TestPostPartition1(body: TestPartition,
-                              messageId: String = IdUtils.createId,
-                              correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/resources/{partitionId}")
+case class TestPostPartition1(body: TestPartition) extends StaticPost(body)
 with DefinedResponse[Ok[DynamicBody]]
 
 

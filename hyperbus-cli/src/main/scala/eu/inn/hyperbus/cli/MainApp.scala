@@ -8,7 +8,7 @@ import eu.inn.binders.dynamic.Text
 import eu.inn.binders.naming.PlainConverter
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{contentType, url}
+import eu.inn.hyperbus.rest.annotations.{contentType, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.hyperbus.utils.IdUtils
@@ -26,10 +26,8 @@ case class InputCommand(message: String) extends Commands
 @contentType("application/vnd+test-body.json")
 case class TestBody(content: Option[String]) extends Body
 
-@url("/test")
-case class TestRequest(body: TestBody,
-                       messageId: String = IdUtils.createId,
-                       correlationId: Option[String] = MessagingContext.correlationId) extends StaticGet(body)
+@request("/test")
+case class TestRequest(body: TestBody) extends StaticGet(body)
 with DefinedResponse[Ok[TestBody]]
 
 object MainApp {

@@ -8,7 +8,7 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
 import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{contentType, url}
+import eu.inn.hyperbus.rest.annotations.{contentType, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
@@ -41,22 +41,16 @@ case class TestErrorBody(code: String,
 }
 
 
-@url("/resources")
-case class TestPost1(body: TestBody1,
-                     messageId: String = IdUtils.createId,
-                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/resources")
+case class TestPost1(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
-@url("/resources")
-case class TestPost2(body: TestBody2,
-                     messageId: String = IdUtils.createId,
-                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/resources")
+case class TestPost2(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
-@url("/resources")
-case class TestPost3(body: TestBody2,
-                     messageId: String = IdUtils.createId,
-                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/resources")
+case class TestPost3(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[
   |[Ok[DynamicBody], |[Created[TestCreatedBody], |[NotFound[TestErrorBody], !]]]
   ]

@@ -22,9 +22,19 @@ abstract class StaticGet[+B <: Body](initBody: B) extends Get[B]
 case class DynamicGet(
                        url: String,
                        body: DynamicBody,
-                       messageId: String = IdUtils.createId,
-                       correlationId: Option[String] = MessagingContext.correlationId
-                       ) extends Get[DynamicBody] with DynamicRequest
+                       messageId: String,
+                       correlationId: Option[String]) extends Get[DynamicBody] with DynamicRequest
+
+object DynamicGet {
+  def apply(url: String,
+            body: DynamicBody,
+            messageId: String)
+           (implicit context: MessagingContext): DynamicGet = DynamicGet(url,body,messageId,context.correlationId)
+
+  def apply(url: String,
+            body: DynamicBody)
+           (implicit context: MessagingContext): DynamicGet = DynamicGet(url,body,IdUtils.createId,context.correlationId)
+}
 
 @method("delete")
 trait Delete[+B <: Body] extends Request[B] {
@@ -36,9 +46,19 @@ abstract class StaticDelete[+B <: Body](initBody: B) extends Delete[B]
 case class DynamicDelete(
                           url: String,
                           body: DynamicBody,
-                          messageId: String = IdUtils.createId,
-                          correlationId: Option[String] = MessagingContext.correlationId
-                          ) extends Delete[DynamicBody] with DynamicRequest
+                          messageId: String,
+                          correlationId: Option[String]) extends Delete[DynamicBody] with DynamicRequest
+
+object DynamicDelete {
+  def apply(url: String,
+            body: DynamicBody,
+            messageId: String)
+           (implicit context: MessagingContext): DynamicDelete = DynamicDelete(url,body,messageId,context.correlationId)
+
+  def apply(url: String,
+            body: DynamicBody)
+           (implicit context: MessagingContext): DynamicDelete = DynamicDelete(url,body,IdUtils.createId,context.correlationId)
+}
 
 @method("post")
 trait Post[+B <: Body] extends Request[B] {
@@ -49,9 +69,19 @@ abstract class StaticPost[+B <: Body](initBody: B) extends Post[B]
 
 case class DynamicPost(url: String,
                        body: DynamicBody,
-                       messageId: String = IdUtils.createId,
-                       correlationId: Option[String] = MessagingContext.correlationId
-                        ) extends Post[DynamicBody] with DynamicRequest
+                       messageId: String,
+                       correlationId: Option[String]) extends Post[DynamicBody] with DynamicRequest
+
+object DynamicPost {
+  def apply(url: String,
+            body: DynamicBody,
+            messageId: String)
+           (implicit context: MessagingContext): DynamicPost = DynamicPost(url,body,messageId,context.correlationId)
+
+  def apply(url: String,
+            body: DynamicBody)
+           (implicit context: MessagingContext): DynamicPost = DynamicPost(url,body,IdUtils.createId,context.correlationId)
+}
 
 @method("put")
 trait Put[+B <: Body] extends Request[B] {
@@ -63,9 +93,19 @@ abstract class StaticPut[+B <: Body](initBody: B) extends Put[B]
 case class DynamicPut(
                        url: String,
                        body: DynamicBody,
-                       messageId: String = IdUtils.createId,
-                       correlationId: Option[String] = MessagingContext.correlationId
-                       ) extends Put[DynamicBody] with DynamicRequest
+                       messageId: String,
+                       correlationId: Option[String]) extends Put[DynamicBody] with DynamicRequest
+
+object DynamicPut {
+  def apply(url: String,
+            body: DynamicBody,
+            messageId: String)
+           (implicit context: MessagingContext): DynamicPut = DynamicPut(url,body,messageId,context.correlationId)
+
+  def apply(url: String,
+            body: DynamicBody)
+           (implicit context: MessagingContext): DynamicPut = DynamicPut(url,body,IdUtils.createId,context.correlationId)
+}
 
 @method("patch")
 trait Patch[+B <: Body] extends Request[B] {
@@ -77,6 +117,16 @@ abstract class StaticPatch[+B <: Body](initBody: B) extends Patch[B]
 case class DynamicPatch(
                          url: String,
                          body: DynamicBody,
-                         messageId: String = IdUtils.createId,
-                         correlationId: Option[String] = MessagingContext.correlationId
-                         ) extends Patch[DynamicBody] with DynamicRequest
+                         messageId: String,
+                         correlationId: Option[String]) extends Patch[DynamicBody] with DynamicRequest
+
+object DynamicPatch {
+  def apply(url: String,
+            body: DynamicBody,
+            messageId: String)
+           (implicit context: MessagingContext): DynamicPatch = DynamicPatch(url,body,messageId,context.correlationId)
+
+  def apply(url: String,
+            body: DynamicBody)
+           (implicit context: MessagingContext): DynamicPatch = DynamicPatch(url,body,IdUtils.createId,context.correlationId)
+}

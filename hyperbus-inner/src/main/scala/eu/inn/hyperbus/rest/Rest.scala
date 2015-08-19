@@ -27,7 +27,7 @@ object Body {
 trait Message[+B <: Body] {
   def body: B
   def messageId: String
-  def correlationId: Option[String] //todo: check spelling
+  def correlationId: Option[String]
 }
 
 trait Request[+B <: Body] extends Message[B] {
@@ -119,6 +119,7 @@ trait ! extends Response[Body]
 
 trait MessagingContext {
   def correlationId: Option[String]
+  override def toString = s"MessagingContext($correlationId)"
 }
 
 object MessagingContext {
@@ -126,6 +127,11 @@ object MessagingContext {
     override def correlationId: Option[String] = None
   }
 
-  def findContext(implicit context: MessagingContext): MessagingContext = context
-  def correlationId(implicit context: MessagingContext): Option[String] = findContext(context).correlationId
+  def apply(withCorrelationId: String): MessagingContext = new MessagingContext {
+    override def correlationId: Option[String] = Some(withCorrelationId)
+  }
+
+  def apply(withCorrelationId: Option[String]): MessagingContext = new MessagingContext {
+    override def correlationId: Option[String] = withCorrelationId
+  }
 }

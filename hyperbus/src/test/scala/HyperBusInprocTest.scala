@@ -2,7 +2,7 @@ import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.Text
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest.{Link, _}
-import eu.inn.hyperbus.rest.annotations.{contentType, url}
+import eu.inn.hyperbus.rest.annotations.{contentType, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
@@ -25,48 +25,37 @@ case class TestCreatedBody(resourceId: String,
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody with NoContentType
 
-@url("/resources")
-case class TestPost1(body: TestBody1,
-                     messageId: String = IdUtils.createId,
-                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/resources")
+case class TestPost1(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
-@url("/resources")
-case class TestPost2(body: TestBody2,
-                     messageId: String = IdUtils.createId,
-                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/resources")
+case class TestPost2(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
-@url("/resources")
-case class TestPost3(body: TestBody2,
-                     messageId: String = IdUtils.createId,
-                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/resources")
+case class TestPost3(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[
   |[Ok[DynamicBody], |[Created[TestCreatedBody], !]]
   ]
 
-@url("/empty")
-case class TestPostWithNoContent(body: TestBody1,
-                                 messageId: String = IdUtils.createId,
-                                 correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/empty")
+case class TestPostWithNoContent(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
-@url("/empty")
-case class StaticPostWithDynamicBody(body: DynamicBody,
-                                     messageId: String = IdUtils.createId,
-                                     correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/empty")
+case class StaticPostWithDynamicBody(body: DynamicBody) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
-@url("/empty")
-case class StaticPostWithEmptyBody(body: EmptyBody,
-                                   messageId: String = IdUtils.createId,
-                                   correlationId: Option[String] = MessagingContext.correlationId) extends StaticPost(body)
+@request("/empty")
+case class StaticPostWithEmptyBody(body: EmptyBody) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "Send and Receive" in {
 
+      val abc = TestPost1.abc
       val hyperBus = newHyperBus()
 
       hyperBus ~> { post: TestPost1 =>
