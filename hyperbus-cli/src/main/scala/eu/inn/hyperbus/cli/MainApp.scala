@@ -8,7 +8,7 @@ import eu.inn.binders.dynamic.Text
 import eu.inn.binders.naming.PlainConverter
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{contentType, request}
+import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.hyperbus.utils.IdUtils
@@ -23,7 +23,7 @@ trait Commands
 case class InitCommand(hyperBus: HyperBus) extends Commands
 case class InputCommand(message: String) extends Commands
 
-@contentType("application/vnd+test-body.json")
+@body("application/vnd+test-body.json")
 case class TestBody(content: Option[String]) extends Body
 
 @request("/test")

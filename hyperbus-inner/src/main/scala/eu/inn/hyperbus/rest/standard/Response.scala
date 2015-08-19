@@ -2,6 +2,7 @@ package eu.inn.hyperbus.rest.standard
 
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.rest.annotations.response
 import eu.inn.hyperbus.utils.IdUtils
 
 //todo: !format code
@@ -58,10 +59,7 @@ object Status {
 
 // ----------------- Normal responses -----------------
 
-case class Ok[+B <: Body](body: B,
-                          messageId: String = IdUtils.createId,
-                          correlationId: Option[String] = Some("TODO: fixme")
-                          ) extends NormalResponse with Response[B] {
+@response case class Ok[+B <: Body](body: B) extends NormalResponse with Response[B] {
   def status: Int = Status.OK
 }
 

@@ -2,7 +2,7 @@ import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.Text
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest.{Link, _}
-import eu.inn.hyperbus.rest.annotations.{contentType, request}
+import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.utils.IdUtils
 import eu.inn.servicebus.{TransportRoute, ServiceBus}
@@ -13,17 +13,17 @@ import org.scalatest.{FreeSpec, Matchers}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-@contentType("application/vnd+test-1.json")
+@body("application/vnd+test-1.json")
 case class TestBody1(resourceData: String) extends Body
 
-@contentType("application/vnd+test-2.json")
+@body("application/vnd+test-2.json")
 case class TestBody2(resourceData: Long) extends Body
 
-@contentType("application/vnd+created-body.json")
+@body("application/vnd+created-body.json")
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
-  extends CreatedBody with NoContentType
+  extends CreatedBody// with NoContentType
 
 @request("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
@@ -55,7 +55,6 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
     "Send and Receive" in {
 
-      val abc = TestPost1.abc
       val hyperBus = newHyperBus()
 
       hyperBus ~> { post: TestPost1 =>

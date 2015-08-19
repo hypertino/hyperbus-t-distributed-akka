@@ -2,7 +2,7 @@ package eu.inn.hyperbus.rest
 
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Value}
-import eu.inn.hyperbus.rest.annotations.contentTypeMarker
+import eu.inn.hyperbus.rest.annotations.contentType
 import eu.inn.hyperbus.rest.standard.ContentType
 import eu.inn.hyperbus.utils.IdUtils
 
@@ -59,7 +59,7 @@ object DynamicBody {
 
 private [rest] case class DynamicBodyContainer(content: Value, contentType: Option[String] = None) extends DynamicBody
 
-@contentTypeMarker("no-content")
+@contentType("no-content")
 trait EmptyBody extends Body
 
 case object EmptyBody extends EmptyBody {

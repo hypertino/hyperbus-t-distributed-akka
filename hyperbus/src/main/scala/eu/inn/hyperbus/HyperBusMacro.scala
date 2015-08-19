@@ -1,7 +1,7 @@
 package eu.inn.hyperbus
 
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{url, contentTypeMarker, method}
+import eu.inn.hyperbus.rest.annotations.{url, contentType, method}
 import eu.inn.servicebus.serialization._
 
 import scala.concurrent.Future
@@ -246,7 +246,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
 
   private def getContentTypeAnnotation(t: c.Type): Option[String] =
-    getStringAnnotation(t.typeSymbol, c.typeOf[contentTypeMarker])
+    getStringAnnotation(t.typeSymbol, c.typeOf[contentType])
 
   private def getMethodAnnotation(t: c.Type): Option[String] =
     getStringAnnotation(t.typeSymbol, c.typeOf[method])
