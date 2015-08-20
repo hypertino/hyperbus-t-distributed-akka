@@ -40,9 +40,7 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     }
 
     val newClass = q"""
-        case class $className[..$typeArgs](..$fieldsExcept,
-          messageId: String,
-          correlationId: Option[String]) extends ..$bases {
+        case class $className[..$typeArgs](..$fieldsExcept,messageId: String,correlationId: String) extends ..$bases {
           ..$body
           def status: Int = $annotationArgument
         }
@@ -50,16 +48,11 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
 
     val companionExtra = q"""
         def apply[..$methodTypeArgs](..$fieldsExcept)
-                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className[..$classTypeNames] =
-                 ${className.toTermName}[..$classTypeNames](
-                    ..${fieldsExcept.map(_.name)},
-                    messageId = eu.inn.hyperbus.utils.IdUtils.createId,
-                    correlationId = context.correlationId
-                 )
+          (implicit contextFactory: eu.inn.hyperbus.rest.MessagingContextFactory): $className[..$classTypeNames] = {
+          val ctx = contextFactory.newContext()
+          ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
+        }
 
-        def apply[..$methodTypeArgs](..$fieldsExcept, messageId: String)
-                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className[..$classTypeNames] =
-                 ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)}, messageId = messageId, correlationId = context.correlationId)
         def status: Int = $annotationArgument
     """
 

@@ -32,24 +32,18 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     val newClass = q"""
         @eu.inn.hyperbus.rest.annotations.url($annotationArgument) case class $className(..$fieldsExcept,
           messageId: String,
-          correlationId: Option[String]) extends ..$bases {
+          correlationId: String) extends ..$bases {
           ..$body
           def url = $annotationArgument
         }
       """
 
     val companionExtra = q"""
-        def apply(..$fieldsExcept)
-                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className =
-                 ${className.toTermName}(
-                    ..${fieldsExcept.map(_.name)},
-                    messageId = eu.inn.hyperbus.utils.IdUtils.createId,
-                    correlationId = context.correlationId
-                 )
+        def apply(..$fieldsExcept)(implicit contextFactory: eu.inn.hyperbus.rest.MessagingContextFactory): $className = {
+          val ctx = contextFactory.newContext()
+          ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
+        }
 
-        def apply(..$fieldsExcept, messageId: String)
-                 (implicit context: eu.inn.hyperbus.rest.MessagingContext): $className =
-                 ${className.toTermName}(..${fieldsExcept.map(_.name)}, messageId = messageId, correlationId = context.correlationId)
         def url = $annotationArgument
     """
 

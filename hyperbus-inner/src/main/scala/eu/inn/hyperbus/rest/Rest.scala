@@ -24,10 +24,13 @@ object Body {
   type LinksMap = Map[String, Either[Link, Seq[Link]]]
 }
 
-trait Message[+B <: Body] extends MessagingContext {
+trait Message[+B <: Body] extends MessagingContextFactory {
+  outer ⇒
   def body: B
   def messageId: String
-  def correlationId: Option[String]
+  def correlationId: String
+
+  def newContext() = MessagingContext(correlationId)
 }
 
 trait Request[+B <: Body] extends Message[B] {
@@ -117,20 +120,29 @@ trait |[L <: Response[Body], R <: Response[Body]] extends Response[Body]
 
 trait ! extends Response[Body]
 
+trait MessagingContextFactory {
+  def newContext(): MessagingContext
+}
+
 trait MessagingContext {
-  def correlationId: Option[String]
+  def correlationId: String
+  def messageId: String
 }
 
 object MessagingContext {
-  implicit val defaultMessagingContext = new MessagingContext {
-    override def correlationId: Option[String] = None
-    override def toString = s"DefaultMessagingContext($correlationId)"
+  def apply(withCorrelationId: String): MessagingContext = new MessagingContext {
+    val messageId = IdUtils.createId
+    def correlationId = withCorrelationId
+    override def toString = s"MessagingContext(messageId=$messageId,correlationId=$correlationId)"
   }
+}
 
-  def apply(withCorrelationId: String): MessagingContext = apply(Some(withCorrelationId))
-
-  def apply(withCorrelationId: Option[String]): MessagingContext = new MessagingContext {
-    override def correlationId: Option[String] = withCorrelationId
-    override def toString = s"MessagingContextWithCorrelation($correlationId)"
+object MessagingContextFactory {
+  implicit val newContextFactory = new MessagingContextFactory {
+    def newContext() = new MessagingContext {
+      val messageId = IdUtils.createId
+      def correlationId = messageId
+      override def toString = s"NewMessagingContext(messageId=$messageId)"
+    }
   }
 }

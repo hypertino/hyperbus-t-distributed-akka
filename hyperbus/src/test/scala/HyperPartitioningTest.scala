@@ -33,7 +33,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPostPartition1(TestPartition("1", "ha"), messageId = "123")
+      val f = hyperBus <~ TestPostPartition1(TestPartition("1", "ha"), messageId = "123", correlationId = "123")
 
       ct.inputTopic should equal(
         Topic("/resources/{partitionId}", PartitionArgs(Map("partitionId" → ExactArg("1"))))
@@ -56,7 +56,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       val req = """{"request":{"url":"/resources/{partitionId}","method":"post","contentType":"application/vnd+parition.json","messageId":"123"},"body":{"partitionId":"123","data":"abc"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDecoder(ba)
-      msg should equal(TestPostPartition1(TestPartition("123", "abc"), messageId = "123"))
+      msg should equal(TestPostPartition1(TestPartition("123", "abc"), messageId = "123", correlationId = "123"))
 
       val partitionArgs = st.sExtractor(msg)
       partitionArgs should equal(

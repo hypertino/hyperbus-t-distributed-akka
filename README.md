@@ -1,5 +1,2 @@
 TODO:
-    @url -> @request
-    @contentType -> @body
-    + @response
-    correlationId -> not some?
+    apply метод в request/response object принимающий содержимое contentType

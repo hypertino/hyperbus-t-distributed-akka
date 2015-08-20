@@ -344,11 +344,11 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
   }
 
   protected def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Response[Body] = {
-    InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(
-        safeErrorMessage(s"Unhandled exception: ${exception.getMessage}", request, routeKey)
-      )),
-      exception
-    )
+    val errorBody = ErrorBody(DefError.INTERNAL_ERROR, Some(
+      safeErrorMessage(s"Unhandled exception: ${exception.getMessage}", request, routeKey)
+    ))
+    log.error(errorBody.message + ". #" + errorBody.errorId, exception)
+    InternalServerError(errorBody)
   }
 
   protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode response: {}", response)

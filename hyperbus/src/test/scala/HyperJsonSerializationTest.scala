@@ -24,7 +24,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
     "Encode Request" in {
       val encoder = eu.inn.hyperbus.serialization.createEncoder[TestPost1]
       val ba = new ByteArrayOutputStream()
-      encoder(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = Some("abc")), ba)
+      encoder(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "abc"), ba)
       val s = ba.toString("UTF8")
       //println(s)
       s should equal("""{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123","correlationId":"abc"},"body":{"resourceData":"ha ha"}}""")
@@ -33,7 +33,7 @@ class HyperJsonSerializationTest extends FreeSpec with Matchers {
     "Encode Response" in {
       val encoder = eu.inn.hyperbus.serialization.createEncoder[Created[TestCreatedBody]]
       val ba = new ByteArrayOutputStream()
-      encoder(new Created(TestCreatedBody("100500"), messageId = "123", correlationId = Some("abc")), ba)
+      encoder(new Created(TestCreatedBody("100500"), messageId = "123", correlationId = "abc"), ba)
       val s = ba.toString("UTF8")
       //println(s)
       s should equal("""{"response":{"status":201,"contentType":"application/vnd+created-body.json","messageId":"123","correlationId":"abc"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
