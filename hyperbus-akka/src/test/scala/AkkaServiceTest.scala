@@ -60,7 +60,7 @@ class TestActor extends Actor {
 
   def receive = AkkaHyperService.dispatch(this)
 
-  def ~>(testPost1: TestPost1) = {
+  def ~>(implicit testPost1: TestPost1) = {
     count += 1
     Future {
       Created(TestCreatedBody("100500"), messageId="123")
@@ -120,9 +120,11 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       hyperBus.routeTo[TestActor](actorRef)
       hyperBus.routeTo[TestGroupActor](groupActorRef)
 
-      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"))
+      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId="abc", correlationId=Some("xyz"))
 
       whenReady(f1) { r =>
+        r.messageId should equal("123")
+        r.correlationId should equal(Some("xyz"))
         r.body should equal(TestCreatedBody("100500"))
         actorRef.underlyingActor.count should equal(1)
         groupActorRef.underlyingActor.count should equal(1)

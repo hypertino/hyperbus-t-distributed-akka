@@ -24,7 +24,7 @@ object Body {
   type LinksMap = Map[String, Either[Link, Seq[Link]]]
 }
 
-trait Message[+B <: Body] {
+trait Message[+B <: Body] extends MessagingContext {
   def body: B
   def messageId: String
   def correlationId: Option[String]
@@ -119,19 +119,18 @@ trait ! extends Response[Body]
 
 trait MessagingContext {
   def correlationId: Option[String]
-  override def toString = s"MessagingContext($correlationId)"
 }
 
 object MessagingContext {
   implicit val defaultMessagingContext = new MessagingContext {
     override def correlationId: Option[String] = None
+    override def toString = s"DefaultMessagingContext($correlationId)"
   }
 
-  def apply(withCorrelationId: String): MessagingContext = new MessagingContext {
-    override def correlationId: Option[String] = Some(withCorrelationId)
-  }
+  def apply(withCorrelationId: String): MessagingContext = apply(Some(withCorrelationId))
 
   def apply(withCorrelationId: Option[String]): MessagingContext = new MessagingContext {
     override def correlationId: Option[String] = withCorrelationId
+    override def toString = s"MessagingContextWithCorrelation($correlationId)"
   }
 }
