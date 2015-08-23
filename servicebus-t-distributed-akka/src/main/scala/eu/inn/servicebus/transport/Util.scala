@@ -6,7 +6,7 @@ import duration._
 
 private [transport] object Util {
   val defaultTimeout = 20.second
-  val defaultEncoding = "UTF-8"
+  val defaultEncoding = "UTF-8" // todo: move this to config with default value
 
   // empty group doesn't work, so we need to have some default string
   def getUniqGroupName(groupName: Option[String]): Option[String] = {

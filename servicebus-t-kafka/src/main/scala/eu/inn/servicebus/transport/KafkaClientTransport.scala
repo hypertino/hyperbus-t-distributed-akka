@@ -1,14 +1,87 @@
 package eu.inn.servicebus.transport
 
-import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import java.io.ByteArrayOutputStream
 
-import scala.concurrent.Future
+import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import org.apache.kafka.clients.producer.{RecordMetadata, Callback, ProducerRecord, KafkaProducer}
+import org.slf4j.LoggerFactory
+
+import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.FiniteDuration
 
-class KafkaClientTransport extends ClientTransport {
+case class KafkaRoute(urlArg: PartitionArg,
+                     partitionArgs: PartitionArgs = PartitionArgs(Map.empty),
+                     targetTopic: String = "hyperbus",
+                     targetPartitionArgs: List[String] = List.empty)
+
+class KafkaPartitionArgIsNotDefined(message: String) extends RuntimeException(message)
+
+class KafkaClientTransport(producer: KafkaProducer[String,String],
+                          val routes: List[KafkaRoute],
+                          val encoding: String = "UTF-8" ) extends ClientTransport {
+  protected [this] val log = LoggerFactory.getLogger(this.getClass)
+
   override def ask[OUT, IN](topic: Topic, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = ???
 
-  override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = ???
+  override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
 
-  override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
+    routes.find(r ⇒ r.urlArg.matchArg(ExactArg(topic.url)) &&
+      r.partitionArgs.matchArgs(topic.partitionArgs)) map (publishToRoute(_, topic, message, inputEncoder)) getOrElse {
+      throw new NoTransportRouteException(s"Kafka transport client. Topic: ${topic.url}/${topic.partitionArgs.toString}")
+    }
+  }
+
+  override def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    Future {
+      producer.close()
+      true
+    } recover {
+      case e: Throwable ⇒
+        log.error("Can't close kafka producer", e)
+        false
+    }
+  }
+
+  private def publishToRoute[IN](route: KafkaRoute, topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
+    val inputBytes = new ByteArrayOutputStream()
+    inputEncoder(message, inputBytes)
+    val messageString = inputBytes.toString(encoding)
+
+    val record: ProducerRecord[String,String] =
+      if (route.targetPartitionArgs.isEmpty) { // no partition key
+        new ProducerRecord(route.targetTopic, messageString)
+      }
+      else {
+        val recordKey = route.targetPartitionArgs.map { key: String ⇒
+          topic.partitionArgs.args.get(key) match {
+            case Some(ExactArg(argValue)) ⇒ argValue
+            case _ ⇒ throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in $topic")
+          }
+        }.foldLeft("")(_+_)
+
+        new ProducerRecord(route.targetTopic, recordKey, messageString)
+      }
+
+    if (log.isTraceEnabled) {
+      log.trace(s"Sending to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $message")
+    }
+
+    val promise = Promise[Unit]()
+
+    producer.send(record, new Callback {
+      def onCompletion(recordMetadata: RecordMetadata, e: Exception): Unit = {
+        if (e != null) {
+          promise.failure(e)
+          log.error(s"Can't send to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : $message", e)
+        }
+        else {
+          promise.success({})
+          log.trace(s"Sent to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
+            s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}}")
+        }
+      }
+    })
+    promise.future
+  }
 }
