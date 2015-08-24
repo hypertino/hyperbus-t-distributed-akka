@@ -49,14 +49,14 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     val messageString = inputBytes.toString(Util.defaultEncoding)
     import eu.inn.servicebus.util.LogUtils._
 
-    if (logMessages) {
+    if (logMessages && log.isTraceEnabled) {
       log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus <~ $topic: $messageString")
     }
 
     import actorSystem.dispatcher
     akka.pattern.ask(mediator, Publish(topic.url, messageString, sendOneMessageToEachGroup = true)) map {
       case result: String ⇒
-        if (logMessages) {
+        if (logMessages && log.isTraceEnabled) {
           log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus ~(R)~> $result")
         }
         val outputBytes = new ByteArrayInputStream(result.getBytes(Util.defaultEncoding))
@@ -70,7 +70,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     inputEncoder(message, inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
 
-    if (logMessages) {
+    if (logMessages && log.isTraceEnabled) {
       log.trace(s"hyperBus <| $topic: $messageString")
     }
 

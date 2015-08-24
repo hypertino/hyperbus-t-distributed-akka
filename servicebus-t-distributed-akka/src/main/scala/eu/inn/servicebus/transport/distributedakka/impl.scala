@@ -91,13 +91,13 @@ private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN]
 
   def start: Receive = {
     case input: String ⇒
-      if (logMessages) {
+      if (logMessages && log.isTraceEnabled) {
         log.trace(Map("requestId" → input.hashCode.toHexString,
           "subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus ~> $input")
       }
 
       decodeMessage(input, sendReply = true) map { inputMessage ⇒
-        val result = subscription.handler(inputMessage)
+        val result = subscription.handler(inputMessage) // todo: test result with partitonArgs?
         val futureMessage = result.futureResult.map { out ⇒
           val outputBytes = new ByteArrayOutputStream()
           result.resultEncoder(out, outputBytes)
@@ -105,7 +105,7 @@ private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN]
         } recover {
           case NonFatal(e) ⇒ handleException(e, sendReply = false).getOrElse(throw e) // todo: test this scenario
         }
-        if (logMessages) {
+        if (logMessages && log.isTraceEnabled) {
           futureMessage map { s ⇒
             log.trace(Map("requestId" → input.hashCode.toHexString,
               "subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus <~(R)~ $s")
@@ -124,11 +124,11 @@ private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] 
   import eu.inn.servicebus.util.LogUtils._
   def start: Receive = {
     case input: String ⇒
-      if (logMessages) {
+      if (logMessages && log.isTraceEnabled) {
         log.trace(Map("subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus |> $input")
       }
       decodeMessage(input, sendReply = false) map { inputMessage ⇒
-        subscription.handler(inputMessage).futureResult.recover {
+        subscription.handler(inputMessage).futureResult.recover { // todo: test result with partitonArgs?
           case NonFatal(e) ⇒ log.error(Map("subscriptionId" → subscription.handler.hashCode.toHexString),
             "Subscriber handler failed", e)
         }

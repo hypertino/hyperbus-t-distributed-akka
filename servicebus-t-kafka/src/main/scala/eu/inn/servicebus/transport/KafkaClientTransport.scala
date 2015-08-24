@@ -21,13 +21,15 @@ case class KafkaRoute(urlArg: PartitionArg,
 class KafkaPartitionArgIsNotDefined(message: String) extends RuntimeException(message)
 
 class KafkaClientTransport(producerProperties: Properties,
-                          val routes: List[KafkaRoute],
-                          val encoding: String = "UTF-8") extends ClientTransport {
+                          routes: List[KafkaRoute],
+                          logMessages: Boolean = false,
+                          encoding: String = "UTF-8") extends ClientTransport {
 
   def this(config: Config) = this(
-    ConfigLoader.loadProperties(config.getConfig("producer")),
-    ConfigLoader.loadRoutes(config.getConfigList("routes")),
-    config.getOptionString("encoding").getOrElse("UTF-8")
+    producerProperties = ConfigLoader.loadProperties(config.getConfig("producer")),
+    routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
+    logMessages = config.getOptionBoolean("log-messages") getOrElse false,
+    encoding = config.getOptionString("encoding").getOrElse("UTF-8")
   )
 
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
@@ -39,7 +41,7 @@ class KafkaClientTransport(producerProperties: Properties,
 
     routes.find(r ⇒ r.urlArg.matchArg(ExactArg(topic.url)) &&
       r.partitionArgs.matchArgs(topic.partitionArgs)) map (publishToRoute(_, topic, message, inputEncoder)) getOrElse {
-      throw new NoTransportRouteException(s"Kafka transport client. Topic: ${topic.url}/${topic.partitionArgs.toString}")
+      throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${topic.url}/${topic.partitionArgs.toString}")
     }
   }
 
@@ -75,7 +77,7 @@ class KafkaClientTransport(producerProperties: Properties,
         new ProducerRecord(route.targetTopic, recordKey, messageString)
       }
 
-    if (log.isTraceEnabled) {
+    if (logMessages && log.isTraceEnabled) {
       log.trace(s"Sending to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $message")
     }
 
@@ -89,8 +91,10 @@ class KafkaClientTransport(producerProperties: Properties,
         }
         else {
           promise.success({})
-          log.trace(s"Sent to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
-            s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}}")
+          if (logMessages && log.isTraceEnabled) {
+            log.trace(s"Sent to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
+              s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}}")
+          }
         }
       }
     })
