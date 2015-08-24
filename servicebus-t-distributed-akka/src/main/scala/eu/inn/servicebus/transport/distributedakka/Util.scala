@@ -1,8 +1,7 @@
-package eu.inn.servicebus.transport
+package eu.inn.servicebus.transport.distributedakka
 
-import akka.actor.ActorSystem
 import scala.concurrent.duration
-import duration._
+import scala.concurrent.duration._
 
 private [transport] object Util {
   val defaultTimeout = 20.second

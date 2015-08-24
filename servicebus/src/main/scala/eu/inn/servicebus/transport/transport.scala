@@ -39,7 +39,7 @@ case class RegexArg(value: String) extends PartitionArg {
 }
 
 // case class ExactPartition(partition: String) extends PartitionArg -- kafka?
-
+// todo: rename this class!
 case class PartitionArgs(args: Map[String, PartitionArg]) {
   def matchArgs(other: PartitionArgs): Boolean = {
     args.map { case (k, v) ⇒

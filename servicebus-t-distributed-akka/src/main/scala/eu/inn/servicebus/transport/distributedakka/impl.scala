@@ -8,7 +8,7 @@ import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Unsubscribe, Publish, SubscribeAck, Subscribe}
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{NoTransportRouteException, Util, SubscriptionHandlerResult, Topic}
+import eu.inn.servicebus.transport.{NoTransportRouteException, SubscriptionHandlerResult, Topic}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future

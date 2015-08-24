@@ -9,6 +9,7 @@ import akka.contrib.pattern.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.transport.distributedakka.Util
 import eu.inn.servicebus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
 

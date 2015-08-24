@@ -1,13 +1,17 @@
 package eu.inn.servicebus.transport
 
 import java.io.ByteArrayOutputStream
+import java.util.Properties
 
+import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
+import eu.inn.servicebus.transport.kafka.ConfigLoader
 import org.apache.kafka.clients.producer.{RecordMetadata, Callback, ProducerRecord, KafkaProducer}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.FiniteDuration
+import eu.inn.servicebus.util.ConfigUtils._
 
 case class KafkaRoute(urlArg: PartitionArg,
                      partitionArgs: PartitionArgs = PartitionArgs(Map.empty),
@@ -16,10 +20,18 @@ case class KafkaRoute(urlArg: PartitionArg,
 
 class KafkaPartitionArgIsNotDefined(message: String) extends RuntimeException(message)
 
-class KafkaClientTransport(producer: KafkaProducer[String,String],
+class KafkaClientTransport(producerProperties: Properties,
                           val routes: List[KafkaRoute],
-                          val encoding: String = "UTF-8" ) extends ClientTransport {
+                          val encoding: String = "UTF-8") extends ClientTransport {
+
+  def this(config: Config) = this(
+    ConfigLoader.loadProperties(config.getConfig("producer")),
+    ConfigLoader.loadRoutes(config.getConfigList("routes")),
+    config.getOptionString("encoding").getOrElse("UTF-8")
+  )
+
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
+  protected [this] val producer = new KafkaProducer[String,String](producerProperties)
 
   override def ask[OUT, IN](topic: Topic, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = ???
 
