@@ -5,10 +5,10 @@ import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
+import _root_.kafka.consumer.{KafkaStream, ConsumerConfig, Consumer}
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Encoder, PartitionArgsExtractor, Decoder}
 import eu.inn.servicebus.transport.kafka.ConfigLoader
-import org.apache.kafka.clients.consumer.{ConsumerRecord, KafkaConsumer, Consumer, ConsumerConfig}
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
@@ -26,7 +26,7 @@ class KafkaServerTransport(
                             encoding: String = "UTF-8"
                             ) extends ServerTransport {
   def this(config: Config) = this(
-    consumerProperties = ConfigLoader.loadProperties(config.getConfig("consumer")),
+    consumerProperties = ConfigLoader.loadConsumerProperties(config.getConfig("consumer")),
     routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding").getOrElse("UTF-8")
@@ -82,20 +82,23 @@ class KafkaServerTransport(
         groupName
       }
       props.setProperty("group.id", newGroupId)
-      new KafkaConsumer[String,String](props)
+      Consumer.create(new ConsumerConfig(props))
     }
 
     def run(): Unit = {
-      val threadPool = Executors.newFixedThreadPool(threadCount)
-      for (i ← 1 to threadCount) {
+      val threadPool = Executors.newFixedThreadPool(threadCount) // todo: release on shutdown!!!!
+      val consumerMap = consumer.createMessageStreams(Map(route.targetTopic → threadCount))
+      val streams = consumerMap(route.targetTopic)
+
+      streams.map { stream ⇒
         threadPool.submit(new Runnable {
-          override def run(): Unit = consume()
+          override def run(): Unit = consume(stream)
         })
       }
     }
 
     def stop(): Unit = {
-      consumer.close()
+      consumer.shutdown()
     }
 
     def consumeMessage(consumerId: String, message: ConsumerRecord[String, String]): Unit = {
@@ -118,11 +121,11 @@ class KafkaServerTransport(
       }
     }
 
-    private def consume(): Unit = {
-      val consumerId = Thread.currentThread().getId.toHexString
+    private def consume(stream: KafkaStream[String,String]): Unit = {
+      val consumerId = Thread.currentThread().getName
       log.info(s"Starting consumer #$consumerId on topic ${route.targetTopic} -> $topic}")
       try {
-        consumer.subscribe(route.targetTopic)
+
         try {
           var continue = true
           while (continue) {

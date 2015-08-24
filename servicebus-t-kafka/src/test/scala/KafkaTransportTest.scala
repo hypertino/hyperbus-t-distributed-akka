@@ -30,7 +30,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
     "Publish and Subscribe" in {
       val cnt = new AtomicInteger(0)
 
-      /*serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map.empty)), "sub1",
+      serviceBus.subscribe[String](Topic("/topic/{abc}", PartitionArgs(Map.empty)), "sub1",
         mockDecoder,
         mockExtractor[String]) { s =>
         s should equal("12345")
@@ -52,7 +52,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
         s should equal("12345")
         cnt.incrementAndGet()
         mockResultU
-      }*/
+      }
 
       Thread.sleep(500) // we need to wait until subscriptions will go acros the
 

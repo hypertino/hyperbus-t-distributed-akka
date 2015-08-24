@@ -26,7 +26,7 @@ class KafkaClientTransport(producerProperties: Properties,
                           encoding: String = "UTF-8") extends ClientTransport {
 
   def this(config: Config) = this(
-    producerProperties = ConfigLoader.loadProperties(config.getConfig("producer")),
+    producerProperties = ConfigLoader.loadProducerProperties(config.getConfig("producer")),
     routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding").getOrElse("UTF-8")

@@ -25,17 +25,32 @@ object ConfigLoader {
     }.toList
   }
 
-  def loadProperties(config: Config) = {
+  def loadConsumerProperties(config: Config) = loadProperties(config, defaultConsumerProperties)
+
+  def loadProducerProperties(config: Config) = loadProperties(config, defaultProducerProperties)
+
+  private def loadProperties(config: Config, defaultProperties: Map[String,String]) = {
     val properties = new Properties()
     config.entrySet().map { entry ⇒
       properties.setProperty(entry.getKey, entry.getValue.unwrapped().toString)
     }
-    if (properties.getProperty("key.serializer") == null)
-      properties.setProperty("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-    if (properties.getProperty("value.serializer") == null)
-      properties.setProperty("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+    defaultProperties.foreach(kv ⇒
+      if (properties.getProperty(kv._1) == null)
+        properties.setProperty(kv._1, kv._2)
+    )
     properties
   }
+
+  private val defaultConsumerProperties = Map[String,String](
+    "key.deserializer" → "org.apache.kafka.common.serialization.StringDeserializer",
+    "value.deserializer" → "org.apache.kafka.common.serialization.StringDeserializer",
+    "partition.assignment.strategy" → "range"
+  )
+
+  private val defaultProducerProperties = Map[String,String](
+    "key.serializer" → "org.apache.kafka.common.serialization.StringSerializer",
+    "value.serializer" → "org.apache.kafka.common.serialization.StringSerializer"
+  )
 }
 
 
