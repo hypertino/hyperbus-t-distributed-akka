@@ -5,7 +5,7 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport.kafka.ConfigLoader
+import eu.inn.servicebus.transport.kafkatransport.ConfigLoader
 import org.apache.kafka.clients.producer.{RecordMetadata, Callback, ProducerRecord, KafkaProducer}
 import org.slf4j.LoggerFactory
 
@@ -93,7 +93,7 @@ class KafkaClientTransport(producerProperties: Properties,
           promise.success({})
           if (logMessages && log.isTraceEnabled) {
             log.trace(s"Sent to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
-              s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}}")
+              s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}")
           }
         }
       }

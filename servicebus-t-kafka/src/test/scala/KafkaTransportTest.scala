@@ -62,7 +62,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 
       whenReady(f) { s =>
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
-        cnt.get should equal(3)
+        cnt.get should equal(2)
       }
     }
   }

@@ -5,10 +5,10 @@ import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
-import _root_.kafka.consumer.{KafkaStream, ConsumerConfig, Consumer}
+import kafka.consumer.{KafkaStream, ConsumerConfig, Consumer}
 import com.typesafe.config.Config
 import eu.inn.servicebus.serialization.{Encoder, PartitionArgsExtractor, Decoder}
-import eu.inn.servicebus.transport.kafka.ConfigLoader
+import eu.inn.servicebus.transport.kafkatransport.ConfigLoader
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
@@ -23,13 +23,12 @@ class KafkaServerTransport(
                             consumerProperties: Properties,
                             routes: List[KafkaRoute],
                             logMessages: Boolean = false,
-                            encoding: String = "UTF-8"
-                            ) extends ServerTransport {
+                            encoding: String = "UTF-8") extends ServerTransport {
   def this(config: Config) = this(
     consumerProperties = ConfigLoader.loadConsumerProperties(config.getConfig("consumer")),
     routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
-    encoding = config.getOptionString("encoding").getOrElse("UTF-8")
+    encoding = config.getOptionString("encoding") getOrElse "UTF-8"
   )
 
   protected [this] val subscriptions = new TrieMap[String, Subscription[_, _]]
@@ -50,7 +49,7 @@ class KafkaServerTransport(
         route, topic, groupName, inputDecoder, partitionArgsExtractor, handler
       )
       subscriptions.put(id, subscription)
-      subscription.run
+      subscription.run()
       id
 
     } getOrElse {
@@ -58,9 +57,20 @@ class KafkaServerTransport(
     }
   }
 
-  override def off(subscriptionId: String): Unit = ???
+  override def off(subscriptionId: String): Unit = {
+    subscriptions.get(subscriptionId).foreach{ s⇒
+      s.stop()
+      subscriptions.remove(subscriptionId)
+    }
+  }
 
-  override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
+  override def shutdown(duration: FiniteDuration): Future[Boolean] = {
+    subscriptions.foreach{ kv ⇒
+      kv._2.stop()
+    }
+    subscriptions.clear()
+    Future.successful(true) // todo: normal result
+  }
 
 
   class Subscription[OUT, IN](
@@ -92,22 +102,29 @@ class KafkaServerTransport(
 
       streams.map { stream ⇒
         threadPool.submit(new Runnable {
-          override def run(): Unit = consume(stream)
+          override def run(): Unit = consumeStream(stream)
         })
       }
     }
 
     def stop(): Unit = {
+      consumer.commitOffsets
       consumer.shutdown()
     }
 
-    def consumeMessage(consumerId: String, message: ConsumerRecord[String, String]): Unit = {
-      val messageString = message.value()
+    def consumeMessage(consumerId: String, message: Array[Byte]): Unit = {
+      lazy val messageString = {
+        println("HO HO")
+        new String(message, encoding)
+      }
       try {
-        val inputBytes = new ByteArrayInputStream(messageString.getBytes(encoding))
-        val input = inputDecoder(inputBytes)
+        val inputBytes = new ByteArrayInputStream(message)
+        val input = inputDecoder(inputBytes) // todo: encoding!
         val partitionArgs = partitionArgsExtractor(input)
         if (topic.partitionArgs.matchArgs(partitionArgs)) { // todo: !important! also need to check topic url!!!!
+          if (logMessages && log.isTraceEnabled) {
+            log.trace(s"Consumer #$consumerId got message: $messageString")
+          }
           handler(input)
         } else {
           if (logMessages && log.isTraceEnabled) {
@@ -121,30 +138,16 @@ class KafkaServerTransport(
       }
     }
 
-    private def consume(stream: KafkaStream[String,String]): Unit = {
+    private def consumeStream(stream: KafkaStream[Array[Byte],Array[Byte]]): Unit = {
       val consumerId = Thread.currentThread().getName
       log.info(s"Starting consumer #$consumerId on topic ${route.targetTopic} -> $topic}")
       try {
-
-        try {
-          var continue = true
-          while (continue) {
-            consumer.poll(0).toMap.get(route.targetTopic).map { messages ⇒
-              if (!messages.records().isEmpty) {
-                messages.records().map { message ⇒
-                  consumeMessage(consumerId, message)
-                }
-              } else {
-                continue = false
-              }
-            } getOrElse {
-              continue = false
-            }
-          }
-          log.info(s"Stopping consumer #$consumerId on topic ${route.targetTopic}")
-        } finally {
-          consumer.unsubscribe(route.targetTopic)
+        val iterator = stream.iterator()
+        while (iterator.hasNext()) {
+          val message = iterator.next().message()
+          consumeMessage(consumerId, message)
         }
+        log.info(s"Stopping consumer #$consumerId on topic ${route.targetTopic}")
       }
       catch {
         case NonFatal(t) ⇒

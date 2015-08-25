@@ -1,4 +1,4 @@
-package eu.inn.servicebus.transport.kafka
+package eu.inn.servicebus.transport.kafkatransport
 
 import java.util.Properties
 
