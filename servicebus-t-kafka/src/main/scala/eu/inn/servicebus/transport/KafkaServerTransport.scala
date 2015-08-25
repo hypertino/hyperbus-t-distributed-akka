@@ -113,10 +113,7 @@ class KafkaServerTransport(
     }
 
     def consumeMessage(consumerId: String, message: Array[Byte]): Unit = {
-      lazy val messageString = {
-        println("HO HO")
-        new String(message, encoding)
-      }
+      lazy val messageString = new String(message, encoding)
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = inputDecoder(inputBytes) // todo: encoding!

@@ -17,4 +17,6 @@
         <appender-ref ref="SYSLOG"/>
     </root>
 
+    <logger name="org.apache.zookeeper" level="INFO"/>
+    <logger name="org.apache.kafka.clients" level="INFO"/>
 </configuration>
