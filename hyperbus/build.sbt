@@ -3,7 +3,7 @@ organization := "eu.inn"
 name := "hyperbus"
 
 libraryDependencies ++= Seq(
-  "eu.inn" %% "hyperbus-inner" % version.value,
+  "eu.inn" %% "hyperbus-model" % version.value,
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test"
 )

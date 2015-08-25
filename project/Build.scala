@@ -42,7 +42,7 @@ object Build extends sbt.Build {
   lazy val `hyperbus-root` = project.in(file(".")) aggregate(
     `hyperbus-transport`,
     `hyperbus-annotations`,
-    `hyperbus-inner`,
+    `hyperbus-model`,
     hyperbus,
     `hyperbus-akka`,
     `hyperbus-t-distributed-akka`,
@@ -51,8 +51,8 @@ object Build extends sbt.Build {
   )
   lazy val `hyperbus-transport` = project.in(file("hyperbus-transport"))
   lazy val `hyperbus-annotations` = project.in(file("hyperbus-annotations")) dependsOn `hyperbus-transport`
-  lazy val `hyperbus-inner` = project.in(file("hyperbus-inner")) dependsOn (`hyperbus-transport`, `hyperbus-annotations`)
-  lazy val hyperbus = project.in(file("hyperbus")) dependsOn `hyperbus-inner`
+  lazy val `hyperbus-model` = project.in(file("hyperbus-model")) dependsOn (`hyperbus-transport`, `hyperbus-annotations`)
+  lazy val hyperbus = project.in(file("hyperbus")) dependsOn `hyperbus-model`
   lazy val `hyperbus-akka` = project.in(file("hyperbus-akka")) dependsOn hyperbus
   lazy val `hyperbus-t-distributed-akka` = project.in(file("hyperbus-t-distributed-akka")) dependsOn `hyperbus-transport`
   lazy val `hyperbus-t-kafka` = project.in(file("hyperbus-t-kafka")) dependsOn `hyperbus-transport`

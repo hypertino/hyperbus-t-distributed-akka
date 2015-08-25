@@ -1,6 +1,6 @@
 organization := "eu.inn"
 
-name := "hyperbus-inner"
+name := "hyperbus-model"
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("public")
