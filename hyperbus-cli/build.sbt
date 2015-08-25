@@ -7,7 +7,7 @@ val akkaV = "2.3.11"
 libraryDependencies ++= Seq(
   "jline" % "jline" % "2.12.1",
   "eu.inn" %% "hyperbus" % version.value,
-  "eu.inn" %% "servicebus-t-distributed-akka" % version.value,
+  "eu.inn" %% "hyperbus-t-distributed-akka" % version.value,
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "ch.qos.logback" % "logback-classic" % "1.1.3",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
@@ -16,4 +16,3 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % akkaV,
   "com.typesafe.akka" %% "akka-testkit" % akkaV % "test"
 )
-

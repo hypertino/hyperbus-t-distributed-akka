@@ -1,6 +1,6 @@
 organization := "eu.inn"
 
-name := "servicebus"
+name := "hyperbus-transport"
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("public")
