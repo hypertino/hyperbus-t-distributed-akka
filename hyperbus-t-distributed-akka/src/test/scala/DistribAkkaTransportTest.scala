@@ -9,6 +9,7 @@ import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
+import eu.inn.servicebus.transport.config.TransportConfigurationLoader
 import org.apache.commons.io.IOUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
@@ -35,7 +36,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
   var serviceBus: TransportManager = null
   before {
-    val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(ConfigFactory.load())
+    val serviceBusConfig = TransportConfigurationLoader.fromConfig(ConfigFactory.load())
     serviceBus = new TransportManager(serviceBusConfig)
     ActorSystemRegistry.get("eu-inn").foreach { implicit actorSystem ⇒
       val testActor = TestActorRef[TestActorX]

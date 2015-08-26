@@ -10,7 +10,7 @@ object Build extends sbt.Build {
   override lazy val settings =
     super.settings ++ Seq(
       organization := "eu.inn",
-      scalaVersion := "2.11.6",
+      scalaVersion := "2.11.7",
       projectMajorVersion := "0.1",
       projectBuildNumber := "SNAPSHOT",
       version := projectMajorVersion.value + "." + projectBuildNumber.value,

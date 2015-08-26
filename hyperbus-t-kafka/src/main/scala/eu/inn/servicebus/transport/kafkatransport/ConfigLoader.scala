@@ -4,6 +4,7 @@ import java.util.Properties
 
 import com.typesafe.config.{ConfigObject, Config}
 import eu.inn.servicebus.transport._
+import eu.inn.servicebus.transport.config.TransportConfigurationLoader
 import eu.inn.servicebus.util.ConfigUtils
 import org.apache.kafka.clients.producer.KafkaProducer
 
@@ -13,8 +14,9 @@ object ConfigLoader {
 
   def loadRoutes(routesConfigList: java.util.List[_ <: Config]): List[KafkaRoute] = {
     routesConfigList.map { config ⇒
-      val urlArg = ServiceBusConfigurationLoader.getPartitionArg(config.getOptionString("url").getOrElse(""), config.getOptionString("match-type"))
-      val partitionArgs = ServiceBusConfigurationLoader.readPartitionArgs(config)
+
+      val urlArg = TransportConfigurationLoader.getPartitionArg(config.getOptionString("url").getOrElse(""), config.getOptionString("match-type"))
+      val partitionArgs = TransportConfigurationLoader.readPartitionArgs(config)
       val topic = config.getOptionString("topic").getOrElse("hyperbus")
       val partitionKeys = if (config.hasPath("partitionKeys"))
         config.getStringList("partitionKeys").toList

@@ -3,6 +3,7 @@ package eu.inn.servicebus.transport
 import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.servicebus.serialization._
+import eu.inn.servicebus.transport.config.TransportConfiguration
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
@@ -24,7 +25,7 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  def this(configuration: ServiceBusConfiguration) = this(configuration.clientRoutes,
+  def this(configuration: TransportConfiguration) = this(configuration.clientRoutes,
     configuration.serverRoutes, ExecutionContext.global)
 
   def ask[OUT, IN](

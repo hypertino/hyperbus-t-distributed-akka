@@ -1,5 +1,6 @@
 import com.typesafe.config.ConfigFactory
 import eu.inn.servicebus.transport._
+import eu.inn.servicebus.transport.config.TransportConfigurationLoader
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -31,7 +32,7 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
         }
       """)
 
-      val sbc = ServiceBusConfigurationLoader.fromConfig(config)
+      val sbc = TransportConfigurationLoader.fromConfig(config)
 
       assert(sbc.clientRoutes.nonEmpty)
       sbc.clientRoutes.head.urlArg should equal(ExactArg("/topic/{userId}"))
