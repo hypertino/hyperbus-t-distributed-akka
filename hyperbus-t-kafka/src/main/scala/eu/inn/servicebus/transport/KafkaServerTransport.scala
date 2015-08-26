@@ -26,7 +26,7 @@ class KafkaServerTransport(
                             encoding: String = "UTF-8") extends ServerTransport {
   def this(config: Config) = this(
     consumerProperties = ConfigLoader.loadConsumerProperties(config.getConfig("consumer")),
-    routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
+    routes = ConfigLoader.loadRoutes(config.getList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding") getOrElse "UTF-8"
   )

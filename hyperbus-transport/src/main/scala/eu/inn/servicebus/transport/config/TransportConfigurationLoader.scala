@@ -1,6 +1,7 @@
 package eu.inn.servicebus.transport.config
 
 import com.typesafe.config.{Config, ConfigFactory}
+import eu.inn.binders.annotations.defaultValue
 import eu.inn.servicebus.transport._
 import eu.inn.servicebus.util.ConfigUtils
 
@@ -26,17 +27,18 @@ object TransportConfigurationLoader {
 
     TransportConfiguration(
       sc.getList("client-routes").map{ li⇒
-        getTransportRoute[ClientTransport](transportMap, li.read[TransportRouteHolder])
+        val transportName = li.read[TransportNameHolder].transport
+        getTransportRoute[ClientTransport](transportName, transportMap, li.read[TransportRouteHolder])
       }.toSeq,
       sc.getList("server-routes").map{ li⇒
-        getTransportRoute[ServerTransport](transportMap, li.read[TransportRouteHolder])
+        val transportName = li.read[TransportNameHolder].transport
+        getTransportRoute[ServerTransport](transportName, transportMap, li.read[TransportRouteHolder])
       }.toSeq
     )
   }
 
-  private def getTransportRoute[T](transportMap: Map[String, Any], config: TransportRouteHolder): TransportRoute[T] = {
-    val transportName = config.transport
-    val transport = transportMap.getOrElse(config.transport,
+  private def getTransportRoute[T](transportName: String, transportMap: Map[String, Any], config: TransportRouteHolder): TransportRoute[T] = {
+    val transport = transportMap.getOrElse(transportName,
       throw new TransportConfigurationError(s"Couldn't find transport '$transportName'")
     ).asInstanceOf[T]
 
@@ -66,10 +68,15 @@ object TransportConfigurationLoader {
   }
 }
 
-case class TransportRouteHolder(transport: String, url: Option[String], matchType: Option[String], partitionArgs: Option[Map[String, PartitionArgHolder]]) {
+case class TransportNameHolder(transport: String) // todo: separate transport name and route!
+
+case class TransportRouteHolder(
+                                 url: Option[String],
+                                 @defaultValue()matchType: String,
+                                 @defaultValue(Map.empty[String, PartitionArgHolder]) partitionArgs: Map[String, PartitionArgHolder]) {
   def partitionArgsN: PartitionArgs = {
     PartitionArgs(
-      partitionArgs.getOrElse(Map.empty).map { case (partitionKey, partitionValue) ⇒
+      partitionArgs.map { case (partitionKey, partitionValue) ⇒
         partitionKey → TransportConfigurationLoader.getPartitionArg(partitionValue.value, partitionValue.matchType)
       }
     )
