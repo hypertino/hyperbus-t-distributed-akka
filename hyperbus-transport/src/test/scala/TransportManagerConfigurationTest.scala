@@ -1,14 +1,9 @@
 import com.typesafe.config.ConfigFactory
-import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
-import eu.inn.servicebus.{ServiceBus, ServiceBusConfiguration, ServiceBusConfigurationLoader, TransportRoute}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-
-class ServiceBusConfigurationTest extends FreeSpec with ScalaFutures with Matchers {
+class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with Matchers {
   "ServiceBus " - {
     "Configuration Test " in {
       val config = ConfigFactory.parseString("""

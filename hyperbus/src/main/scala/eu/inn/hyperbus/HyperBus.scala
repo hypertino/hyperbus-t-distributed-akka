@@ -7,9 +7,8 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.serialization.impl.InnerHelpers
-import eu.inn.servicebus.ServiceBus
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{PartitionArgs, SubscriptionHandlerResult, Topic}
+import eu.inn.servicebus.transport.{TransportManager, PartitionArgs, SubscriptionHandlerResult, Topic}
 import eu.inn.servicebus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -61,7 +60,7 @@ trait HyperBusApi {
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
-class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
   protected trait Subscription[REQ <: Request[Body]] {
     def requestDecoder: RequestDecoder[REQ]
   }

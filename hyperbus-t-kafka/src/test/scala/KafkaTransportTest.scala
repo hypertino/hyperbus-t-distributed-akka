@@ -4,7 +4,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import com.typesafe.config.ConfigFactory
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
-import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
 import org.apache.commons.io.IOUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
@@ -14,10 +13,10 @@ import scala.concurrent.{Await, Future}
 
 
 class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
-  var serviceBus: ServiceBus = null
+  var serviceBus: TransportManager = null
   before {
     val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(ConfigFactory.load())
-    serviceBus = new ServiceBus(serviceBusConfig)
+    serviceBus = new TransportManager(serviceBusConfig)
   }
 
   after {

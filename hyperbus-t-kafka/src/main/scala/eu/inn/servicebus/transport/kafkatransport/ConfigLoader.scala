@@ -3,7 +3,6 @@ package eu.inn.servicebus.transport.kafkatransport
 import java.util.Properties
 
 import com.typesafe.config.{ConfigObject, Config}
-import eu.inn.servicebus.ServiceBusConfigurationLoader
 import eu.inn.servicebus.transport._
 import eu.inn.servicebus.util.ConfigUtils
 import org.apache.kafka.clients.producer.KafkaProducer

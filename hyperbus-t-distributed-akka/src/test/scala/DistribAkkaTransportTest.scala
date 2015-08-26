@@ -9,7 +9,6 @@ import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
-import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
 import org.apache.commons.io.IOUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
@@ -34,10 +33,10 @@ class TestActorX extends Actor with ActorLogging{
 class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
   //implicit var actorSystem: ActorSystem = null
 
-  var serviceBus: ServiceBus = null
+  var serviceBus: TransportManager = null
   before {
     val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(ConfigFactory.load())
-    serviceBus = new ServiceBus(serviceBusConfig)
+    serviceBus = new TransportManager(serviceBusConfig)
     ActorSystemRegistry.get("eu-inn").foreach { implicit actorSystem ⇒
       val testActor = TestActorRef[TestActorX]
       Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])

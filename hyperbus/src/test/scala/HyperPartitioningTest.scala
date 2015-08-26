@@ -7,12 +7,11 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
 import eu.inn.hyperbus.utils.IdUtils
-import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @body("application/vnd+parition.json")
 case class TestPartition(partitionId: String, data: String) extends Body
@@ -79,7 +78,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
     val cr = List(TransportRoute(ct, AnyArg))
     val sr = List(TransportRoute(st, AnyArg))
-    val serviceBus = new ServiceBus(cr, sr)
+    val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(serviceBus)
   }
 }

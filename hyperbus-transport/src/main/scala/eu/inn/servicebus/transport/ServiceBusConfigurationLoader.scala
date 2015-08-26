@@ -1,14 +1,14 @@
-package eu.inn.servicebus
+package eu.inn.servicebus.transport
 
-import com.typesafe.config.{ConfigFactory, ConfigObject, ConfigValue, Config}
-import eu.inn.servicebus.transport._
+import com.typesafe.config.{Config, ConfigFactory}
 import eu.inn.servicebus.util.ConfigUtils
 
 class ServiceBusConfigurationError(message: String) extends RuntimeException(message)
 
 object ServiceBusConfigurationLoader {
-  import scala.collection.JavaConversions._
   import ConfigUtils._
+
+  import scala.collection.JavaConversions._
 
   def fromConfig(config: Config): ServiceBusConfiguration = {
     val sc = config.getConfig("service-bus")

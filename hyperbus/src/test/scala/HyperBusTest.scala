@@ -5,14 +5,13 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, ResponseHeader}
-import eu.inn.servicebus.{TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 
 class ClientTransportTest(output: String) extends ClientTransport {
@@ -306,7 +305,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
     val cr = List(TransportRoute(ct, AnyArg))
     val sr = List(TransportRoute(st, AnyArg))
-    val serviceBus = new ServiceBus(cr, sr)
+    val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(serviceBus)
   }
 }

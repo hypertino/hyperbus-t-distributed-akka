@@ -1,5 +1,4 @@
 import com.typesafe.config.{ConfigFactory, Config}
-import eu.inn.servicebus.{ServiceBusConfiguration, ServiceBusConfigurationLoader, TransportRoute, ServiceBus}
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures

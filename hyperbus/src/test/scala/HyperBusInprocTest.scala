@@ -5,13 +5,12 @@ import eu.inn.hyperbus.rest.{Link, _}
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.utils.IdUtils
-import eu.inn.servicebus.{TransportRoute, ServiceBus}
-import eu.inn.servicebus.transport.{ServerTransport, AnyArg, ClientTransport, InprocTransport}
+import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @body("application/vnd+test-1.json")
 case class TestBody1(resourceData: String) extends Body
@@ -121,7 +120,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
     val tr = new InprocTransport
     val cr = List(TransportRoute[ClientTransport](tr, AnyArg))
     val sr = List(TransportRoute[ServerTransport](tr, AnyArg))
-    val serviceBus = new ServiceBus(cr, sr)
+    val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(serviceBus)
   }
 }

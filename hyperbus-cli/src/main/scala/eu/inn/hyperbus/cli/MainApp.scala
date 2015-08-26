@@ -13,8 +13,7 @@ import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.hyperbus.utils.IdUtils
-import eu.inn.servicebus.transport.ActorSystemRegistry
-import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
+import eu.inn.servicebus.transport.{ServiceBusConfigurationLoader, TransportManager, ActorSystemRegistry}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
@@ -41,7 +40,7 @@ object MainApp {
     println("Starting hyperbus-cli...")
     val config = ConfigFactory.load()
     val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(config)
-    val serviceBus = new ServiceBus(serviceBusConfig)
+    val serviceBus = new TransportManager(serviceBusConfig)
     val hyperBus = new HyperBus(serviceBus)
 
     val actorSystem = ActorSystemRegistry.get("eu-inn").get
