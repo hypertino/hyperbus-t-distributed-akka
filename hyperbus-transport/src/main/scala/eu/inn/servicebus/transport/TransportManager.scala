@@ -21,7 +21,7 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
                        protected [this] val serverRoutes: Seq[TransportRoute[ServerTransport]],
                        implicit protected [this] val executionContext: ExecutionContext) extends TransportManagerApi {
 
-  protected [this] val subscriptions = new TrieMap[String, (Topic, String)]
+  protected [this] val subscriptions = new TrieMap[String, (TopicFilter, String)]
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
@@ -45,16 +45,21 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
     this.lookupClientTransport(topic).publish[IN](topic, message, inputEncoder)
   }
 
-  protected def lookupClientTransport(topic: Topic): ClientTransport = lookupTransport(topic, clientRoutes)
+  protected def lookupClientTransport(topic: Topic): ClientTransport = {
+    clientRoutes.find(r ⇒ r.urlArg.matchArg(topic.url) &&
+      r.valueFilters.matchArgs(topic.values)) map (_.transport) getOrElse {
+      throw new NoTransportRouteException(s"Topic: ${topic.url}/${topic.values.toString}")
+    }
+  }
 
   def off(subscriptionId: String): Unit = {
     subscriptions.get(subscriptionId).foreach(s ⇒ lookupServerTransport(s._1).off(s._2))
     subscriptions.remove(subscriptionId)
   }
 
-  def process[OUT, IN](topic: Topic,
+  def process[OUT, IN](topic: TopicFilter,
                        inputDecoder: Decoder[IN],
-                       partitionArgsExtractor: PartitionArgsExtractor[IN],
+                       partitionArgsExtractor: FilterArgsExtractor[IN],
                        exceptionEncoder: Encoder[Throwable])
                       (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
@@ -69,10 +74,10 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
     result
   }
 
-  def subscribe[IN](topic: Topic,
+  def subscribe[IN](topic: TopicFilter,
                     groupName: String,
                     inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: PartitionArgsExtractor[IN])
+                    partitionArgsExtractor: FilterArgsExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
     val underlyingSubscriptionId = lookupServerTransport(topic).subscribe[IN](
       topic,
@@ -84,18 +89,16 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
     result
   }
 
-  protected def addSubscriptionLink(topic: Topic, underlyingSubscriptionId: String) = {
+  protected def addSubscriptionLink(topic: TopicFilter, underlyingSubscriptionId: String) = {
     val subscriptionId = idCounter.incrementAndGet().toHexString
     subscriptions.put(subscriptionId, (topic, underlyingSubscriptionId))
     subscriptionId
   }
 
-  protected def lookupServerTransport(topic: Topic): ServerTransport = lookupTransport(topic, serverRoutes)
-
-  protected def lookupTransport[T](topic: Topic, routes: Seq[TransportRoute[T]]): T = {
-    routes.find(r ⇒ r.urlArg.matchArg(ExactArg(topic.url)) &&
-      r.partitionArgs.matchArgs(topic.partitionArgs)) map (_.transport) getOrElse {
-      throw new NoTransportRouteException(s"Topic: ${topic.url}/${topic.partitionArgs.toString}")
+  protected def lookupServerTransport(topic: TopicFilter): ServerTransport = {
+    serverRoutes.find(r ⇒ r.urlArg.matchArg(topic.url) &&
+      r.valueFilters.matchFilters(topic.valueFilters)) map (_.transport) getOrElse {
+      throw new NoTransportRouteException(s"TopicFilter: ${topic.url}/${topic.valueFilters.toString}")
     }
   }
 

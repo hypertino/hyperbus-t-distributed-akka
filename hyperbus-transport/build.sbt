@@ -7,7 +7,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "eu.inn" %% "binders-core" % "0.10.64",
+  "eu.inn" %% "binders-core" % "0.10.65",
   "eu.inn" %% "binders-json" % "0.6.37",
   "eu.inn" %% "binders-typesafe-config" % "0.3.6",
   "com.typesafe" % "config" % "1.2.1",

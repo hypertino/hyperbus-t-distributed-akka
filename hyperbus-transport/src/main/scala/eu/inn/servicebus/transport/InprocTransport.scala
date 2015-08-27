@@ -63,7 +63,7 @@ class InprocTransport(serialize: Boolean = false)
     }
 
     // todo: filter is redundant for inproc?
-    subscriptions.get(topic.url).subRoutes filter (_._1.partitionArgs.matchArgs(topic.partitionArgs)) foreach {
+    subscriptions.get(topic.url).subRoutes filter (_._1.partitionArgs.matchArgs(topic.values)) foreach {
       case (subKey, subscriptionList) =>
 
         if (subKey.groupName.isEmpty) {
@@ -153,26 +153,26 @@ class InprocTransport(serialize: Boolean = false)
     }
   }
 
-  def process[OUT, IN](topic: Topic,
+  def process[OUT, IN](topic: TopicFilter,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: PartitionArgsExtractor[IN],
+                  partitionArgsExtractor: FilterArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
     subscriptions.add(
       topic.url,
-      SubKey(None, topic.partitionArgs),
+      SubKey(None, topic.valueFilters),
       Subscription[OUT, IN](inputDecoder, partitionArgsExtractor, exceptionEncoder, handler)
     )
   }
 
-  def subscribe[IN](topic: Topic,
+  def subscribe[IN](topic: TopicFilter,
                     groupName: String,
                     inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: PartitionArgsExtractor[IN])
+                    partitionArgsExtractor: FilterArgsExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
     subscriptions.add(
       topic.url,
-      SubKey(Some(groupName), topic.partitionArgs),
+      SubKey(Some(groupName), topic.valueFilters),
       Subscription[Unit, IN](inputDecoder, partitionArgsExtractor, null, handler)
     )
   }

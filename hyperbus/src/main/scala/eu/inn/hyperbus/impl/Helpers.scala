@@ -11,7 +11,7 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.serialization.impl.InnerHelpers
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, ResponseHeader}
 import eu.inn.servicebus.serialization.Encoder
-import eu.inn.servicebus.transport.{ExactArg, AnyArg, PartitionArgs, Topic}
+import eu.inn.servicebus.transport.{AllowSpecific, AllowAny, Filters, TopicFilter}
 
 import scala.collection.mutable
 
@@ -46,7 +46,7 @@ object Helpers {
     result.toSeq
   }
 
-  def topicWithAllPartitions(url: String): Topic = Topic(url, PartitionArgs(extractParametersFromUrl(url).map(_ → AnyArg).toMap))
+  def topicWithAllPartitions(url: String): TopicFilter = TopicFilter(url, Filters(extractParametersFromUrl(url).map(_ → AllowAny).toMap))
 
   // todo: Generic Errors and Responses
   // handle non-standrard status
@@ -125,11 +125,10 @@ object Helpers {
     InnerHelpers.encodeMessage(request, bodyEncoder, outputStream)
   }
 
-  def extractDynamicPartitionArgs(request: DynamicRequest) = PartitionArgs(
+  def extractDynamicPartitionArgs(request: DynamicRequest) =
     impl.Helpers.extractParametersFromUrl(request.url).map { arg ⇒
-      arg → ExactArg(request.body.content.asMap.get(arg).map(_.asString) getOrElse "") // todo: inner fields like abc.userId
+      arg → request.body.content.asMap.get(arg).map(_.asString).getOrElse("") // todo: inner fields like abc.userId
     }.toMap
-  )
 
   def dynamicBodyEncoder(body: DynamicBody, outputStream: OutputStream): Unit = {
     dynamicValueEncoder(body.content, outputStream)

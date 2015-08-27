@@ -13,8 +13,8 @@ import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.FiniteDuration
 import eu.inn.servicebus.util.ConfigUtils._
 
-case class KafkaRoute(urlArg: PartitionArg,
-                     partitionArgs: PartitionArgs = PartitionArgs(Map.empty),
+case class KafkaRoute(urlArg: Filter,
+                     partitionArgs: Filters = Filters.empty,
                      targetTopic: String = "hyperbus",
                      targetPartitionArgs: List[String] = List.empty)
 
@@ -39,9 +39,9 @@ class KafkaClientTransport(producerProperties: Properties,
 
   override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
 
-    routes.find(r ⇒ r.urlArg.matchArg(ExactArg(topic.url)) &&
-      r.partitionArgs.matchArgs(topic.partitionArgs)) map (publishToRoute(_, topic, message, inputEncoder)) getOrElse {
-      throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${topic.url}/${topic.partitionArgs.toString}")
+    routes.find(r ⇒ r.urlArg.matchArg(topic.url) &&
+      r.partitionArgs.matchArgs(topic.values)) map (publishToRoute(_, topic, message, inputEncoder)) getOrElse {
+      throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${topic.url}/${topic.values.toString}")
     }
   }
 
@@ -68,10 +68,7 @@ class KafkaClientTransport(producerProperties: Properties,
       }
       else {
         val recordKey = route.targetPartitionArgs.map { key: String ⇒
-          topic.partitionArgs.args.get(key) match {
-            case Some(ExactArg(argValue)) ⇒ argValue
-            case _ ⇒ throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in $topic")
-          }
+          topic.values.getOrElse(key, throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in $topic"))
         }.foldLeft("")(_+_)
 
         new ProducerRecord(route.targetTopic, recordKey, messageString)

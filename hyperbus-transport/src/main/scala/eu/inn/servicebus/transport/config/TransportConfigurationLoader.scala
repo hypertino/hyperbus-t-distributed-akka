@@ -1,7 +1,6 @@
 package eu.inn.servicebus.transport.config
 
 import com.typesafe.config.{Config, ConfigFactory}
-import eu.inn.binders.annotations.defaultValue
 import eu.inn.servicebus.transport._
 import eu.inn.servicebus.util.ConfigUtils
 
@@ -62,9 +61,9 @@ object TransportConfigurationLoader {
   }
 
   def getPartitionArg(value: Option[String], matchType: Option[String]) = matchType match {
-    case Some("Any") ⇒ AnyArg
-    case Some("Regex") ⇒ RegexArg(value.getOrElse(throw new TransportConfigurationError("Please provide value for Regex partition argument")))
-    case _ ⇒ ExactArg(value.getOrElse(throw new TransportConfigurationError("Please provide value for Exact partition argument")))
+    case Some("Any") ⇒ AllowAny
+    case Some("Regex") ⇒ AllowRegex(value.getOrElse(throw new TransportConfigurationError("Please provide value for Regex partition argument")))
+    case _ ⇒ AllowSpecific(value.getOrElse(throw new TransportConfigurationError("Please provide value for Exact partition argument")))
   }
 }
 
@@ -72,10 +71,10 @@ case class TransportNameHolder(transport: String) // todo: separate transport na
 
 case class TransportRouteHolder(
                                  url: Option[String],
-                                 @defaultValue()matchType: String,
-                                 @defaultValue(Map.empty[String, PartitionArgHolder]) partitionArgs: Map[String, PartitionArgHolder]) {
-  def partitionArgsN: PartitionArgs = {
-    PartitionArgs(
+                                 matchType: Option[String],
+                                 partitionArgs: Map[String, PartitionArgHolder] = Map.empty[String, PartitionArgHolder]) {// todo: rename partitionArgs
+  def partitionArgsN: Filters = {
+    Filters(
       partitionArgs.map { case (partitionKey, partitionValue) ⇒
         partitionKey → TransportConfigurationLoader.getPartitionArg(partitionValue.value, partitionValue.matchType)
       }

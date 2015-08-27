@@ -262,24 +262,24 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
   }
 
-  def defineExtractor[REQ <: Request[Body] : c.WeakTypeTag](url: String): c.Expr[PartitionArgsExtractor[REQ]] = {
+  def defineExtractor[REQ <: Request[Body] : c.WeakTypeTag](url: String): c.Expr[FilterArgsExtractor[REQ]] = {
     import c.universe._
 
     // todo: test urls with args
     val t = weakTypeOf[REQ]
     val lst = impl.Helpers.extractParametersFromUrl(url).map { arg ⇒
-      q"$arg -> ExactArg(r.body.${TermName(arg)}.toString)" // todo remove toString if string
+      q"$arg -> r.body.${TermName(arg)}.toString" // todo: remove toString if string, + inner fields?
     }
 
     val obj = q"""{
       import eu.inn.servicebus.transport._
       (r:$t) => {
-        PartitionArgs(Map(
+        Map[String,String](
           ..$lst
-        ))
+        )
       }
     }"""
 
-    c.Expr[PartitionArgsExtractor[REQ]](obj)
+    c.Expr[FilterArgsExtractor[REQ]](obj)
   }
 }

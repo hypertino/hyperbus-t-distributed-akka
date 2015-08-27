@@ -8,7 +8,7 @@ import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Unsubscribe, Publish, SubscribeAck, Subscribe}
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{NoTransportRouteException, SubscriptionHandlerResult, Topic}
+import eu.inn.servicebus.transport.{NoTransportRouteException, SubscriptionHandlerResult, TopicFilter}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -19,10 +19,10 @@ import akka.pattern.ask
 
 private [transport] trait Command
 
-private [transport] case class Subscription[OUT, IN](topic: Topic,
+private [transport] case class Subscription[OUT, IN](topic: TopicFilter,
                                                      groupName: Option[String],
                                                      inputDecoder: Decoder[IN],
-                                                     partitionArgsExtractor: PartitionArgsExtractor[IN],
+                                                     partitionArgsExtractor: FilterArgsExtractor[IN],
                                                      exceptionEncoder: Encoder[Throwable],
                                                      handler: (IN) => SubscriptionHandlerResult[OUT])
 

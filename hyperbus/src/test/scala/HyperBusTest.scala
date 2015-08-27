@@ -46,18 +46,18 @@ class ClientTransportTest(output: String) extends ClientTransport {
 class ServerTransportTest extends ServerTransport {
   var sInputDecoder: Decoder[Any] = null
   var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
-  var sExtractor: PartitionArgsExtractor[Any] = null
+  var sExtractor: FilterArgsExtractor[Any] = null
   var sExceptionEncoder: Encoder[Throwable] = null
 
-  def process[OUT, IN](topic: Topic,
+  def process[OUT, IN](topic: TopicFilter,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: PartitionArgsExtractor[IN],
+                  partitionArgsExtractor: FilterArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     sInputDecoder = inputDecoder
     sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
-    sExtractor = partitionArgsExtractor.asInstanceOf[PartitionArgsExtractor[Any]]
+    sExtractor = partitionArgsExtractor.asInstanceOf[FilterArgsExtractor[Any]]
     sExceptionEncoder = exceptionEncoder
     ""
   }
@@ -65,10 +65,10 @@ class ServerTransportTest extends ServerTransport {
   def off(subscriptionId: String) = ???
 
   //todo: test this
-  def subscribe[IN](topic: Topic,
+  def subscribe[IN](topic: TopicFilter,
                     groupName: String,
                     inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: PartitionArgsExtractor[IN])
+                    partitionArgsExtractor: FilterArgsExtractor[IN])
                    (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
 
     sInputDecoder = inputDecoder
@@ -303,8 +303,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   }
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, AnyArg))
-    val sr = List(TransportRoute(st, AnyArg))
+    val cr = List(TransportRoute(ct, AllowAny))
+    val sr = List(TransportRoute(st, AllowAny))
     val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(serviceBus)
   }

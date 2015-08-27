@@ -35,7 +35,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       val f = hyperBus <~ TestPostPartition1(TestPartition("1", "ha"), messageId = "123", correlationId = "123")
 
       ct.inputTopic should equal(
-        Topic("/resources/{partitionId}", PartitionArgs(Map("partitionId" → ExactArg("1"))))
+        Topic("/resources/{partitionId}", Map("partitionId" → "1"))
       )
 
       whenReady(f) { r =>
@@ -59,7 +59,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
       val partitionArgs = st.sExtractor(msg)
       partitionArgs should equal(
-        PartitionArgs(Map("partitionId" → ExactArg("123")))
+        Map("partitionId" → "123")
       )
     }
 
@@ -76,8 +76,8 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
   // todo: add partition tests for Dynamic
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, AnyArg))
-    val sr = List(TransportRoute(st, AnyArg))
+    val cr = List(TransportRoute(ct, AllowAny))
+    val sr = List(TransportRoute(st, AllowAny))
     val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(serviceBus)
   }

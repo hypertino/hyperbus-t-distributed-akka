@@ -30,9 +30,9 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[OUT, IN](topic: Topic,
+  override def process[OUT, IN](topic: TopicFilter,
                            inputDecoder: Decoder[IN],
-                           partitionArgsExtractor: PartitionArgsExtractor[IN],
+                           partitionArgsExtractor: FilterArgsExtractor[IN],
                            exceptionEncoder: Encoder[Throwable])
                           (handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = {
 
@@ -46,10 +46,10 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     id
   }
 
-  override def subscribe[IN](topic: Topic,
+  override def subscribe[IN](topic: TopicFilter,
                              groupName: String,
                              inputDecoder: Decoder[IN],
-                             partitionArgsExtractor: PartitionArgsExtractor[IN])
+                             partitionArgsExtractor: FilterArgsExtractor[IN])
                             (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
