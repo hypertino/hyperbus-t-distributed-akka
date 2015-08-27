@@ -61,9 +61,9 @@ object TransportConfigurationLoader {
   }
 
   def getPartitionArg(value: Option[String], matchType: Option[String]) = matchType match {
-    case Some("Any") ⇒ AllowAny
-    case Some("Regex") ⇒ AllowRegex(value.getOrElse(throw new TransportConfigurationError("Please provide value for Regex partition argument")))
-    case _ ⇒ AllowSpecific(value.getOrElse(throw new TransportConfigurationError("Please provide value for Exact partition argument")))
+    case Some("Any") ⇒ AnyValue
+    case Some("Regex") ⇒ RegexFilter(value.getOrElse(throw new TransportConfigurationError("Please provide value for Regex partition argument")))
+    case _ ⇒ SpecificValue(value.getOrElse(throw new TransportConfigurationError("Please provide value for Exact partition argument")))
   }
 }
 

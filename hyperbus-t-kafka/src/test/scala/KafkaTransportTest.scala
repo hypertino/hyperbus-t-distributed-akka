@@ -30,7 +30,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
     "Publish and Subscribe" in {
       val cnt = new AtomicInteger(0)
 
-      serviceBus.subscribe[String](TopicFilter("/topic/{abc}"), "sub1",
+      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub1",
         mockDecoder,
         mockExtractor[String]) { s =>
         s should equal("12345")
@@ -38,7 +38,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
         mockResultU
       }
 
-      serviceBus.subscribe[String](TopicFilter("/topic/{abc}"), "sub1",
+      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub1",
         mockDecoder,
         mockExtractor[String]){ s =>
         s should equal("12345")
@@ -46,7 +46,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
         mockResultU
       }
 
-      serviceBus.subscribe[String](TopicFilter("/topic/{abc}"), "sub2",
+      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub2",
         mockDecoder,
         mockExtractor[String]){ s =>
         s should equal("12345")
@@ -67,8 +67,8 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
     }
   }
 
-  def mockExtractor[T]: FilterArgsExtractor[T] = {
-    (x: T) => Map.empty[String,String]
+  def mockExtractor[T]: FiltersExtractor[T] = {
+    (x: T) => Filters.empty
   }
 
   def mockEncoder(in: String, out: OutputStream) = {

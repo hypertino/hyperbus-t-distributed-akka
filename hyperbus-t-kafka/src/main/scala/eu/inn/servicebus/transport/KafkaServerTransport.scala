@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import kafka.consumer.{KafkaStream, ConsumerConfig, Consumer}
 import com.typesafe.config.Config
-import eu.inn.servicebus.serialization.{Encoder, FilterArgsExtractor, Decoder}
+import eu.inn.servicebus.serialization.{Encoder, FiltersExtractor, Decoder}
 import eu.inn.servicebus.transport.kafkatransport.ConfigLoader
 import org.slf4j.LoggerFactory
 
@@ -35,10 +35,10 @@ class KafkaServerTransport(
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[OUT, IN](topic: TopicFilter, inputDecoder: Decoder[IN], partitionArgsExtractor: FilterArgsExtractor[IN], exceptionEncoder: Encoder[Throwable])(handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = ???
+  override def process[OUT, IN](topic: Topic, inputDecoder: Decoder[IN], partitionArgsExtractor: FiltersExtractor[IN], exceptionEncoder: Encoder[Throwable])(handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = ???
 
-  override def subscribe[IN](topic: TopicFilter, groupName: String, inputDecoder: Decoder[IN],
-                             partitionArgsExtractor: FilterArgsExtractor[IN])
+  override def subscribe[IN](topic: Topic, groupName: String, inputDecoder: Decoder[IN],
+                             partitionArgsExtractor: FiltersExtractor[IN])
                             (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
 
     routes.find(r ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
@@ -76,10 +76,10 @@ class KafkaServerTransport(
   class Subscription[OUT, IN](
                                threadCount: Int,
                                route: KafkaRoute,
-                               topic: TopicFilter,
+                               topic: Topic,
                                groupName: String,
                                inputDecoder: Decoder[IN],
-                               partitionArgsExtractor: FilterArgsExtractor[IN],
+                               partitionArgsExtractor: FiltersExtractor[IN],
                                handler: (IN) ⇒ SubscriptionHandlerResult[Unit]) {
 
     val consumer = {
@@ -117,8 +117,8 @@ class KafkaServerTransport(
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = inputDecoder(inputBytes) // todo: encoding!
-        val partitionArgs = partitionArgsExtractor(input)
-        if (topic.valueFilters.matchArgs(partitionArgs)) { // todo: !important! also need to check topic url!!!!
+        val partitionArgs = partitionArgsExtractor(input) // todo: rename partitionArgs
+        if (topic.valueFilters.matchFilters(partitionArgs)) { // todo: !important! also need to check topic url!!!!
           if (logMessages && log.isTraceEnabled) {
             log.trace(s"Consumer #$consumerId got message: $messageString")
           }

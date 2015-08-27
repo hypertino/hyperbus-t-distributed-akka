@@ -39,9 +39,9 @@ class KafkaClientTransport(producerProperties: Properties,
 
   override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
 
-    routes.find(r ⇒ r.urlArg.matchArg(topic.url) &&
-      r.partitionArgs.matchArgs(topic.values)) map (publishToRoute(_, topic, message, inputEncoder)) getOrElse {
-      throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${topic.url}/${topic.values.toString}")
+    routes.find(r ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
+      r.partitionArgs.matchFilters(topic.valueFilters)) map (publishToRoute(_, topic, message, inputEncoder)) getOrElse {
+      throw new NoTransportRouteException(s"Kafka producer (client). Topic: $topic")
     }
   }
 
@@ -68,7 +68,9 @@ class KafkaClientTransport(producerProperties: Properties,
       }
       else {
         val recordKey = route.targetPartitionArgs.map { key: String ⇒
-          topic.values.getOrElse(key, throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in $topic"))
+          topic.valueFilters.filterMap.getOrElse(key,
+            throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in $topic")
+          ).specific
         }.foldLeft("")(_+_)
 
         new ProducerRecord(route.targetTopic, recordKey, messageString)

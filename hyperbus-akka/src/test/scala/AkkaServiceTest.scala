@@ -102,8 +102,8 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
 
   def newHyperBus = {
     val tr = new InprocTransport
-    val cr = List(TransportRoute[ClientTransport](tr, AllowAny))
-    val sr = List(TransportRoute[ServerTransport](tr, AllowAny))
+    val cr = List(TransportRoute[ClientTransport](tr, AnyValue))
+    val sr = List(TransportRoute[ServerTransport](tr, AnyValue))
     val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(serviceBus)
   }

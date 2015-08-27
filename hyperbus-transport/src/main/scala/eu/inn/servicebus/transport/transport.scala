@@ -1,43 +1,36 @@
 package eu.inn.servicebus.transport
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-
-import com.typesafe.config.Config
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.util.ConfigUtils._
-import eu.inn.servicebus.util.Subscriptions
-import org.slf4j.LoggerFactory
 
-import scala.Option
-import scala.concurrent.duration.{FiniteDuration, Duration}
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
+import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
+import scala.reflect.runtime.universe._
 
-trait Filter {
-  def matchArg(other: String): Boolean
+sealed trait Filter {
   def matchFilter(other: Filter): Boolean
+  def specific: String = this match {
+    case SpecificValue(value) ⇒ value
+    case _ ⇒ throw new UnsupportedOperationException(s"Specific value expected but got $getClass")
+  }
 }
 
-case object AllowAny extends Filter {
-  def matchArg(other: String) = true
+case object AnyValue extends Filter {
   def matchFilter(other: Filter) = true
 }
 
-case class AllowSpecific(value: String) extends Filter {
-  def matchArg(other: String) = other == value
+case class SpecificValue(value: String) extends Filter {
   def matchFilter(other: Filter) = other match {
-    case AllowSpecific(otherValue) ⇒ otherValue == value
+    case SpecificValue(otherValue) ⇒ otherValue == value
     case _ ⇒ other.matchFilter(this)
   }
 }
 
-case class AllowRegex(value: String) extends Filter {
+case class RegexFilter(value: String) extends Filter {
   lazy val valueRegex = new Regex(value)
-  def matchArg(other: String) = valueRegex.findFirstMatchIn(other).isDefined
   def matchFilter(other: Filter) = other match {
-    case AllowSpecific(otherValue) ⇒ matchArg(otherValue)
-    case AllowRegex(otherRegexValue) ⇒ otherRegexValue == value
+    case SpecificValue(otherValue) ⇒ valueRegex.findFirstMatchIn(otherValue).isDefined
+    case RegexFilter(otherRegexValue) ⇒ otherRegexValue == value
     case _ ⇒ other.matchFilter(this)
   }
 }
@@ -45,22 +38,12 @@ case class AllowRegex(value: String) extends Filter {
 // case class ExactPartition(partition: String) extends PartitionArg -- kafka?
 // todo: rename this class!
 case class Filters(filterMap: Map[String, Filter]) {
-  def matchArgs(arguments: Map[String,String]): Boolean = {
-    filterMap.map { case (k, v) ⇒
-      arguments.get(k).map { av ⇒
-        v.matchArg(av)
-      } getOrElse {
-        v == AllowAny
-      }
-    }.forall(r => r)
-  }
-
   def matchFilters(other:Filters): Boolean = {
     filterMap.map { case (k, v) ⇒
       other.filterMap.get(k).map { av ⇒
         v.matchFilter(av)
       } getOrElse {
-        v == AllowAny
+        v == AnyValue
       }
     }.forall(r => r)
   }
@@ -70,21 +53,15 @@ case object Filters {
   val empty = Filters(Map.empty)
 }
 
-case class TopicFilter(urlFilter: Filter, valueFilters: Filters = Filters.empty) { // todo: url String -> Filter, url -> template?
-  override def toString = s"TopicFilter($urlFilter$valueFiltersFormat)"
+case class Topic(urlFilter: Filter, valueFilters: Filters = Filters.empty) {
+  override def toString = s"Topic($urlFilter$valueFiltersFormat)"
   private def valueFiltersFormat = if(valueFilters.filterMap.isEmpty) "" else
     valueFilters.filterMap.mkString("#",",","")
 }
 
-object TopicFilter {
-  def apply(url: String): TopicFilter = TopicFilter(AllowSpecific(url), Filters.empty)
-  def apply(url: String, valueFilters: Filters): TopicFilter = TopicFilter(AllowSpecific(url), valueFilters)
-}
-
-case class Topic(url: String, values: Map[String,String] = Map.empty[String,String]) { // todo: url String -> Filter, url -> template?, value -> filterValues?
-  override def toString = s"Topic($url$valuesFormat)"
-  private def valuesFormat = if(values.isEmpty) "" else
-    values.mkString("#",",","")
+object Topic {
+  def apply(url: String): Topic = Topic(SpecificValue(url), Filters.empty)
+  def apply(url: String, valueFilters: Filters): Topic = Topic(SpecificValue(url), valueFilters)
 }
 
 trait ClientTransport {
@@ -107,15 +84,15 @@ trait ClientTransport {
 case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT], resultEncoder: Encoder[OUT])
 
 trait ServerTransport {
-  def process[OUT, IN](topic: TopicFilter,
+  def process[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: FilterArgsExtractor[IN],
+                  partitionArgsExtractor: FiltersExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: TopicFilter, groupName: String,
+  def subscribe[IN](topic: Topic, groupName: String,
                     inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FilterArgsExtractor[IN])
+                    partitionArgsExtractor: FiltersExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
@@ -125,7 +102,7 @@ trait ServerTransport {
 private[transport] case class SubKey(groupName: Option[String], partitionArgs: Filters)
 
 private[transport] case class Subscription[OUT, IN](inputDecoder: Decoder[IN],
-                                                     partitionArgsExtractor: FilterArgsExtractor[IN],
+                                                     partitionArgsExtractor: FiltersExtractor[IN],
                                                      exceptionEncoder: Encoder[Throwable],
                                                      handler: (IN) => SubscriptionHandlerResult[OUT])
 

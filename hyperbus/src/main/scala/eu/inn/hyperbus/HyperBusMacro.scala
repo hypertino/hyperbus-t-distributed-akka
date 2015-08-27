@@ -89,7 +89,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
           case ..$bodyCases
         }
       )
-      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
+      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAnyValue($url)
       thiz.process[Response[Body],$in](topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
       }
@@ -116,7 +116,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val thiz = $thiz
       val requestDecoder = hbs.createRequestDecoder[$in]
       val extractor = ${defineExtractor[IN](url)}
-      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
+      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAnyValue($url)
       thiz.subscribe[$in](topic, $method, $contentType, $groupName, requestDecoder, extractor) { case (response: $in) =>
         sb.transport.SubscriptionHandlerResult[Unit]($handler(response),null)
       }
@@ -262,24 +262,24 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
   }
 
-  def defineExtractor[REQ <: Request[Body] : c.WeakTypeTag](url: String): c.Expr[FilterArgsExtractor[REQ]] = {
+  def defineExtractor[REQ <: Request[Body] : c.WeakTypeTag](url: String): c.Expr[FiltersExtractor[REQ]] = {
     import c.universe._
 
     // todo: test urls with args
     val t = weakTypeOf[REQ]
     val lst = impl.Helpers.extractParametersFromUrl(url).map { arg ⇒
-      q"$arg -> r.body.${TermName(arg)}.toString" // todo: remove toString if string, + inner fields?
+      q"$arg -> SpecificValue(r.body.${TermName(arg)}.toString)" // todo: remove toString if string, + inner fields?
     }
 
     val obj = q"""{
       import eu.inn.servicebus.transport._
       (r:$t) => {
-        Map[String,String](
+        Filters(Map(
           ..$lst
-        )
+        ))
       }
     }"""
 
-    c.Expr[FilterArgsExtractor[REQ]](obj)
+    c.Expr[FiltersExtractor[REQ]](obj)
   }
 }

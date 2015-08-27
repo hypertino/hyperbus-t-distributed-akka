@@ -63,7 +63,7 @@ class InprocTransport(serialize: Boolean = false)
     }
 
     // todo: filter is redundant for inproc?
-    subscriptions.get(topic.url).subRoutes filter (_._1.partitionArgs.matchArgs(topic.values)) foreach {
+    subscriptions.get(topic.urlFilter.specific).subRoutes filter (_._1.partitionArgs.matchFilters(topic.valueFilters)) foreach {
       case (subKey, subscriptionList) =>
 
         if (subKey.groupName.isEmpty) {
@@ -78,7 +78,7 @@ class InprocTransport(serialize: Boolean = false)
               subscriber.partitionArgsExtractor(messageForSubscriber)
             ) foreach { args ⇒
 
-              if (subKey.partitionArgs.matchArgs(args)) {
+              if (subKey.partitionArgs.matchFilters(args)) {
                 // todo: log if not matched?
                 val handlerResult = subscriber.handler(messageForSubscriber)
                 result = if (serialize) {
@@ -117,8 +117,8 @@ class InprocTransport(serialize: Boolean = false)
                 None
             }
 
-          ma.foreach { case (messageForSubscriber, args) ⇒
-            if (subKey.partitionArgs.matchArgs(args)) {
+          ma.foreach { case (messageForSubscriber, filters) ⇒
+            if (subKey.partitionArgs.matchFilters(filters)) {
               // todo: log if not matched?
               subscriber.handler(messageForSubscriber).futureResult.onFailure {
                 case NonFatal(e) ⇒
@@ -153,26 +153,26 @@ class InprocTransport(serialize: Boolean = false)
     }
   }
 
-  def process[OUT, IN](topic: TopicFilter,
+  def process[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: FilterArgsExtractor[IN],
+                  partitionArgsExtractor: FiltersExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     subscriptions.add(
-      topic.urlFilter.asInstanceOf[AllowSpecific].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      topic.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(None, topic.valueFilters),
       Subscription[OUT, IN](inputDecoder, partitionArgsExtractor, exceptionEncoder, handler)
     )
   }
 
-  def subscribe[IN](topic: TopicFilter,
+  def subscribe[IN](topic: Topic,
                     groupName: String,
                     inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FilterArgsExtractor[IN])
+                    partitionArgsExtractor: FiltersExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
     subscriptions.add(
-      topic.urlFilter.asInstanceOf[AllowSpecific].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      topic.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(Some(groupName), topic.valueFilters),
       Subscription[Unit, IN](inputDecoder, partitionArgsExtractor, null, handler)
     )

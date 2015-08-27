@@ -24,14 +24,14 @@ trait TransportManagerApi {
                    inputEncoder: Encoder[IN]
                    ): Future[Unit]
 
-  def process[OUT, IN](topic: TopicFilter, inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: FilterArgsExtractor[IN],
+  def process[OUT, IN](topic: Topic, inputDecoder: Decoder[IN],
+                  partitionArgsExtractor: FiltersExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String
 
-  def subscribe[IN](topic: TopicFilter, groupName: String,
+  def subscribe[IN](topic: Topic, groupName: String,
                     inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FilterArgsExtractor[IN])
+                    partitionArgsExtractor: FiltersExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String
 
   def off(subscriptionId: String): Unit

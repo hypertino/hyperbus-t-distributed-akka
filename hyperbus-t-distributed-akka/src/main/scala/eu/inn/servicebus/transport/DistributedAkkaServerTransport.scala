@@ -30,13 +30,13 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[OUT, IN](topic: TopicFilter,
+  override def process[OUT, IN](topic: Topic,
                            inputDecoder: Decoder[IN],
-                           partitionArgsExtractor: FilterArgsExtractor[IN],
+                           partitionArgsExtractor: FiltersExtractor[IN],
                            exceptionEncoder: Encoder[Throwable])
                           (handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = {
 
-    val topicUrl = topic.urlFilter.asInstanceOf[AllowSpecific].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
+    val topicUrl = topic.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[ProcessServerActor[OUT,IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
@@ -47,12 +47,12 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     id
   }
 
-  override def subscribe[IN](topic: TopicFilter,
+  override def subscribe[IN](topic: Topic,
                              groupName: String,
                              inputDecoder: Decoder[IN],
-                             partitionArgsExtractor: FilterArgsExtractor[IN])
+                             partitionArgsExtractor: FiltersExtractor[IN])
                             (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
-    val topicUrl = topic.urlFilter.asInstanceOf[AllowSpecific].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
+    val topicUrl = topic.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)

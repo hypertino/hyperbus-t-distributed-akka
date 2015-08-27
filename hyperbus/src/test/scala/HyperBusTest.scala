@@ -46,18 +46,18 @@ class ClientTransportTest(output: String) extends ClientTransport {
 class ServerTransportTest extends ServerTransport {
   var sInputDecoder: Decoder[Any] = null
   var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
-  var sExtractor: FilterArgsExtractor[Any] = null
+  var sExtractor: FiltersExtractor[Any] = null
   var sExceptionEncoder: Encoder[Throwable] = null
 
-  def process[OUT, IN](topic: TopicFilter,
+  def process[OUT, IN](topic: Topic,
                   inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: FilterArgsExtractor[IN],
+                  partitionArgsExtractor: FiltersExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
 
     sInputDecoder = inputDecoder
     sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
-    sExtractor = partitionArgsExtractor.asInstanceOf[FilterArgsExtractor[Any]]
+    sExtractor = partitionArgsExtractor.asInstanceOf[FiltersExtractor[Any]]
     sExceptionEncoder = exceptionEncoder
     ""
   }
@@ -65,10 +65,10 @@ class ServerTransportTest extends ServerTransport {
   def off(subscriptionId: String) = ???
 
   //todo: test this
-  def subscribe[IN](topic: TopicFilter,
+  def subscribe[IN](topic: Topic,
                     groupName: String,
                     inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FilterArgsExtractor[IN])
+                    partitionArgsExtractor: FiltersExtractor[IN])
                    (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
 
     sInputDecoder = inputDecoder
@@ -303,8 +303,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   }
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, AllowAny))
-    val sr = List(TransportRoute(st, AllowAny))
+    val cr = List(TransportRoute(ct, AnyValue))
+    val sr = List(TransportRoute(st, AnyValue))
     val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(serviceBus)
   }

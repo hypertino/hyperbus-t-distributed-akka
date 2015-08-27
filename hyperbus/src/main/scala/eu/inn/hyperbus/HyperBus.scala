@@ -35,26 +35,26 @@ low priority:
 trait HyperBusApi {
   def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
                                                         requestEncoder: Encoder[REQ],
-                                                        partitionArgsExtractor: FilterArgsExtractor[REQ],
+                                                        partitionArgsExtractor: FiltersExtractor[REQ],
                                                         responseDecoder: ResponseDecoder[RESP]): Future[RESP]
 
   def publish[REQ <: Request[Body]](request: REQ,
                                     requestEncoder: Encoder[REQ],
-                                    partitionArgsExtractor: FilterArgsExtractor[REQ]): Future[Unit]
+                                    partitionArgsExtractor: FiltersExtractor[REQ]): Future[Unit]
 
-  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: TopicFilter,
+  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
                                                        method: String,
                                                        contentType: Option[String],
                                                        requestDecoder: RequestDecoder[REQ],
-                                                       partitionArgsExtractor: FilterArgsExtractor[REQ])
+                                                       partitionArgsExtractor: FiltersExtractor[REQ])
                                                       (handler: (REQ) => SubscriptionHandlerResult[RESP]): String
 
-  def subscribe[REQ <: Request[Body]](topic: TopicFilter,
+  def subscribe[REQ <: Request[Body]](topic: Topic,
                                       method: String,
                                       contentType: Option[String],
                                       groupName: String,
                                       requestDecoder: RequestDecoder[REQ],
-                                      partitionArgsExtractor: FilterArgsExtractor[REQ])
+                                      partitionArgsExtractor: FiltersExtractor[REQ])
                                      (handler: (REQ) => SubscriptionHandlerResult[Unit]): String
 
   def shutdown(duration: FiniteDuration): Future[Boolean]
@@ -94,12 +94,12 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
   protected case class RequestReplySubscription[REQ <: Request[Body]](
                                                                        handler: (REQ) => SubscriptionHandlerResult[Response[Body]],
                                                                        requestDecoder: RequestDecoder[REQ],
-                                                                       partitionArgsExtractor: FilterArgsExtractor[REQ]) extends Subscription[REQ]
+                                                                       partitionArgsExtractor: FiltersExtractor[REQ]) extends Subscription[REQ]
 
   protected case class PubSubSubscription[REQ <: Request[Body]](
                                                                  handler: (REQ) => SubscriptionHandlerResult[Unit],
                                                                  requestDecoder: RequestDecoder[REQ],
-                                                                 partitionArgsExtractor: FilterArgsExtractor[REQ]) extends Subscription[REQ]
+                                                                 partitionArgsExtractor: FiltersExtractor[REQ]) extends Subscription[REQ]
 
   protected case class SubKey(method: String, contentType: Option[String])
 
@@ -151,11 +151,11 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
       }
     }
 
-    def partitionArgsExtractor(t: REQ): Map[String,String] = {
+    def partitionArgsExtractor(t: REQ): Filters = {
       getSubscription(t) map {
         case y: RequestReplySubscription[REQ] ⇒ y.partitionArgsExtractor(t)
       } getOrElse {
-        Map.empty // todo: is this ok?
+        Filters.empty // todo: is this ok?
       }
     }
   }
@@ -171,18 +171,18 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
       }
     }
 
-    def partitionArgsExtractor(t: REQ): Map[String,String] = {
+    def partitionArgsExtractor(t: REQ): Filters = {
       getSubscription(t) map {
         case y: PubSubSubscription[REQ] ⇒ y.partitionArgsExtractor(t)
       } getOrElse {
-        Map.empty // todo: is this ok?
+        Filters.empty // todo: is this ok?
       }
     }
   }
 
   def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
                                                         requestEncoder: Encoder[REQ],
-                                                        partitionArgsExtractor: FilterArgsExtractor[REQ],
+                                                        partitionArgsExtractor: FiltersExtractor[REQ],
                                                         responseDecoder: ResponseDecoder[RESP]): Future[RESP] = {
 
     val outputDecoder = InnerHelpers.decodeResponseWith(_: InputStream)(responseDecoder)
@@ -196,17 +196,17 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
 
   def publish[REQ <: Request[Body]](request: REQ,
                                     requestEncoder: Encoder[REQ],
-                                    partitionArgsExtractor: FilterArgsExtractor[REQ]): Future[Unit] = {
+                                    partitionArgsExtractor: FiltersExtractor[REQ]): Future[Unit] = {
     val args = partitionArgsExtractor(request)
     val topic = Topic(request.url, args)
     serviceBus.publish[REQ](topic, request, requestEncoder)
   }
 
-  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: TopicFilter,
+  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
                                                        method: String,
                                                        contentType: Option[String],
                                                        requestDecoder: RequestDecoder[REQ],
-                                                       partitionArgsExtractor: FilterArgsExtractor[REQ])
+                                                       partitionArgsExtractor: FiltersExtractor[REQ])
                                                       (handler: (REQ) => SubscriptionHandlerResult[RESP]): String = {
     val routeKey = getRouteKey(topic.urlFilter, None)
 
@@ -220,7 +220,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
-        val pe: FilterArgsExtractor[REQ] = uh.partitionArgsExtractor
+        val pe: FiltersExtractor[REQ] = uh.partitionArgsExtractor
         val uid = serviceBus.process[Response[Body], REQ](topic, d, pe, exceptionEncoder)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
@@ -228,12 +228,12 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
     }
   }
 
-  def subscribe[REQ <: Request[Body]](topic: TopicFilter,
+  def subscribe[REQ <: Request[Body]](topic: Topic,
                                       method: String,
                                       contentType: Option[String],
                                       groupName: String,
                                       requestDecoder: RequestDecoder[REQ],
-                                      partitionArgsExtractor: FilterArgsExtractor[REQ])
+                                      partitionArgsExtractor: FiltersExtractor[REQ])
                                      (handler: (REQ) => SubscriptionHandlerResult[Unit]): String = {
     val routeKey = getRouteKey(topic.urlFilter, Some(groupName))
 
@@ -247,7 +247,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
-        val pe: FilterArgsExtractor[REQ] = uh.partitionArgsExtractor
+        val pe: FiltersExtractor[REQ] = uh.partitionArgsExtractor
         val uid = serviceBus.subscribe[REQ](topic, groupName, d, pe)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
@@ -353,7 +353,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
   protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode response: {}", response)
 
   protected def getRouteKey(urlFilter: Filter, groupName: Option[String]) = {
-    val url = urlFilter.asInstanceOf[AllowSpecific].value // todo: implement other filters?
+    val url = urlFilter.asInstanceOf[SpecificValue].value // todo: implement other filters?
 
     groupName.map {
       url + "#" + _

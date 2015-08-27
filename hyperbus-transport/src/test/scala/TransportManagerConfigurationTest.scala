@@ -35,16 +35,16 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
       val sbc = TransportConfigurationLoader.fromConfig(config)
 
       assert(sbc.clientRoutes.nonEmpty)
-      sbc.clientRoutes.head.urlArg should equal(AllowSpecific("/topic/{userId}"))
+      sbc.clientRoutes.head.urlArg should equal(SpecificValue("/topic/{userId}"))
       sbc.clientRoutes.head.valueFilters should equal(Filters(Map(
-        "userId" → AllowAny
+        "userId" → AnyValue
       )))
       sbc.clientRoutes.head.transport shouldBe a [InprocTransport]
 
       assert(sbc.serverRoutes.nonEmpty)
-      sbc.serverRoutes.head.urlArg should equal(AllowSpecific("/topic/{userId}"))
+      sbc.serverRoutes.head.urlArg should equal(SpecificValue("/topic/{userId}"))
       sbc.serverRoutes.head.valueFilters should equal(Filters(Map(
-        "userId" → AllowRegex(".*")
+        "userId" → RegexFilter(".*")
       )))
       sbc.serverRoutes.head.transport shouldBe a [InprocTransport]
     }

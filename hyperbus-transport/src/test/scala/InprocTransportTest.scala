@@ -1,6 +1,6 @@
 import java.util.concurrent.atomic.AtomicInteger
 
-import eu.inn.servicebus.serialization.FilterArgsExtractor
+import eu.inn.servicebus.serialization.FiltersExtractor
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -15,7 +15,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
   "InprocTransport " - {
     "Simple Test" in {
       val t = new InprocTransport
-      t.process[String, String](TopicFilter("a"), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a"), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
@@ -30,7 +30,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "NoTransportRouteException Test" in {
       val t = new InprocTransport
-      t.process[String, String](TopicFilter("notexists"), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("notexists"), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
@@ -45,7 +45,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Complex Test (Service and Subscribers)" in {
       val t = new InprocTransport
-      t.process[String, String](TopicFilter("a"), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a"), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
@@ -60,9 +60,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         }, null)
       }
 
-      t.subscribe(TopicFilter("a"), "group1", null, mockExtractor[String])(group1Func)
-      t.subscribe(TopicFilter("a"), "group1", null, mockExtractor[String])(group1Func)
-      t.subscribe(TopicFilter("a"), "group1", null, mockExtractor[String])(group1Func)
+      t.subscribe(Topic("a"), "group1", null, mockExtractor[String])(group1Func)
+      t.subscribe(Topic("a"), "group1", null, mockExtractor[String])(group1Func)
+      t.subscribe(Topic("a"), "group1", null, mockExtractor[String])(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]()
@@ -73,8 +73,8 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         }, null)
       }
 
-      t.subscribe(TopicFilter("a"), "group2", null, mockExtractor[String])(group2Func)
-      t.subscribe(TopicFilter("a"), "group2", null, mockExtractor[String])(group2Func)
+      t.subscribe(Topic("a"), "group2", null, mockExtractor[String])(group2Func)
+      t.subscribe(Topic("a"), "group2", null, mockExtractor[String])(group2Func)
 
       val f: Future[String] = t.ask(Topic("a"), "hey", null, null)
 
@@ -105,9 +105,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
           null)
       }
 
-      t.subscribe(TopicFilter("a"), "group1", null, mockExtractor[String])(group1Func)
-      t.subscribe(TopicFilter("a"), "group1", null, mockExtractor[String])(group1Func)
-      t.subscribe(TopicFilter("a"), "group1", null, mockExtractor[String])(group1Func)
+      t.subscribe(Topic("a"), "group1", null, mockExtractor[String])(group1Func)
+      t.subscribe(Topic("a"), "group1", null, mockExtractor[String])(group1Func)
+      t.subscribe(Topic("a"), "group1", null, mockExtractor[String])(group1Func)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]()
@@ -119,8 +119,8 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
           null)
       }
 
-      t.subscribe(TopicFilter("a"), "group2", null, mockExtractor[String])(group2Func)
-      t.subscribe(TopicFilter("a"), "group2", null, mockExtractor[String])(group2Func)
+      t.subscribe(Topic("a"), "group2", null, mockExtractor[String])(group2Func)
+      t.subscribe(Topic("a"), "group2", null, mockExtractor[String])(group2Func)
 
       val f: Future[Unit] = t.ask(Topic("a"), "hey", null, null)
 
@@ -140,14 +140,14 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       val t = new InprocTransport
       val receivers = new AtomicInteger(0)
 
-      t.process[String, String](TopicFilter("a"), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a"), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
         }, null)
       }
 
-      t.process[String, String](TopicFilter("a"), null, mockExtractor[String], null) { s =>
+      t.process[String, String](Topic("a"), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           receivers.incrementAndGet()
           s.reverse
@@ -177,13 +177,13 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Unsubscribe Test" in {
       val t = new InprocTransport
-      val id1 = t.process[String, String](TopicFilter("a"), null, mockExtractor[String], null) { s =>
+      val id1 = t.process[String, String](Topic("a"), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
       }
 
-      val id2 = t.process[String, String](TopicFilter("a"), null, mockExtractor[String], null) { s =>
+      val id2 = t.process[String, String](Topic("a"), null, mockExtractor[String], null) { s =>
         SubscriptionHandlerResult(Future {
           s.reverse
         }, null)
@@ -213,7 +213,7 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
     }
   }
 
-  def mockExtractor[T]: FilterArgsExtractor[T] = {
-    (x: T) => Map.empty[String,String]
+  def mockExtractor[T]: FiltersExtractor[T] = {
+    (x: T) => Filters.empty
   }
 }

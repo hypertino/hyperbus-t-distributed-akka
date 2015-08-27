@@ -54,20 +54,20 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
     "Send and Receive" in {
       val cnt = new AtomicInteger(0)
 
-      val id = serviceBus.process[String, String](TopicFilter("/topic/{abc}"),
+      val id = serviceBus.process[String, String](Topic("/topic/{abc}"),
         mockDecoder, mockExtractor[String], null) { s =>
         cnt.incrementAndGet()
         mockResult(s.reverse)
       }
 
-      val id2 = serviceBus.process[String, String](TopicFilter("/topic/{abc}"),
+      val id2 = serviceBus.process[String, String](Topic("/topic/{abc}"),
         mockDecoder,
         mockExtractor[String], null){ s =>
         cnt.incrementAndGet()
         mockResult(s.reverse)
       }
 
-      serviceBus.subscribe[String](TopicFilter("/topic/{abc}"), "sub1",
+      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub1",
         mockDecoder,
         mockExtractor[String]) { s =>
         s should equal("12345")
@@ -75,7 +75,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockResultU
       }
 
-      serviceBus.subscribe[String](TopicFilter("/topic/{abc}"), "sub1",
+      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub1",
         mockDecoder,
         mockExtractor[String]){ s =>
         s should equal("12345")
@@ -83,7 +83,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         mockResultU
       }
 
-      serviceBus.subscribe[String](TopicFilter("/topic/{abc}"), "sub2",
+      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub2",
         mockDecoder,
         mockExtractor[String]){ s =>
         s should equal("12345")
@@ -151,8 +151,8 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
     }*/
   }
 
-  def mockExtractor[T]: FilterArgsExtractor[T] = {
-    (x: T) => Map.empty[String,String]
+  def mockExtractor[T]: FiltersExtractor[T] = {
+    (x: T) => Filters.empty
   }
 
   def mockEncoder(in: String, out: OutputStream) = {
