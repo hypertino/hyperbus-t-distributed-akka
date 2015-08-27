@@ -158,8 +158,9 @@ class InprocTransport(serialize: Boolean = false)
                   partitionArgsExtractor: FilterArgsExtractor[IN],
                   exceptionEncoder: Encoder[Throwable])
                  (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
+
     subscriptions.add(
-      topic.url,
+      topic.urlFilter.asInstanceOf[AllowSpecific].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(None, topic.valueFilters),
       Subscription[OUT, IN](inputDecoder, partitionArgsExtractor, exceptionEncoder, handler)
     )
@@ -171,7 +172,7 @@ class InprocTransport(serialize: Boolean = false)
                     partitionArgsExtractor: FilterArgsExtractor[IN])
                    (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
     subscriptions.add(
-      topic.url,
+      topic.urlFilter.asInstanceOf[AllowSpecific].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(Some(groupName), topic.valueFilters),
       Subscription[Unit, IN](inputDecoder, partitionArgsExtractor, null, handler)
     )

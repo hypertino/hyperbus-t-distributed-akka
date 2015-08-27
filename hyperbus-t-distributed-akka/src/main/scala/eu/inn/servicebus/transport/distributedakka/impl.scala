@@ -19,7 +19,8 @@ import akka.pattern.ask
 
 private [transport] trait Command
 
-private [transport] case class Subscription[OUT, IN](topic: TopicFilter,
+private [transport] case class Subscription[OUT, IN](topicUrl: String,
+                                                     topic: TopicFilter,
                                                      groupName: Option[String],
                                                      inputDecoder: Decoder[IN],
                                                      partitionArgsExtractor: FilterArgsExtractor[IN],
@@ -38,14 +39,14 @@ private [transport] abstract class ServerActor[OUT,IN] extends Actor {
     case start: Start[OUT,IN] ⇒
       subscription = start.subscription
       logMessages = start.logMessages
-      mediator ! Subscribe(subscription.topic.url, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
+      mediator ! Subscribe(subscription.topicUrl, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
 
     case ack: SubscribeAck ⇒
       context become start
   }
 
   override def postStop() {
-    mediator ! Unsubscribe(subscription.topic.url, self)
+    mediator ! Unsubscribe(subscription.topicUrl, self)
   }
 
   def start: Receive

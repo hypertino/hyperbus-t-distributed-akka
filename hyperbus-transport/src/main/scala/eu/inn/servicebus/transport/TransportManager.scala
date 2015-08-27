@@ -96,9 +96,9 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
   }
 
   protected def lookupServerTransport(topic: TopicFilter): ServerTransport = {
-    serverRoutes.find(r ⇒ r.urlArg.matchArg(topic.url) &&
+    serverRoutes.find(r ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
       r.valueFilters.matchFilters(topic.valueFilters)) map (_.transport) getOrElse {
-      throw new NoTransportRouteException(s"TopicFilter: ${topic.url}/${topic.valueFilters.toString}")
+      throw new NoTransportRouteException(s"TopicFilter: ${topic.urlFilter}/${topic.valueFilters.toString}")
     }
   }
 

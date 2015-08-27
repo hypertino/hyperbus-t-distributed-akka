@@ -208,7 +208,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
                                                        requestDecoder: RequestDecoder[REQ],
                                                        partitionArgsExtractor: FilterArgsExtractor[REQ])
                                                       (handler: (REQ) => SubscriptionHandlerResult[RESP]): String = {
-    val routeKey = getRouteKey(topic.url, None)
+    val routeKey = getRouteKey(topic.urlFilter, None)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -235,7 +235,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
                                       requestDecoder: RequestDecoder[REQ],
                                       partitionArgsExtractor: FilterArgsExtractor[REQ])
                                      (handler: (REQ) => SubscriptionHandlerResult[Unit]): String = {
-    val routeKey = getRouteKey(topic.url, Some(groupName))
+    val routeKey = getRouteKey(topic.urlFilter, Some(groupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -352,10 +352,13 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
 
   protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode response: {}", response)
 
-  protected def getRouteKey(url: String, groupName: Option[String]) =
+  protected def getRouteKey(urlFilter: Filter, groupName: Option[String]) = {
+    val url = urlFilter.asInstanceOf[AllowSpecific].value // todo: implement other filters?
+
     groupName.map {
       url + "#" + _
     } getOrElse url
+  }
 
   protected def safe(t: () => String): String = Try(t()).getOrElse("???")
 }

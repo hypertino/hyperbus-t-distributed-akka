@@ -36,11 +36,12 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                            exceptionEncoder: Encoder[Throwable])
                           (handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = {
 
+    val topicUrl = topic.urlFilter.asInstanceOf[AllowSpecific].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[ProcessServerActor[OUT,IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[OUT, IN](topic, None, inputDecoder, partitionArgsExtractor, exceptionEncoder, handler),
+      distributedakka.Subscription[OUT, IN](topicUrl, topic, None, inputDecoder, partitionArgsExtractor, exceptionEncoder, handler),
       logMessages
     )
     id
@@ -51,11 +52,12 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                              inputDecoder: Decoder[IN],
                              partitionArgsExtractor: FilterArgsExtractor[IN])
                             (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
+    val topicUrl = topic.urlFilter.asInstanceOf[AllowSpecific].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[Unit, IN](topic, Some(groupName), inputDecoder, partitionArgsExtractor, null, handler),
+      distributedakka.Subscription[Unit, IN](topicUrl, topic, Some(groupName), inputDecoder, partitionArgsExtractor, null, handler),
       logMessages
     )
     id

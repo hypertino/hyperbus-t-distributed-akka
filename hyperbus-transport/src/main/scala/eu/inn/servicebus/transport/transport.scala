@@ -70,10 +70,15 @@ case object Filters {
   val empty = Filters(Map.empty)
 }
 
-case class TopicFilter(url: String, valueFilters: Filters = Filters.empty) { // todo: url String -> Filter, url -> template?
-  override def toString = s"TopicFilter($url$valueFiltersFormat)"
+case class TopicFilter(urlFilter: Filter, valueFilters: Filters = Filters.empty) { // todo: url String -> Filter, url -> template?
+  override def toString = s"TopicFilter($urlFilter$valueFiltersFormat)"
   private def valueFiltersFormat = if(valueFilters.filterMap.isEmpty) "" else
     valueFilters.filterMap.mkString("#",",","")
+}
+
+object TopicFilter {
+  def apply(url: String): TopicFilter = TopicFilter(AllowSpecific(url), Filters.empty)
+  def apply(url: String, valueFilters: Filters): TopicFilter = TopicFilter(AllowSpecific(url), valueFilters)
 }
 
 case class Topic(url: String, values: Map[String,String] = Map.empty[String,String]) { // todo: url String -> Filter, url -> template?, value -> filterValues?

@@ -41,7 +41,7 @@ class KafkaServerTransport(
                              partitionArgsExtractor: FilterArgsExtractor[IN])
                             (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
 
-    routes.find(r ⇒ r.urlArg.matchArg(topic.url) &&
+    routes.find(r ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
       r.partitionArgs.matchFilters(topic.valueFilters)) map { route ⇒
 
       val id = idCounter.incrementAndGet().toHexString
@@ -53,7 +53,7 @@ class KafkaServerTransport(
       id
 
     } getOrElse {
-      throw new NoTransportRouteException(s"Kafka consumer (server). Topic: ${topic.url}/${topic.valueFilters.toString}")
+      throw new NoTransportRouteException(s"Kafka consumer (server). Topic: ${topic.urlFilter}/${topic.valueFilters.toString}")
     }
   }
 
