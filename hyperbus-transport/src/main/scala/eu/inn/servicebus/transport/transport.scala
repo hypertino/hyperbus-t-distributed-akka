@@ -1,5 +1,7 @@
 package eu.inn.servicebus.transport
 
+import java.io.OutputStream
+
 import eu.inn.servicebus.serialization._
 
 import scala.concurrent.Future
@@ -64,47 +66,34 @@ object Topic {
   def apply(url: String, valueFilters: Filters): Topic = Topic(SpecificValue(url), valueFilters)
 }
 
+trait TransportMessage {
+  def messageId: String
+  def correlationId: String
+  def encode(output: OutputStream)
+}
+
+trait TransportRequest extends TransportMessage {
+  def topic: Topic
+}
+
+trait TransportResponse extends TransportMessage
+
 trait ClientTransport {
-  def ask[OUT, IN](
-                    topic: Topic,
-                    message: IN,
-                    inputEncoder: Encoder[IN],
-                    outputDecoder: Decoder[OUT]
-                    ): Future[OUT]
-
-  def publish[IN](
-                   topic: Topic,
-                   message: IN,
-                   inputEncoder: Encoder[IN]
-                   ): Future[Unit]
-
+  def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT]
+  def publish(message: TransportRequest): Future[Unit]
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
-case class SubscriptionHandlerResult[OUT](futureResult: Future[OUT], resultEncoder: Encoder[OUT])
-
 trait ServerTransport {
-  def process[OUT, IN](topic: Topic,
-                  inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: FiltersExtractor[IN],
-                  exceptionEncoder: Encoder[Throwable])
-                 (handler: (IN) => SubscriptionHandlerResult[OUT]): String
+  def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+                 (handler: (IN) => Future[TransportResponse]): String
 
-  def subscribe[IN](topic: Topic, groupName: String,
-                    inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FiltersExtractor[IN])
-                   (handler: (IN) => SubscriptionHandlerResult[Unit]): String // todo: Unit -> some useful response?
+  def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+                   (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
-
-private[transport] case class SubKey(groupName: Option[String], partitionArgs: Filters)
-
-private[transport] case class Subscription[OUT, IN](inputDecoder: Decoder[IN],
-                                                     partitionArgsExtractor: FiltersExtractor[IN],
-                                                     exceptionEncoder: Encoder[Throwable],
-                                                     handler: (IN) => SubscriptionHandlerResult[OUT])
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
 

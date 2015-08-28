@@ -30,34 +30,28 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[OUT, IN](topic: Topic,
-                           inputDecoder: Decoder[IN],
-                           partitionArgsExtractor: FiltersExtractor[IN],
-                           exceptionEncoder: Encoder[Throwable])
-                          (handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = {
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+                                              (handler: (IN) => Future[TransportResponse]): String = {
 
-    val topicUrl = topic.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
+    val topicUrl = topicFilter.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
-    val actor = actorSystem.actorOf(Props[ProcessServerActor[OUT,IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
+    val actor = actorSystem.actorOf(Props[ProcessServerActor[IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[OUT, IN](topicUrl, topic, None, inputDecoder, partitionArgsExtractor, exceptionEncoder, handler),
+      distributedakka.Subscription[TransportResponse, IN](topicUrl, topicFilter, None, inputDecoder, exceptionEncoder, handler),
       logMessages
     )
     id
   }
 
-  override def subscribe[IN](topic: Topic,
-                             groupName: String,
-                             inputDecoder: Decoder[IN],
-                             partitionArgsExtractor: FiltersExtractor[IN])
-                            (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
-    val topicUrl = topic.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+                                                (handler: (IN) => Future[Unit]): String = {
+    val topicUrl = topicFilter.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[Unit, IN](topicUrl, topic, Some(groupName), inputDecoder, partitionArgsExtractor, null, handler),
+      distributedakka.Subscription[Unit, IN](topicUrl, topicFilter, Some(groupName), inputDecoder, null, handler),
       logMessages
     )
     id

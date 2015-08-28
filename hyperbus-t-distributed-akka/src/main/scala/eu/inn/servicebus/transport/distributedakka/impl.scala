@@ -8,7 +8,7 @@ import akka.cluster.ClusterEvent._
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Unsubscribe, Publish, SubscribeAck, Subscribe}
 import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{Topic, NoTransportRouteException, SubscriptionHandlerResult, Topic$}
+import eu.inn.servicebus.transport._
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -16,20 +16,19 @@ import scala.util.control.NonFatal
 import akka.pattern.pipe
 import akka.pattern.ask
 
-
+// todo: REMOVE OUT/IN in this file
 private [transport] trait Command
 
-private [transport] case class Subscription[OUT, IN](topicUrl: String,
+private [transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl: String,
                                                      topic: Topic,
                                                      groupName: Option[String],
                                                      inputDecoder: Decoder[IN],
-                                                     partitionArgsExtractor: FiltersExtractor[IN],
                                                      exceptionEncoder: Encoder[Throwable],
-                                                     handler: (IN) => SubscriptionHandlerResult[OUT])
+                                                     handler: (IN) => Future[OUT])
 
-private [transport] case class Start[OUT,IN](id: String, subscription: Subscription[OUT,IN], logMessages: Boolean) extends Command
+private [transport] case class Start[OUT,IN<: TransportRequest](id: String, subscription: Subscription[OUT,IN], logMessages: Boolean) extends Command
 
-private [transport] abstract class ServerActor[OUT,IN] extends Actor {
+private [transport] abstract class ServerActor[OUT, IN <: TransportRequest] extends Actor {
   protected [this] val mediator = DistributedPubSubExtension(context.system).mediator
   protected [this] var subscription: Subscription[OUT,IN] = null
   protected [this] var logMessages = false
@@ -86,7 +85,7 @@ private [transport] abstract class ServerActor[OUT,IN] extends Actor {
   }
 }
 
-private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN] {
+private [transport] class ProcessServerActor[IN <: TransportRequest] extends ServerActor[TransportResponse, IN] {
   import context._
   import eu.inn.servicebus.util.LogUtils._
 
@@ -99,9 +98,9 @@ private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN]
 
       decodeMessage(input, sendReply = true) map { inputMessage ⇒
         val result = subscription.handler(inputMessage) // todo: test result with partitonArgs?
-        val futureMessage = result.futureResult.map { out ⇒
+        val futureMessage = result.map { out ⇒
           val outputBytes = new ByteArrayOutputStream()
-          result.resultEncoder(out, outputBytes)
+          out.encode(outputBytes)
           outputBytes.toString(Util.defaultEncoding)
         } recover {
           case NonFatal(e) ⇒ handleException(e, sendReply = false).getOrElse(throw e) // todo: test this scenario
@@ -120,7 +119,7 @@ private [transport] class ProcessServerActor[OUT,IN] extends ServerActor[OUT,IN]
   }
 }
 
-private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] {
+private [transport] class SubscribeServerActor[IN <: TransportRequest] extends ServerActor[Unit,IN] {
   import context._
   import eu.inn.servicebus.util.LogUtils._
   def start: Receive = {
@@ -129,7 +128,7 @@ private [transport] class SubscribeServerActor[IN] extends ServerActor[Unit,IN] 
         log.trace(Map("subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus |> $input")
       }
       decodeMessage(input, sendReply = false) map { inputMessage ⇒
-        subscription.handler(inputMessage).futureResult.recover { // todo: test result with partitonArgs?
+        subscription.handler(inputMessage).recover { // todo: test result with partitonArgs?
           case NonFatal(e) ⇒ log.error(Map("subscriptionId" → subscription.handler.hashCode.toHexString),
             "Subscriber handler failed", e)
         }

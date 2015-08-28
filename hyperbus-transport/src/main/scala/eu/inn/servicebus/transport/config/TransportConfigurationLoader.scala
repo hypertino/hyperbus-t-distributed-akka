@@ -69,6 +69,7 @@ object TransportConfigurationLoader {
 
 case class TransportNameHolder(transport: String) // todo: separate transport name and route!
 
+// todo: do we really need this? maybe it's just a Topic!
 case class TransportRouteHolder(
                                  url: Option[String],
                                  matchType: Option[String],

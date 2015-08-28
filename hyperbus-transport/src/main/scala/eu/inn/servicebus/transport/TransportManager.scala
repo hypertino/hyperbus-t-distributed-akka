@@ -28,21 +28,12 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
   def this(configuration: TransportConfiguration) = this(configuration.clientRoutes,
     configuration.serverRoutes, ExecutionContext.global)
 
-  def ask[OUT, IN](
-                    topic: Topic,
-                    message: IN,
-                    inputEncoder: Encoder[IN],
-                    outputDecoder: Decoder[OUT]
-                    ): Future[OUT] = {
-    this.lookupClientTransport(topic).ask[OUT, IN](topic, message, inputEncoder, outputDecoder)
+  def ask[OUT <: TransportResponse](message: TransportRequest,outputDecoder: Decoder[OUT]): Future[OUT] = {
+    this.lookupClientTransport(message.topic).ask[OUT](message, outputDecoder)
   }
 
-  def publish[IN](
-                   topic: Topic,
-                   message: IN,
-                   inputEncoder: Encoder[IN]
-                   ): Future[Unit] = {
-    this.lookupClientTransport(topic).publish[IN](topic, message, inputEncoder)
+  def publish(message: TransportRequest): Future[Unit] = {
+    this.lookupClientTransport(message.topic).publish(message)
   }
 
   protected def lookupClientTransport(topic: Topic): ClientTransport = {
@@ -57,35 +48,30 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
     subscriptions.remove(subscriptionId)
   }
 
-  def process[OUT, IN](topic: Topic,
-                       inputDecoder: Decoder[IN],
-                       partitionArgsExtractor: FiltersExtractor[IN],
-                       exceptionEncoder: Encoder[Throwable])
-                      (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
+  def process[IN <: TransportRequest](topicFilter: Topic,
+                                      inputDecoder: Decoder[IN],
+                                      exceptionEncoder: Encoder[Throwable])
+                                     (handler: (IN) => Future[TransportResponse]): String = {
 
-    val underlyingSubscriptionId = lookupServerTransport(topic).process[OUT, IN](
-      topic,
+    val underlyingSubscriptionId = lookupServerTransport(topicFilter).process[IN](
+      topicFilter,
       inputDecoder,
-      partitionArgsExtractor,
       exceptionEncoder)(handler)
 
-    val result = addSubscriptionLink(topic, underlyingSubscriptionId)
-    log.info(s"New processor on $topic: #${handler.hashCode}. Id = $result")
+    val result = addSubscriptionLink(topicFilter, underlyingSubscriptionId)
+    log.info(s"New processor on $topicFilter: #${handler.hashCode}. Id = $result")
     result
   }
 
-  def subscribe[IN](topic: Topic,
-                    groupName: String,
-                    inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FiltersExtractor[IN])
-                   (handler: (IN) => SubscriptionHandlerResult[Unit]): String = {
-    val underlyingSubscriptionId = lookupServerTransport(topic).subscribe[IN](
-      topic,
+  def subscribe[IN <: TransportRequest ](topicFilter: Topic, groupName: String,
+                                         inputDecoder: Decoder[IN])
+                                        (handler: (IN) => Future[Unit]): String = {
+    val underlyingSubscriptionId = lookupServerTransport(topicFilter).subscribe[IN](
+      topicFilter,
       groupName,
-      inputDecoder,
-      partitionArgsExtractor)(handler)
-    val result = addSubscriptionLink(topic, underlyingSubscriptionId)
-    log.info(s"New subscription on $topic($groupName): #${handler.hashCode}. Id = $result")
+      inputDecoder)(handler)
+    val result = addSubscriptionLink(topicFilter, underlyingSubscriptionId)
+    log.info(s"New subscription on $topicFilter($groupName): #${handler.hashCode}. Id = $result")
     result
   }
 

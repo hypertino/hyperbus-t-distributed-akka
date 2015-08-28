@@ -7,6 +7,7 @@ import akka.cluster.ClusterEvent._
 import akka.event.LoggingReceive
 import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
+import eu.inn.hyperbus.transport.MockRequest
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import eu.inn.servicebus.transport.config.TransportConfigurationLoader
@@ -17,6 +18,30 @@ import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
+
+
+// move mocks to separate assembly
+case class MockRequest(topic: Topic, message: String) extends TransportRequest {
+  override def correlationId: String = ???
+  override def messageId: String = ???
+  override def encode(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
+}
+
+object MockRequest{
+  def apply(topic: String, message:String): MockRequest = MockRequest(Topic(topic), message)
+}
+
+case class MockResponse(message: String) extends TransportResponse {
+  override def correlationId: String = ???
+  override def messageId: String = ???
+  override def encode(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
+}
+
+object MockDecoder extends Decoder[MockRequest] {
+  override def apply(input: InputStream): MockRequest = {
+    MockRequest(IOUtils.toString(in, "UTF-8"))
+  }
+}
 
 class TestActorX extends Actor with ActorLogging{
   val membersUp = new AtomicInteger(0)
@@ -54,10 +79,11 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
     "Send and Receive" in {
       val cnt = new AtomicInteger(0)
 
-      val id = serviceBus.process[String, String](Topic("/topic/{abc}"),
-        mockDecoder, mockExtractor[String], null) { s =>
-        cnt.incrementAndGet()
-        mockResult(s.reverse)
+      val id = serviceBus.process(Topic("/topic/{abc}"), MockDecoder, null) { msg: MockRequest =>
+        Future {
+          cnt.incrementAndGet()
+          MockResponse(msg.message.reverse)
+        }
       }
 
       val id2 = serviceBus.process[String, String](Topic("/topic/{abc}"),

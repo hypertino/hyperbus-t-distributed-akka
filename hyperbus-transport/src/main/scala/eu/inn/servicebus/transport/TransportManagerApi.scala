@@ -11,28 +11,18 @@ import scala.concurrent.duration.FiniteDuration
  */
 
 trait TransportManagerApi {
-  def ask[OUT, IN](
-                    topic: Topic,
-                    message: IN,
-                    inputEncoder: Encoder[IN],
-                    outputDecoder: Decoder[OUT]
-                    ): Future[OUT]
+  def ask[OUT <: TransportResponse](message: TransportRequest,outputDecoder: Decoder[OUT]): Future[OUT]
 
-  def publish[IN](
-                   topic: Topic,
-                   message: IN,
-                   inputEncoder: Encoder[IN]
-                   ): Future[Unit]
+  def publish(message: TransportRequest): Future[Unit]
 
-  def process[OUT, IN](topic: Topic, inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: FiltersExtractor[IN],
-                  exceptionEncoder: Encoder[Throwable])
-                 (handler: (IN) => SubscriptionHandlerResult[OUT]): String
+  def process[IN <: TransportRequest](topicFilter: Topic,
+                                      inputDecoder: Decoder[IN],
+                                      exceptionEncoder: Encoder[Throwable])
+                                     (handler: (IN) => Future[TransportResponse]): String
 
-  def subscribe[IN](topic: Topic, groupName: String,
-                    inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FiltersExtractor[IN])
-                   (handler: (IN) => SubscriptionHandlerResult[Unit]): String
+  def subscribe[IN <: TransportRequest ](topicFilter: Topic, groupName: String,
+                                         inputDecoder: Decoder[IN])
+                                        (handler: (IN) => Future[Unit]): String
 
   def off(subscriptionId: String): Unit
 

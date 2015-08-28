@@ -1,5 +1,7 @@
 package eu.inn.servicebus.serialization
 
+// todo: move this macros to model
+
 import scala.reflect.macros.blackbox.Context
 
 private[servicebus] object JsonSerializationMacro {
