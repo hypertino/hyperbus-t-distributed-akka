@@ -1,6 +1,5 @@
-package eu.inn.hyperbus.url
+package eu.inn.hyperbus.rest
 
-import eu.inn.hyperbus.rest.UrlParser
 import org.scalatest.{FreeSpec, Matchers}
 
 class UrlParserTest extends FreeSpec with Matchers {

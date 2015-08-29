@@ -42,7 +42,7 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     val newClass = q"""
         case class $className[..$typeArgs](..$fieldsExcept,messageId: String,correlationId: String) extends ..$bases {
           ..$body
-          def status: Int = $annotationArgument
+          def status: Int = ${className.toTermName}.status
         }
       """
 
@@ -52,7 +52,6 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
           val ctx = contextFactory.newContext()
           ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
         }
-
         def status: Int = $annotationArgument
     """
 

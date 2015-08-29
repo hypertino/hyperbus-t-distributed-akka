@@ -38,18 +38,27 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
         }
       """
 
+    val companionExtra = q"""
+        def contentType = Some($annotationArgument)
+        def apply(jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
+          eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
+            deserializer.unbind[$className]
+          }
+        }
+        """
+
     val newCompanion = clzCompanion map { existingCompanion =>
       val q"object $companion extends ..$bases { ..$body }" = existingCompanion
       q"""
           object $companion extends ..$bases {
             ..$body
-            def contentType = Some($annotationArgument)
+            ..$companionExtra
           }
         """
     } getOrElse {
       q"""
         object ${className.toTermName} {
-          def contentType = Some($annotationArgument)
+          ..$companionExtra
         }
       """
     }

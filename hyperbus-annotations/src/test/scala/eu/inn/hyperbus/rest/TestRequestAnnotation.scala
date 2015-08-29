@@ -9,9 +9,17 @@ import org.scalatest.{FreeSpec, Matchers}
 @body("test-body-1")
 case class TestBody1(id: String, data: String) extends Body
 
+object TestBody1 {
+  def apply(x: String): TestBody1 = TestBody1(x, "no-data")
+}
+
 @request("/test-post-1/{id}")
 case class TestPost1(body: TestBody1) extends Request[TestBody1] {
   override def method: String = "test-method"
+}
+
+object TestPost1 {
+  def apply(x: String): TestPost1 = TestPost1(TestBody1(x))
 }
 
 class TestRequestAnnotation extends FreeSpec with Matchers {

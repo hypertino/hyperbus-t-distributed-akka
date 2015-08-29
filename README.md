@@ -9,6 +9,7 @@ TODO:
     annotations -> model
     model -> ?
     encode to string, not to stream!
+    try to serialize/deserialize with not-plain case convention
     
     - перенести encoder в message
     - перенести partitionextractor в topic в message
