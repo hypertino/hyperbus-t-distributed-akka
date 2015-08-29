@@ -6,36 +6,6 @@ import eu.inn.servicebus.serialization._
 import scala.reflect.macros.blackbox.Context
 
 private[hyperbus] object HyperSerializationMacro {
-  def createEncoder[T: c.WeakTypeTag](c: Context): c.Expr[Encoder[T]] = {
-    import c.universe._
-    val t = weakTypeOf[T]
-    val tBody = t.baseType(typeOf[Message[_]].typeSymbol).typeArgs.head
-
-    val bodyEncoder =
-      if (tBody <:< typeOf[DynamicBody]) {
-        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.dynamicBodyEncoder _"
-      }
-      else if (tBody <:< typeOf[ErrorBody]) {
-        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.errorBodyEncoder _"
-      }
-      else if (tBody <:< typeOf[EmptyBody]) {
-        q"eu.inn.hyperbus.serialization.impl.InnerHelpers.emptyBodyEncoder _"
-      }
-      else {
-        q"eu.inn.servicebus.serialization.createEncoder[$tBody]"
-      }
-
-    val obj = q"""
-      (t: $t, out: java.io.OutputStream) => {
-        import eu.inn.hyperbus.serialization.impl.InnerHelpers.bindOptions
-        val bodyEncoder = $bodyEncoder
-        eu.inn.hyperbus.serialization.impl.InnerHelpers.encodeMessage(t, bodyEncoder, out)
-      }
-    """
-    //println(obj)
-    c.Expr[Encoder[T]](obj)
-  }
-
   def createRequestDecoder[T <: Request[Body] : c.WeakTypeTag](c: Context): c.Expr[RequestDecoder[T]] = {
     import c.universe._
     val t = weakTypeOf[T]

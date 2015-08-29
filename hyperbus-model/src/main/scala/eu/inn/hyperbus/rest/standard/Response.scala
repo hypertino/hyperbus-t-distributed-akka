@@ -3,7 +3,6 @@ package eu.inn.hyperbus.rest.standard
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.response
-import IdUtils
 
 //todo: !format code
 
