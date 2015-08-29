@@ -95,7 +95,6 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       }
 
       val id2 = serviceBus.process(Topic("/topic/{abc}"), MockRequestDecoder, null){ msg: MockRequest =>
-        cnt.incrementAndGet()
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)

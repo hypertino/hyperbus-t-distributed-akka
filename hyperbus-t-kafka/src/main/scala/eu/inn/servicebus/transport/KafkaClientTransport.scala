@@ -35,13 +35,12 @@ class KafkaClientTransport(producerProperties: Properties,
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
   protected [this] val producer = new KafkaProducer[String,String](producerProperties)
 
-  override def ask[OUT, IN](topic: Topic, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = ???
+  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = ???
 
-  override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
-
-    routes.find(r ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
-      r.partitionArgs.matchFilters(topic.valueFilters)) map (publishToRoute(_, topic, message, inputEncoder)) getOrElse {
-      throw new NoTransportRouteException(s"Kafka producer (client). Topic: $topic")
+  override def publish(message: TransportRequest): Future[Unit] = {
+    routes.find(r ⇒ r.urlArg.matchFilter(message.topic.urlFilter) &&
+      r.partitionArgs.matchFilters(message.topic.valueFilters)) map (publishToRoute(_, message)) getOrElse {
+      throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${message.topic}")
     }
   }
 
@@ -57,9 +56,9 @@ class KafkaClientTransport(producerProperties: Properties,
     }
   }
 
-  private def publishToRoute[IN](route: KafkaRoute, topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
+  private def publishToRoute(route: KafkaRoute, message: TransportRequest): Future[Unit] = {
     val inputBytes = new ByteArrayOutputStream()
-    inputEncoder(message, inputBytes)
+    message.encode(inputBytes)
     val messageString = inputBytes.toString(encoding)
 
     val record: ProducerRecord[String,String] =
@@ -67,9 +66,9 @@ class KafkaClientTransport(producerProperties: Properties,
         new ProducerRecord(route.targetTopic, messageString)
       }
       else {
-        val recordKey = route.targetPartitionArgs.map { key: String ⇒
-          topic.valueFilters.filterMap.getOrElse(key,
-            throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in $topic")
+        val recordKey = route.targetPartitionArgs.map { key: String ⇒ // todo: check partition key logic
+          message.topic.valueFilters.filterMap.getOrElse(key,
+            throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in ${message.topic}")
           ).specific
         }.foldLeft("")(_+_)
 
@@ -77,7 +76,7 @@ class KafkaClientTransport(producerProperties: Properties,
       }
 
     if (logMessages && log.isTraceEnabled) {
-      log.trace(s"Sending to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $message")
+      log.trace(s"Sending to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $messageString")
     }
 
     val promise = Promise[Unit]()

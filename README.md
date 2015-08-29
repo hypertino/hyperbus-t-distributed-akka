@@ -10,6 +10,8 @@ TODO:
     - выделить exceptionEncoder
     - перенести body-decoder в companion
     
+    kafka, inproc: add loggin and subscriptionId like in akka
+    
 macros:
     - генератор encoder/body-decoder перенести в request
     

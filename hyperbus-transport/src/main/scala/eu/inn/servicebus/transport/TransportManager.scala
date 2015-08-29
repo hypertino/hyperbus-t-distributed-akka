@@ -59,7 +59,7 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
       exceptionEncoder)(handler)
 
     val result = addSubscriptionLink(topicFilter, underlyingSubscriptionId)
-    log.info(s"New processor on $topicFilter: #${handler.hashCode}. Id = $result")
+    log.info(s"New processor on $topicFilter: #${handler.hashCode.toHexString}. Id = $result")
     result
   }
 
@@ -71,7 +71,7 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
       groupName,
       inputDecoder)(handler)
     val result = addSubscriptionLink(topicFilter, underlyingSubscriptionId)
-    log.info(s"New subscription on $topicFilter($groupName): #${handler.hashCode}. Id = $result")
+    log.info(s"New subscription on $topicFilter($groupName): #${handler.hashCode.toHexString}. Id = $result")
     result
   }
 

@@ -35,25 +35,25 @@ class KafkaServerTransport(
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[OUT, IN](topic: Topic, inputDecoder: Decoder[IN], partitionArgsExtractor: FiltersExtractor[IN], exceptionEncoder: Encoder[Throwable])(handler: (IN) ⇒ SubscriptionHandlerResult[OUT]): String = ???
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+                                              (handler: (IN) => Future[TransportResponse]): String = ???
 
-  override def subscribe[IN](topic: Topic, groupName: String, inputDecoder: Decoder[IN],
-                             partitionArgsExtractor: FiltersExtractor[IN])
-                            (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+                                                (handler: (IN) => Future[Unit]): String = {
 
-    routes.find(r ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
-      r.partitionArgs.matchFilters(topic.valueFilters)) map { route ⇒
+    routes.find(r ⇒ r.urlArg.matchFilter(topicFilter.urlFilter) &&
+      r.partitionArgs.matchFilters(topicFilter.valueFilters)) map { route ⇒
 
       val id = idCounter.incrementAndGet().toHexString
       val subscription = new Subscription[Unit,IN](1, /*todo: per topic thread count*/
-        route, topic, groupName, inputDecoder, partitionArgsExtractor, handler
+        route, topicFilter, groupName, inputDecoder, handler
       )
       subscriptions.put(id, subscription)
       subscription.run()
       id
 
     } getOrElse {
-      throw new NoTransportRouteException(s"Kafka consumer (server). Topic: ${topic.urlFilter}/${topic.valueFilters.toString}")
+      throw new NoTransportRouteException(s"Kafka consumer (server). Topic: $topicFilter")
     }
   }
 
@@ -73,14 +73,13 @@ class KafkaServerTransport(
   }
 
 
-  class Subscription[OUT, IN](
+  class Subscription[OUT, IN <: TransportRequest](
                                threadCount: Int,
                                route: KafkaRoute,
-                               topic: Topic,
+                               topicFilter: Topic,
                                groupName: String,
                                inputDecoder: Decoder[IN],
-                               partitionArgsExtractor: FiltersExtractor[IN],
-                               handler: (IN) ⇒ SubscriptionHandlerResult[Unit]) {
+                               handler: (IN) ⇒ Future[OUT]) {
 
     val consumer = {
       val props = consumerProperties.clone().asInstanceOf[Properties]
@@ -117,8 +116,8 @@ class KafkaServerTransport(
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = inputDecoder(inputBytes) // todo: encoding!
-        val partitionArgs = partitionArgsExtractor(input) // todo: rename partitionArgs
-        if (topic.valueFilters.matchFilters(partitionArgs)) { // todo: !important! also need to check topic url!!!!
+        if (topicFilter.urlFilter.matchFilter(input.topic.urlFilter) &&  // todo: test order of matching!
+          topicFilter.valueFilters.matchFilters(input.topic.valueFilters)) {
           if (logMessages && log.isTraceEnabled) {
             log.trace(s"Consumer #$consumerId got message: $messageString")
           }
@@ -137,7 +136,7 @@ class KafkaServerTransport(
 
     private def consumeStream(stream: KafkaStream[Array[Byte],Array[Byte]]): Unit = {
       val consumerId = Thread.currentThread().getName
-      log.info(s"Starting consumer #$consumerId on topic ${route.targetTopic} -> $topic}")
+      log.info(s"Starting consumer #$consumerId on topic ${route.targetTopic} -> $topicFilter}")
       try {
         val iterator = stream.iterator()
         while (iterator.hasNext()) {

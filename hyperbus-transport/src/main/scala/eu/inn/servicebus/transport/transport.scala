@@ -55,7 +55,7 @@ case object Filters {
   val empty = Filters(Map.empty)
 }
 
-case class Topic(urlFilter: Filter, valueFilters: Filters = Filters.empty) {
+case class Topic(urlFilter: Filter, valueFilters: Filters = Filters.empty) { // todo: add topic matcher and used it!
   override def toString = s"Topic($urlFilter$valueFiltersFormat)"
   private def valueFiltersFormat = if(valueFilters.filterMap.isEmpty) "" else
     valueFilters.filterMap.mkString("#",",","")

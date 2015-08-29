@@ -1,17 +1,18 @@
 import java.io.{InputStream, OutputStream}
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.typesafe.config.ConfigFactory
+import eu.inn.binders._
+import eu.inn.binders.json.SerializerFactory
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import eu.inn.servicebus.transport.config.TransportConfigurationLoader
-import org.apache.commons.io.IOUtils
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-
+import scala.concurrent.{ExecutionContext, Await, Future}
 
 class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
   var serviceBus: TransportManager = null
@@ -28,62 +29,72 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 
   "KafkaTransport " - {
     "Publish and Subscribe" in {
+      import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub1",
-        mockDecoder,
-        mockExtractor[String]) { s =>
-        s should equal("12345")
-        cnt.incrementAndGet()
-        mockResultU
+      serviceBus.subscribe(Topic("/topic/{abc}"), "sub1",
+        MockRequestDecoder) { msg: MockRequest =>
+        Future {
+          msg.message should equal("12345")
+          cnt.incrementAndGet()
+        }
       }
 
-      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub1",
-        mockDecoder,
-        mockExtractor[String]){ s =>
-        s should equal("12345")
-        cnt.incrementAndGet()
-        mockResultU
+      serviceBus.subscribe(Topic("/topic/{abc}"), "sub1",
+        MockRequestDecoder) { msg: MockRequest =>
+        Future {
+          msg.message should equal("12345")
+          cnt.incrementAndGet()
+        }
       }
 
-      serviceBus.subscribe[String](Topic("/topic/{abc}"), "sub2",
-        mockDecoder,
-        mockExtractor[String]){ s =>
-        s should equal("12345")
-        cnt.incrementAndGet()
-        mockResultU
+      serviceBus.subscribe(Topic("/topic/{abc}"), "sub2",
+        MockRequestDecoder) { msg: MockRequest =>
+        Future {
+          msg.message should equal("12345")
+          cnt.incrementAndGet()
+        }
       }
 
-      Thread.sleep(500) // we need to wait until subscriptions will go acros the
+      Thread.sleep(1000) // we need to wait until subscriptions will go acros the
+      // clear counter
+      cnt.set(0)
+      val f: Future[Unit] = serviceBus.publish(MockRequest("/topic/{abc}", "12345"))
 
-      val f: Future[Unit] = serviceBus.publish[String](Topic("/topic/{abc}"),
-        "12345",
-        mockEncoder)
-
-      whenReady(f) { s =>
+      whenReady(f) { _ =>
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(2)
       }
     }
   }
+}
 
-  def mockExtractor[T]: FiltersExtractor[T] = {
-    (x: T) => Filters.empty
+// move mocks to separate assembly
+case class MockRequest(specificTopic: String, message: String,
+                       correlationId: String = UUID.randomUUID().toString,
+                       messageId: String = UUID.randomUUID().toString) extends TransportRequest {
+  def topic: Topic = Topic(specificTopic)
+  override def encode(output: OutputStream): Unit = {
+    SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }
+}
 
-  def mockEncoder(in: String, out: OutputStream) = {
-    out.write(in.getBytes("UTF-8"))
+case class MockResponse(message: String,
+                        correlationId: String = UUID.randomUUID().toString,
+                        messageId: String = UUID.randomUUID().toString) extends TransportResponse {
+  override def encode(output: OutputStream): Unit = {
+    SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }
+}
 
-  def mockDecoder(in: InputStream): String = {
-    IOUtils.toString(in, "UTF-8")
+object MockRequestDecoder extends Decoder[MockRequest] {
+  override def apply(input: InputStream): MockRequest = {
+    SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockRequest])
   }
+}
 
-  def mockResult(result: String): SubscriptionHandlerResult[String] = {
-    SubscriptionHandlerResult[String](Future.successful(result), mockEncoder)
-  }
-
-  def mockResultU: SubscriptionHandlerResult[Unit] = {
-    SubscriptionHandlerResult[Unit](Future.successful{}, null)
+object MockResponseDecoder extends Decoder[MockResponse] {
+  override def apply(input: InputStream): MockResponse = {
+    SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockResponse])
   }
 }
