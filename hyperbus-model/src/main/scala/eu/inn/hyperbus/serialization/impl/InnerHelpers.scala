@@ -10,33 +10,13 @@ import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, Status}
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, ResponseHeader}
 import eu.inn.servicebus.serialization.Encoder
 
-object InnerHelpers {
+object InnerHelpers { // todo: rename this
 
   import eu.inn.binders.json._
 
   implicit val bindOptions = new BindOptions(true)
 
-  def encodeMessage[B <: Body](request: Request[B], bodyEncoder: Encoder[B], out: OutputStream) = {
-    val req = RequestHeader(request.url, request.method, request.body.contentType, request.messageId,
-      if (request.messageId == request.correlationId) None else Some(request.correlationId)
-    )
-    writeUtf8("""{"request":""", out)
-    req.writeJson(out)
-    writeUtf8(""","body":""", out)
-    bodyEncoder(request.body, out)
-    writeUtf8("}", out)
-  }
 
-  def encodeMessage[B <: Body](response: Response[B], bodyEncoder: Encoder[B], out: OutputStream) = {
-    val resp = ResponseHeader(response.status, response.body.contentType, response.messageId,
-      if (response.messageId == response.correlationId) None else Some(response.correlationId)
-    )
-    writeUtf8("""{"response":""", out)
-    resp.writeJson(out)
-    writeUtf8(""","body":""", out)
-    bodyEncoder(response.body, out)
-    writeUtf8("}", out)
-  }
 
   def decodeRequestWith[REQ <: Request[Body]](inputStream: InputStream)(decoder: (RequestHeader, JsonParser) => REQ): REQ = {
     val jf = new JsonFactory()
@@ -133,8 +113,8 @@ object InnerHelpers {
     EmptyBody
   }
 
-  def dynamicBodyEncoder(body: DynamicBody, out: OutputStream): Unit =
-    eu.inn.servicebus.serialization.createEncoder[Value](body.content, out)
+  /*def dynamicBodyEncoder(body: DynamicBody, out: OutputStream): Unit =
+    eu.inn.servicebus.serialization.createEncoder[Value](body.content, out)*/
 
   def emptyBodyEncoder(body: EmptyBody, out: OutputStream): Unit =
     eu.inn.servicebus.serialization.createEncoder[String](null, out)
@@ -148,7 +128,5 @@ object InnerHelpers {
     if (next != token) throw DecodeException(s"$token expected at $loc, but found: $next")
   }
 
-  private def writeUtf8(s: String, out: OutputStream) = {
-    out.write(s.getBytes("UTF8"))
-  }
+
 }

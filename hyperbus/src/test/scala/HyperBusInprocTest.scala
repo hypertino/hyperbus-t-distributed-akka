@@ -4,7 +4,7 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest.{Link, _}
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.hyperbus.utils.IdUtils
+import IdUtils
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -20,7 +20,7 @@ case class TestBody2(resourceData: Long) extends Body
 
 @body("application/vnd+created-body.json")
 case class TestCreatedBody(resourceId: String,
-                           @fieldName("_links") links: Body.LinksMap = Map(
+                           @fieldName("_links") links: Links.Map = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody// with NoContentType
 

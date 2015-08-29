@@ -1,12 +1,12 @@
-package eu.inn.hyperbus.utils
+package eu.inn.hyperbus.rest
 
 import java.security.SecureRandom
 
-object IdUtils {
+object IdGenerator {
   private val random = new SecureRandom()
   private val base64t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-~"
 
-  def createId: String = {
+  def create(): String = {
     val sb = new StringBuilder(25)
     next(sb)
     next(sb)

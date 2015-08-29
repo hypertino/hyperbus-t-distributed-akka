@@ -1,5 +1,6 @@
 package eu.inn.hyperbus.rest.annotations
 
+import eu.inn.hyperbus.rest.UrlParser
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
@@ -22,19 +23,26 @@ private[annotations] object RequestMacro {
 private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImplBase {
   import c.universe._
 
-  def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
+  def updateRequestClass(url: String, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
     val q"case class $className(..$fields) extends ..$bases { ..$body }" = existingClass
 
     val fieldsExcept = fields.filterNot { f ⇒
       f.name.toString == "correlationId" || f.name.toString == "messageId"
     }
 
+    val urlFilterFields = UrlParser.extractParameters(url).map { arg ⇒
+      q"$arg -> SpecificValue(body.${TermName(arg)}.toString)" // todo: remove toString if string, + inner fields?
+    }
+
     val newClass = q"""
-        @eu.inn.hyperbus.rest.annotations.url($annotationArgument) case class $className(..$fieldsExcept,
+        @eu.inn.hyperbus.rest.annotations.url($url) case class $className(..$fieldsExcept,
           messageId: String,
           correlationId: String) extends ..$bases {
           ..$body
-          def url = $annotationArgument
+
+          import eu.inn.servicebus.transport._
+          override def url = $url
+          lazy val topic = Topic(url, Filters(Map(..$urlFilterFields)))
         }
       """
 
@@ -44,7 +52,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
         }
 
-        def url = $annotationArgument
+        def url = $url
     """
 
     val newCompanion = clzCompanion map { existingCompanion =>
@@ -63,10 +71,20 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       """
     }
 
-    c.Expr(q"""
+    val block = c.Expr(q"""
         $newClass
         $newCompanion
       """
     )
+    //println(block)
+    block
+  }
+
+  def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
+    getStringAnnotation(annotationArgument) map { url ⇒
+      updateRequestClass(url, existingClass, clzCompanion)
+    } getOrElse {
+      c.abort(c.enclosingPosition, "Please provide url string argument for @response annotation")
+    }
   }
 }

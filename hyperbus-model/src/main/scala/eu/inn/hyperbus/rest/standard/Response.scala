@@ -3,9 +3,15 @@ package eu.inn.hyperbus.rest.standard
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.response
-import eu.inn.hyperbus.utils.IdUtils
+import IdUtils
 
 //todo: !format code
+
+trait NormalResponse extends Response[Body]
+trait RedirectResponse extends Response[Body]
+trait ErrorResponse extends Response[ErrorBody]
+trait ServerError extends ErrorResponse
+trait ClientError extends ErrorResponse
 
 object Status {
   val OK = 200

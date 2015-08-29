@@ -16,36 +16,6 @@ import eu.inn.servicebus.transport._
 import scala.collection.mutable
 
 object Helpers {
-  def extractParametersFromUrl(url: String): Seq[String] = {
-    val DEFAULT = 0
-    val ARG = 1
-    var state = DEFAULT
-    val result = new mutable.MutableList[String]
-    val buf = new mutable.StringBuilder
-
-    url.foreach { c ⇒
-      state match {
-        case DEFAULT ⇒
-          c match {
-            case '{' ⇒
-              state = ARG
-            case _ ⇒
-          }
-        case ARG ⇒
-          c match {
-            case '}' ⇒
-              result += buf.toString()
-              buf.clear()
-              state = DEFAULT
-            case _ ⇒
-              buf += c
-          }
-      }
-    }
-
-    result.toSeq
-  }
-
   def topicWithAnyValue(url: String): Topic = Topic(url, Filters(extractParametersFromUrl(url).map(_ → AnyValue).toMap))
 
   // todo: Generic Errors and Responses
@@ -120,10 +90,10 @@ object Helpers {
     }
   }
 
-  def encodeDynamicRequest(request: DynamicRequest, outputStream: OutputStream): Unit = {
+  /*def encodeDynamicRequest(request: DynamicRequest, outputStream: OutputStream): Unit = {
     val bodyEncoder: Encoder[DynamicBody] = dynamicBodyEncoder
     InnerHelpers.encodeMessage(request, bodyEncoder, outputStream)
-  }
+  }*/
 
   def extractDynamicPartitionArgs(request: DynamicRequest) = Filters(
     impl.Helpers.extractParametersFromUrl(request.url).map { arg ⇒
@@ -133,12 +103,12 @@ object Helpers {
     }.toMap
   )
 
-  def dynamicBodyEncoder(body: DynamicBody, outputStream: OutputStream): Unit = {
+  /*def dynamicBodyEncoder(body: DynamicBody, outputStream: OutputStream): Unit = {
     dynamicValueEncoder(body.content, outputStream)
   }
 
   def dynamicValueEncoder(value: Value, outputStream: OutputStream): Unit = {
     import eu.inn.hyperbus.serialization.impl.InnerHelpers.bindOptions
     eu.inn.servicebus.serialization.createEncoder[Value](value, outputStream)
-  }
+  }*/
 }

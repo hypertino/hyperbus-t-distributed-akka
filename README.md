@@ -4,7 +4,12 @@ TODO:
     common transport code
     todo eliminate helpers
     publish result with offset
-
+    servicebus -> hyperbus
+    rest -> model
+    annotations -> model
+    model -> ?
+    encode to string, not to stream!
+    
     - перенести encoder в message
     - перенести partitionextractor в topic в message
     - выделить exceptionEncoder

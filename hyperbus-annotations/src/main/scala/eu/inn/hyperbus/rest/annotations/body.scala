@@ -29,6 +29,12 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
         @eu.inn.hyperbus.rest.annotations.contentType($annotationArgument) case class $className(..$fields) extends ..$bases {
           ..$body
           def contentType = Some($annotationArgument)
+          override def encode(outputStream: java.io.OutputStream) = {
+            import eu.inn.hyperbus.serialization.MessageEncoder.bindOptions
+            eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer=>
+              serializer.bind[$className](this)
+            }
+          }
         }
       """
 

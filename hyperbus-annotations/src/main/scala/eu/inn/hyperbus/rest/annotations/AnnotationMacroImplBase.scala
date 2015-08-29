@@ -15,6 +15,12 @@ private[annotations] trait AnnotationMacroImplBase {
     }
   }
 
-  def updateClass(annotationArgument: Tree, existingClass: ClassDef, existingCompanion: Option[ModuleDef] = None): c.Expr[Any]
-  def invalidAnnottee() = c.abort(c.enclosingPosition, "This annotation can only be used on class")
+  protected def updateClass(annotationArgument: Tree, existingClass: ClassDef, existingCompanion: Option[ModuleDef] = None): c.Expr[Any]
+  protected def invalidAnnottee() = c.abort(c.enclosingPosition, "This annotation can only be used on class")
+  protected def getStringAnnotation(annotationArgument: Tree): Option[String] = {
+    annotationArgument match {
+      case Literal(Constant(s: String)) => Some(s)
+      case _ => None
+    }
+  }
 }

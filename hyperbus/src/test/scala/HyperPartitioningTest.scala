@@ -6,7 +6,7 @@ import eu.inn.hyperbus.impl.Helpers
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
-import eu.inn.hyperbus.utils.IdUtils
+import IdUtils
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
