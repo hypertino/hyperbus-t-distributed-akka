@@ -1,15 +1,17 @@
 package eu.inn.hyperbus.rest
 
-import java.io.OutputStream
+import java.io.{InputStream, OutputStream}
 
+import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
+import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader}
 import eu.inn.servicebus.transport.{SpecificValue, Filters, Topic}
 
 
 trait DynamicBody extends Body with Links {
   def content: Value
-  val links: Links.Map = ???
-  //lazy val links: Links.Map = content.__links[Option[Links.Map]].getOrElse(Map.empty) // todo: wtf with this?
+  lazy val links: Links.Map = content.__links[Option[Links.Map]].getOrElse(Map.empty) // todo: wtf with this?
 
   def encode(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
@@ -26,13 +28,10 @@ object DynamicBody {
   def apply(content: Value): DynamicBody = DynamicBodyContainer(content, None)
 
   def apply(jsonParser : com.fasterxml.jackson.core.JsonParser, contentType: Option[String]): DynamicBody = {
-    import eu.inn.binders._
-    eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
+    import eu.inn.binders.json._
+    SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(deserializer.unbind[Value], contentType)
     }
-  }
-  def apply(jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody = {
-    apply(jsonParser, None)
   }
   def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.content, dynamicBody.contentType))
 }
@@ -45,4 +44,20 @@ trait DynamicRequest extends Request[DynamicBody] {
       body.content.asMap.get(arg).map(_.asString).getOrElse("") // todo: inner fields like abc.userId
     )
   }.toMap))
+}
+
+object DynamicRequest {
+  def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
+    val body = DynamicBody(jsonParser, requestHeader.contentType)
+    val messageId = requestHeader.messageId
+    val correlationId = requestHeader.correlationId.getOrElse(messageId)
+    requestHeader.method match {
+      case Method.GET => DynamicGet(requestHeader.url, body, messageId, correlationId)
+      case Method.POST => DynamicPost(requestHeader.url, body, messageId, correlationId)
+      case Method.PUT => DynamicPut(requestHeader.url, body, messageId, correlationId)
+      case Method.DELETE => DynamicDelete(requestHeader.url, body, messageId, correlationId)
+      case Method.PATCH => DynamicPatch(requestHeader.url, body, messageId, correlationId)
+      case _ => throw new DecodeException(s"Unknown method: '${requestHeader.method}'") //todo: save more details (messageId) or introduce DynamicMethodRequest
+    }
+  }
 }

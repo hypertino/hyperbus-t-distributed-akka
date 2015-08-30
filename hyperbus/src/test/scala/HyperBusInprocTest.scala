@@ -4,7 +4,6 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest.{Link, _}
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
-import IdUtils
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}

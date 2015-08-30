@@ -4,7 +4,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.hyperbus.rest.annotations.{request, body}
-import eu.inn.hyperbus.serialization.{RequestHeader, MessageDecoder}
+import eu.inn.hyperbus.serialization._
 import org.scalatest.{FreeSpec, Matchers}
 
 

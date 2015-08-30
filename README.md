@@ -21,3 +21,7 @@ TODO:
 macros:
     - генератор encoder/body-decoder перенести в request
     
+    
+other:
+  // todo: Generic Errors and Responses
+  // handle non-standrard status

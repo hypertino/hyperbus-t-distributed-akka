@@ -60,38 +60,17 @@ private[hyperbus] trait HyperBusMacroImplementation {
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
-
     val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(in)
-
     val (method: String, bodySymbol) = getMethodAndBody(in)
 
-    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
-    val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot {
-      _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
-    } map { body =>
-      cq"_: $body => hbs.createEncoder[Response[$body]].asInstanceOf[hbs.ResponseEncoder]"
-    }
-
-    val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
-
     val obj = q"""{
-      import eu.inn.hyperbus.rest._
-      import eu.inn.hyperbus.{serialization=>hbs}
-      import eu.inn.{servicebus=>sb}
       val thiz = $thiz
-      val requestDecoder = hbs.createRequestDecoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
-      val responseEncoder = thiz.macroApiImpl.responseEncoder(
-        _: Response[Body],
-        _: java.io.OutputStream,
-        _.body match {
-          case ..$bodyCases
-        }
-      )
-      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAnyValue($url)
-      thiz.process[Response[Body],$in](topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
-        sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
+      val requestDecoder: RequestDecoder[$in] = ${in.termSymbol}.apply _
+      val topic = thiz.macroApiImpl.topicWithAnyValue(${in.termSymbol}.url)
+      val contentType = ${bodySymbol.termSymbol}.contentType
+
+      thiz.process[Response[Body],$in](topic, $method, contentType, requestDecoder) { case (response: $in) =>
+        Future[Response[Body]]($handler(response))
       }
     }"""
     //println(obj)
@@ -101,24 +80,19 @@ private[hyperbus] trait HyperBusMacroImplementation {
   def subscribe[IN <: Request[Body] : c.WeakTypeTag]
   (groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+
     val thiz = c.prefix.tree
-
     val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(in)
-
     val (method: String, bodySymbol) = getMethodAndBody(in)
-    val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
-      import eu.inn.hyperbus.rest._
-      import eu.inn.hyperbus.{serialization=>hbs}
-      import eu.inn.{servicebus=>sb}
       val thiz = $thiz
-      val requestDecoder = hbs.createRequestDecoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
-      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAnyValue($url)
-      thiz.subscribe[$in](topic, $method, $contentType, $groupName, requestDecoder, extractor) { case (response: $in) =>
-        sb.transport.SubscriptionHandlerResult[Unit]($handler(response),null)
+      val requestDecoder: RequestDecoder[$in] = ${in.termSymbol}.apply _
+      val topic = thiz.macroApiImpl.topicWithAnyValue(${in.termSymbol}.url)
+      val contentType = ${bodySymbol.termSymbol}.contentType
+
+      thiz.subscribe[$in](topic, $method, contentType, $groupName, requestDecoder) { case (response: $in) =>
+        Future[Unit]($handler(response))
       }
     }"""
     //println(obj)
@@ -145,23 +119,20 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val ta = getContentTypeAnnotation(body)
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
-      cq"$ta => eu.inn.hyperbus.serialization.createResponseBodyDecoder[$body]"
+      cq"$ta => ${body.termSymbol}.apply _"
     }
 
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"thiz.ask($r, requestEncoder, extractor, responseDecoder).asInstanceOf[Future[${responses.head}]]"
+        q"thiz.ask($r, responseDecoder).asInstanceOf[Future[${responses.head}]]"
       else
-        q"thiz.ask($r, requestEncoder, extractor, responseDecoder)"
+        q"thiz.ask($r, responseDecoder)"
 
     val obj = q"""{
-      import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hbs.createEncoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
       val responseDecoder = thiz.macroApiImpl.responseDecoder(
-        _: hbs.ResponseHeader,
+        _: eu.inn.hyperbus.serialization.ResponseHeader,
         _: com.fasterxml.jackson.core.JsonParser,
         _.contentType match {
           case ..$bodyCases
@@ -179,11 +150,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val thiz = c.prefix.tree
 
     val obj = q"""{
-      import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hbs.createEncoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
-      thiz.publish($r, requestEncoder, extractor)
+      thiz.publish($r)
     }"""
     //println(obj)
     obj

@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.rest.annotations
 
-import eu.inn.hyperbus.rest.UrlParser
+import eu.inn.hyperbus.rest.{Body, UrlParser}
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
@@ -30,6 +30,23 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       f.name.toString == "correlationId" || f.name.toString == "messageId"
     }
 
+    val (bodyFieldName,bodyType) = fields.flatMap { field ⇒
+      field.tpt match {
+        case i: Ident ⇒
+          val typeName = i.name.toTypeName
+          val fieldType = c.typecheck(q"(??? : $typeName)").tpe
+          if (fieldType <:< typeOf[Body]) {
+            Some((field.name, typeName))
+          }
+          else
+            None
+        case _ ⇒
+          None
+      }
+    }.headOption.getOrElse {
+      c.abort(c.enclosingPosition, "No Body parameter was found")
+    }
+
     val urlFilterFields = UrlParser.extractParameters(url).map { arg ⇒
       q"$arg -> SpecificValue(body.${TermName(arg)}.toString)" // todo: remove toString if string, + inner fields?
     }
@@ -52,6 +69,13 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
         }
 
+        def apply(requestHeader: RequestHeader, jsonParser: JsonParser): $className = {
+          val body = ${bodyType.toTermName}(jsonParser)
+          ${className.toTermName}($bodyFieldName = body,
+            messageId = requestHeader.messageId,
+            correlationId = requestHeader.correlationId.getOrElse(requestHeader.messageId)
+          )
+        }
         def url = $url
     """
 
@@ -79,6 +103,9 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     //println(block)
     block
   }
+
+  private def getMethodAnnotation(t: c.Type): Option[String] =
+    getStringAnnotation(t, typeOf[method])
 
   def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
     getStringAnnotation(annotationArgument) map { url ⇒

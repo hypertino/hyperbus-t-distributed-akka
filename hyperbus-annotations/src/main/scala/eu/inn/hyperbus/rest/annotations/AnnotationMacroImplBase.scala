@@ -17,10 +17,24 @@ private[annotations] trait AnnotationMacroImplBase {
 
   protected def updateClass(annotationArgument: Tree, existingClass: ClassDef, existingCompanion: Option[ModuleDef] = None): c.Expr[Any]
   protected def invalidAnnottee() = c.abort(c.enclosingPosition, "This annotation can only be used on class")
+
   protected def getStringAnnotation(annotationArgument: Tree): Option[String] = {
     annotationArgument match {
       case Literal(Constant(s: String)) => Some(s)
       case _ => None
     }
+  }
+
+  protected def getStringAnnotation(in: Type, atype: c.Type): Option[String] = {
+    in.baseClasses.flatMap { baseSymbol =>
+      baseSymbol.annotations.find { a =>
+        a.tree.tpe <:< atype
+      } flatMap {
+        annotation => annotation.tree.children.tail.head match {
+          case Literal(Constant(s: String)) => Some(s)
+          case _ => None
+        }
+      }
+    }.headOption
   }
 }
