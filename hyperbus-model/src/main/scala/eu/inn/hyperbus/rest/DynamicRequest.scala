@@ -11,7 +11,7 @@ import eu.inn.servicebus.transport.{SpecificValue, Filters, Topic}
 
 trait DynamicBody extends Body with Links {
   def content: Value
-  lazy val links: Links.Map = content.__links[Option[Links.Map]].getOrElse(Map.empty) // todo: wtf with this?
+  lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]].getOrElse(Map.empty)
 
   def encode(outputStream: OutputStream): Unit = {
     import eu.inn.binders._

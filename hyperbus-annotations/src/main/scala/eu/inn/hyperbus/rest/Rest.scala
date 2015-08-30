@@ -18,11 +18,11 @@ trait NoContentType {
 }
 
 trait Links {
-  def links: Links.Map
+  def links: Body.LinksMap
 }
 
-object Links {
-  type Map = scala.collection.Map[String, Either[Link, Seq[Link]]]
+object Body {
+  type LinksMap = Map[String, Either[Link, Seq[Link]]]
 }
 
 trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory {

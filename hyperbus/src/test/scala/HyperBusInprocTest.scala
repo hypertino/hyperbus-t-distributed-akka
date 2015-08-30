@@ -19,7 +19,7 @@ case class TestBody2(resourceData: Long) extends Body
 
 @body("application/vnd+created-body.json")
 case class TestCreatedBody(resourceId: String,
-                           @fieldName("_links") links: Links.Map = Map(
+                           @fieldName("_links") links: Body.LinksMap = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody// with NoContentType
 
