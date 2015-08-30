@@ -1,7 +1,8 @@
 package eu.inn.hyperbus.cli
 
-import akka.actor.Address
+import akka.actor.{Props, ActorLogging, Actor, Address}
 import akka.cluster.Cluster
+import akka.cluster.ClusterEvent._
 import com.fasterxml.jackson.core.JsonFactory
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders.dynamic.Text
@@ -42,6 +43,8 @@ object MainApp {
     val serviceBus = new ServiceBus(serviceBusConfig)
     val hyperBus = new HyperBus(serviceBus)
 
+    val actorSystem = ActorSystemRegistry.get("eu-inn").get
+
     hyperBus ~> { r: TestRequest ⇒
       Future.successful {
         Ok(DynamicBody(Text(s"Received content: ${r.body.content}")))
@@ -62,7 +65,8 @@ object MainApp {
 
     val askCommand = """^~>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
     val publishCommand = """^\|>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
-    val removeMember = """^remove (.+)://(.+)@(.+):(\d+)$""".r
+    val downMember = """^down (.+)://(.+)@(.+):(\d+)$""".r
+    val leaveMember = """^leave (.+)://(.+)@(.+):(\d+)$""".r
 
     breakable{ while(true) {
       console.readLine(">") match {
@@ -79,15 +83,17 @@ object MainApp {
           out(s"<!$r")
           val f = hyperBus <| r
 
-        case removeMember(protocol,system,host,port) ⇒
-          ActorSystemRegistry.get("eu-inn").map { actorSystem ⇒
-            val cluster = Cluster(actorSystem)
-            val address = Address(protocol,system,host,port.toInt)
-            out("Removing: " + address)
-            cluster.down(address)
-          } getOrElse {
-            out("Can't find eu-inn actorsystem")
-          }
+        case downMember(protocol,system,host,port) ⇒
+          val cluster = Cluster(actorSystem)
+          val address = Address(protocol,system,host,port.toInt)
+          out("Downing: " + address)
+          cluster.down(address)
+
+        case leaveMember(protocol,system,host,port) ⇒
+          val cluster = Cluster(actorSystem)
+          val address = Address(protocol,system,host,port.toInt)
+          out("Leaving: " + address)
+          cluster.leave(address)
 
         case cmd ⇒
           out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
