@@ -10,6 +10,7 @@ import eu.inn.hyperbus.rest.standard.{DynamicCreatedBody, Status}
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, ResponseHeader}
 import eu.inn.servicebus.serialization.Encoder
 
+/*
 object InnerHelpers { // todo: rename this
 
   import eu.inn.binders.json._
@@ -62,3 +63,4 @@ object InnerHelpers { // todo: rename this
 
 
 }
+*/

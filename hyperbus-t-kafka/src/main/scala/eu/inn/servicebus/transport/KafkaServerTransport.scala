@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import kafka.consumer.{KafkaStream, ConsumerConfig, Consumer}
 import com.typesafe.config.Config
-import eu.inn.servicebus.serialization.{Encoder, FiltersExtractor, Decoder}
+import eu.inn.servicebus.serialization.{Encoder, Decoder}
 import eu.inn.servicebus.transport.kafkatransport.ConfigLoader
 import org.slf4j.LoggerFactory
 

@@ -1,8 +1,10 @@
 package eu.inn.hyperbus.rest
 
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
+import com.fasterxml.jackson.core.JsonParser
 import eu.inn.hyperbus.rest.annotations.{request, body}
+import eu.inn.hyperbus.serialization.{RequestHeader, MessageDecoder}
 import org.scalatest.{FreeSpec, Matchers}
 
 
@@ -31,5 +33,21 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       val str = ba.toString("UTF-8")
       str should equal("""{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"1","data":"abcde"}}""")
     }
+    "TestPost1 should deserialize" in {
+      val str = """{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"1","data":"abcde"}}"""
+      val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
+      MessageDecoder.decodeRequestWith(bi) { (requestHeader, jsonParser) ⇒
+        requestHeader.url should equal("/test-post-1/{id}")
+        requestHeader.contentType should equal(Some("test-body-1"))
+        requestHeader.method should equal("test-method")
+        requestHeader.messageId should equal("123")
+        requestHeader.correlationId should equal(None)
+
+        val testbody1 = TestBody1(jsonParser)
+        testbody1 should equal(TestBody1("1", "abcde"))
+        TestPost1(testbody1)
+      }
+    }
+    // todo: + test for response
   }
 }

@@ -3,7 +3,6 @@ package eu.inn.hyperbus.transport
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicInteger
 
-import eu.inn.servicebus.serialization.FiltersExtractor
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -284,9 +283,5 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
         e shouldBe a[NoTransportRouteException]
       }
     }
-  }
-
-  def mockExtractor[T]: FiltersExtractor[T] = {
-    (x: T) => Filters.empty
   }
 }

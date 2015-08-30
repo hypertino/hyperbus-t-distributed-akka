@@ -31,7 +31,7 @@ object MessageEncoder {
     writeUtf8("}", outputStream)
   }
 
-  private def writeUtf8(s: String, out: OutputStream) = {
+  def writeUtf8(s: String, out: OutputStream) = {
     out.write(s.getBytes("UTF8"))
   }
 }

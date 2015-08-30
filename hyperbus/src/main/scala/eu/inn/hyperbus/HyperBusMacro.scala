@@ -261,25 +261,4 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
   }
-
-  def defineExtractor[REQ <: Request[Body] : c.WeakTypeTag](url: String): c.Expr[FiltersExtractor[REQ]] = {
-    import c.universe._
-
-    // todo: test urls with args
-    val t = weakTypeOf[REQ]
-    val lst = impl.Helpers.extractParametersFromUrl(url).map { arg ⇒
-      q"$arg -> SpecificValue(r.body.${TermName(arg)}.toString)" // todo: remove toString if string, + inner fields?
-    }
-
-    val obj = q"""{
-      import eu.inn.servicebus.transport._
-      (r:$t) => {
-        Filters(Map(
-          ..$lst
-        ))
-      }
-    }"""
-
-    c.Expr[FiltersExtractor[REQ]](obj)
-  }
 }

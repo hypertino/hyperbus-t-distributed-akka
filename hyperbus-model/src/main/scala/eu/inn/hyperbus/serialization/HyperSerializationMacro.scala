@@ -5,6 +5,7 @@ import eu.inn.servicebus.serialization._
 
 import scala.reflect.macros.blackbox.Context
 
+/*
 private[hyperbus] object HyperSerializationMacro {
   def createRequestDecoder[T <: Request[Body] : c.WeakTypeTag](c: Context): c.Expr[RequestDecoder[T]] = {
     import c.universe._
@@ -91,4 +92,4 @@ private[hyperbus] object HyperSerializationMacro {
     }
   }
 }
-
+*/
