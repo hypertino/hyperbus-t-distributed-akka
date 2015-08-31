@@ -1,19 +1,16 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import eu.inn.binders.dynamic.{Null, Text, Obj}
+import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, ResponseHeader}
-import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, Future}
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder

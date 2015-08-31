@@ -4,21 +4,20 @@ import akka.testkit.TestActorRef
 import akka.util.Timeout
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Text}
-import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
+import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import eu.inn.hyperbus.akkaservice.annotations.group
+import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.hyperbus.IdGenerator
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 
 @body("application/vnd+test-1.json")
 case class TestBody1(resourceData: String) extends Body

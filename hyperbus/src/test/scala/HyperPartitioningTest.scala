@@ -1,16 +1,12 @@
-import java.io.ByteArrayInputStream
-
-import eu.inn.binders.dynamic.Obj
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard.{Ok, StaticPost}
-import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 @body("application/vnd+parition.json")
 case class TestPartition(partitionId: String, data: String) extends Body

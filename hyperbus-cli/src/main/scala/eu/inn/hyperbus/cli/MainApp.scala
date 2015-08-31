@@ -1,22 +1,21 @@
 package eu.inn.hyperbus.cli
 
-import akka.actor.{Props, ActorLogging, Actor, Address}
+import akka.actor.Address
 import akka.cluster.Cluster
-import akka.cluster.ClusterEvent._
 import com.fasterxml.jackson.core.JsonFactory
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders.dynamic.Text
 import eu.inn.binders.naming.PlainConverter
-import eu.inn.hyperbus.HyperBus
+import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
-import eu.inn.hyperbus.IdGenerator
-import eu.inn.hyperbus.transport.api.{TransportManager, TransportConfigurationLoader}
 import eu.inn.hyperbus.transport.ActorSystemRegistry
-import scala.concurrent.duration._
+import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportManager}
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.control.Breaks._
 

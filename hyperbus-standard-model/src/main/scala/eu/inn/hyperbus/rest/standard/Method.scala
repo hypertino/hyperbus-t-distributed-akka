@@ -1,7 +1,7 @@
 package eu.inn.hyperbus.rest.standard
 
-import eu.inn.hyperbus.rest.annotations.method
 import eu.inn.hyperbus.rest._
+import eu.inn.hyperbus.rest.annotations.method
 
 object Method {
   val GET = "get"

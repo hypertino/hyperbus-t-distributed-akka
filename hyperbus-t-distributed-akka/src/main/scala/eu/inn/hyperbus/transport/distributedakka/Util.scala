@@ -1,6 +1,5 @@
 package eu.inn.hyperbus.transport.distributedakka
 
-import scala.concurrent.duration
 import scala.concurrent.duration._
 
 private [transport] object Util {

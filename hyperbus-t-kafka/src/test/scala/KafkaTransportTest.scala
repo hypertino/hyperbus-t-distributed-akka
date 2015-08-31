@@ -5,13 +5,12 @@ import com.typesafe.config.ConfigFactory
 import eu.inn.binders._
 import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.IdGenerator
-import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
   var transportManager: TransportManager = null

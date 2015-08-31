@@ -4,7 +4,7 @@ import akka.actor.Actor.Receive
 import akka.actor.ActorRef
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.akkaservice.annotations.group
-import eu.inn.hyperbus.rest.{DynamicBody, Body, Response}
+import eu.inn.hyperbus.rest.{Body, Response}
 
 import scala.concurrent.Future
 import scala.language.experimental.macros

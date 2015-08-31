@@ -1,5 +1,4 @@
 import java.io.{InputStream, OutputStream}
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.{Actor, ActorLogging}
@@ -17,7 +16,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Await, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 
 
 // move mocks to separate assembly

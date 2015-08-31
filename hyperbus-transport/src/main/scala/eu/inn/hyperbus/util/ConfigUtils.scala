@@ -2,7 +2,7 @@ package eu.inn.hyperbus.util
 
 import java.util.concurrent.TimeUnit
 
-import com.typesafe.config.{ConfigObject, Config}
+import com.typesafe.config.{Config, ConfigObject}
 
 object ConfigUtils {
   import scala.collection.JavaConversions._

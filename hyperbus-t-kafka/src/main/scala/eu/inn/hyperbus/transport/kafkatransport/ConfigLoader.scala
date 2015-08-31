@@ -2,16 +2,14 @@ package eu.inn.hyperbus.transport.kafkatransport
 
 import java.util.Properties
 
-import com.typesafe.config.{ConfigValue, ConfigObject, Config}
+import com.typesafe.config.{Config, ConfigValue}
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.{TransportRouteHolder, TransportConfigurationLoader}
-import eu.inn.hyperbus.util.ConfigUtils
+import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportRouteHolder}
 
 case class TopicInfoHolder(topic: Option[String], partitionKeys: Option[List[String]])
 
 object ConfigLoader {
   import scala.collection.JavaConversions._
-  import ConfigUtils._
 
   def loadRoutes(routesConfigList: java.util.List[_ <: ConfigValue]): List[KafkaRoute] = {
     import eu.inn.binders.tconfig._

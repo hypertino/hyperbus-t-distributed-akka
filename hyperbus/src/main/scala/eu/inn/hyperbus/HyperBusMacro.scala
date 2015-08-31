@@ -1,9 +1,7 @@
 package eu.inn.hyperbus
 
 import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{url, contentType, method}
-import eu.inn.hyperbus.serialization.{RequestDecoder, ResponseBodyDecoder}
-import eu.inn.hyperbus.serialization._
+import eu.inn.hyperbus.rest.annotations.{contentType, method, url}
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context

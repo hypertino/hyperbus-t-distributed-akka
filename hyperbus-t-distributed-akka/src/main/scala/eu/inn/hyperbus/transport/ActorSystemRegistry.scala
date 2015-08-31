@@ -2,17 +2,15 @@ package eu.inn.hyperbus.transport
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.actor.{Props, ActorLogging, Actor, ActorSystem}
+import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.cluster.ClusterEvent._
-import akka.cluster.{UniqueAddress, Cluster}
-import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.Publish
-import com.typesafe.config.{ConfigFactory, Config}
+import akka.cluster.{Cluster, UniqueAddress}
+import com.typesafe.config.Config
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Await, Promise}
 
 object ActorSystemRegistry {
   private val registry = new TrieMap[String, (ActorSystem, AtomicInteger)]

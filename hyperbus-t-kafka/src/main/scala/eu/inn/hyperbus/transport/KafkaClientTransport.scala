@@ -6,12 +6,12 @@ import java.util.Properties
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
-import org.apache.kafka.clients.producer.{RecordMetadata, Callback, ProducerRecord, KafkaProducer}
+import eu.inn.hyperbus.util.ConfigUtils._
+import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.FiniteDuration
-import eu.inn.hyperbus.util.ConfigUtils._
+import scala.concurrent.{Future, Promise}
 
 case class KafkaRoute(urlArg: Filter,
                      partitionArgs: Filters = Filters.empty,

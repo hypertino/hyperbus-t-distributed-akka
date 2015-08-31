@@ -3,8 +3,8 @@ package eu.inn.hyperbus.rest.standard
 import java.io.OutputStream
 
 import eu.inn.binders.dynamic.{Null, Value}
-import eu.inn.hyperbus.rest.Body
 import eu.inn.hyperbus.IdGenerator
+import eu.inn.hyperbus.rest.Body
 
 trait ErrorBody extends Body {
   def code: String

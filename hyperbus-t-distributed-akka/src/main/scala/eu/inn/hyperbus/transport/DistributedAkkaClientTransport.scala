@@ -13,8 +13,8 @@ import eu.inn.hyperbus.transport.distributedakka.Util
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{ExecutionContext, Future, Promise}
 
 class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
               val localAffinity: Boolean = true,

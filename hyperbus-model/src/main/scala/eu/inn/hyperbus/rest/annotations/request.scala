@@ -1,6 +1,7 @@
 package eu.inn.hyperbus.rest.annotations
 
 import eu.inn.hyperbus.rest.{Body, UrlParser}
+
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context

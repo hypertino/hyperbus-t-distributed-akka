@@ -5,17 +5,16 @@ import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.inn.hyperbus.transport.api._
-import kafka.consumer.{KafkaStream, ConsumerConfig, Consumer}
 import com.typesafe.config.Config
+import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
+import eu.inn.hyperbus.util.ConfigUtils._
+import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import eu.inn.hyperbus.util.ConfigUtils._
-
 import scala.util.control.NonFatal
 
 class KafkaServerTransport(

@@ -2,9 +2,9 @@ package eu.inn.hyperbus.rest
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import eu.inn.hyperbus.rest.annotations.{request}
+import eu.inn.hyperbus.rest.annotations.request
 import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.transport.api.{SpecificValue, Filters, Topic}
+import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 import org.scalatest.{FreeSpec, Matchers}
 
 @request("/test-post-1/{id}")

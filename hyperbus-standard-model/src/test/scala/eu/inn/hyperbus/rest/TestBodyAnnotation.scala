@@ -1,9 +1,6 @@
 package eu.inn.hyperbus.rest
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-
 import eu.inn.hyperbus.rest.annotations.body
-import eu.inn.hyperbus.serialization._
 import org.scalatest.{FreeSpec, Matchers}
 
 @body("test-body-1")

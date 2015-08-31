@@ -4,7 +4,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.inproc.{Subscription, SubKey}
+import eu.inn.hyperbus.transport.inproc.{SubKey, Subscription}
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory

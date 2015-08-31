@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.util
 
-import org.slf4j.{MDC, Logger}
+import org.slf4j.{Logger, MDC}
 
 object LogUtils {
   implicit class ExtendConfig(log: Logger) {

@@ -1,12 +1,12 @@
 package eu.inn.hyperbus.rest
 
-import java.io.{InputStream, OutputStream}
+import java.io.OutputStream
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader}
-import eu.inn.hyperbus.transport.api.{SpecificValue, Filters, Topic}
+import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 
 
 trait DynamicBody extends Body with Links {

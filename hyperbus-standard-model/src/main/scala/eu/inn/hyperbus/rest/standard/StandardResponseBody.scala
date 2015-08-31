@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.rest.standard
 
-import eu.inn.hyperbus.rest.{DynamicBody, Body}
+import eu.inn.hyperbus.rest.{Body, DynamicBody}
 import eu.inn.hyperbus.serialization.ResponseHeader
 
 object StandardResponseBody {
