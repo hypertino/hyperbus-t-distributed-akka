@@ -75,22 +75,22 @@ trait CreatedBody extends Body with Links {
 
 
 object DynamicCreatedBody {
-  def apply(content: Value, contentType: Option[String]): DynamicBody with CreatedBody = DynamicCreatedBodyContainer(content, contentType)
+  def apply(contentType: Option[String], content: Value): DynamicBody with CreatedBody = DynamicCreatedBodyContainer(contentType, content)
 
-  def apply(content: Value): DynamicBody with CreatedBody = apply(content, None)
+  def apply(content: Value): DynamicBody with CreatedBody = apply(None, content)
 
   def decode(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      apply(deserializer.unbind[Value], contentType)
+      apply(contentType, deserializer.unbind[Value])
     }
   }
 
   def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = decode(contentType, jsonParser)
-  def unapply(dynamicBody: DynamicBody with CreatedBody) = Some((dynamicBody.content, dynamicBody.contentType))
+  def unapply(dynamicBody: DynamicBody with CreatedBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
 
-private [rest] case class DynamicCreatedBodyContainer(content: Value, contentType: Option[String]) extends DynamicBody with CreatedBody
+private [rest] case class DynamicCreatedBodyContainer(contentType: Option[String], content: Value) extends DynamicBody with CreatedBody
 
 @response(Status.ACCEPTED) case class Accepted[+B <: Body](body: B) extends NormalResponse with Response[B]
 

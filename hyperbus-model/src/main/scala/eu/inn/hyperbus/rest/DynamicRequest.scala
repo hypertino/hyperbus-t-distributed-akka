@@ -23,21 +23,21 @@ trait DynamicBody extends Body with Links {
 }
 
 object DynamicBody {
-  def apply(content: Value, contentType: Option[String]): DynamicBody = DynamicBodyContainer(content, contentType)
+  def apply(contentType: Option[String], content: Value): DynamicBody = DynamicBodyContainer(contentType, content)
 
-  def apply(content: Value): DynamicBody = DynamicBodyContainer(content, None)
+  def apply(content: Value): DynamicBody = DynamicBodyContainer(None, content)
 
   def decode(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-      apply(deserializer.unbind[Value], contentType)
+      apply(contentType, deserializer.unbind[Value])
     }
   }
   def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody = decode(contentType, jsonParser)
-  def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.content, dynamicBody.contentType))
+  def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
 
-private [rest] case class DynamicBodyContainer(content: Value, contentType: Option[String] = None) extends DynamicBody
+private [rest] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
 
 trait DynamicRequest extends Request[DynamicBody] {
   lazy val topic = Topic(url, Filters(UrlParser.extractParameters(url).map { arg ⇒
