@@ -21,7 +21,7 @@ object ConfigLoader {
       val ti = config.read[TopicInfoHolder]
       val topic = ti.topic.getOrElse("hyperbus")
       val partitionKeys = ti.partitionKeys.getOrElse(List.empty)
-      val urlArg = TransportConfigurationLoader.getPartitionArg(th.url, th.matchType)
+      val urlArg = TransportConfigurationLoader.getFilter(th.url, th.matchType)
       KafkaRoute(urlArg, th.partitionArgsN, topic, partitionKeys)
     }.toList
   }

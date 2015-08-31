@@ -40,7 +40,7 @@ class KafkaServerTransport(
                                                 (handler: (IN) => Future[Unit]): String = {
 
     routes.find(r ⇒ r.urlArg.matchFilter(topicFilter.urlFilter) &&
-      r.partitionArgs.matchFilters(topicFilter.valueFilters)) map { route ⇒
+      r.valueFilters.matchFilters(topicFilter.valueFilters)) map { route ⇒
 
       val id = idCounter.incrementAndGet().toHexString
       val subscription = new Subscription[Unit,IN](1, /*todo: per topic thread count*/

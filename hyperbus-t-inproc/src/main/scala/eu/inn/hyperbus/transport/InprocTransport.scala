@@ -69,7 +69,7 @@ class InprocTransport(serialize: Boolean = false)
     }
 
     // todo: filter is redundant for inproc?
-    subscriptions.get(message.topic.urlFilter.specific).subRoutes filter (_._1.partitionArgs.matchFilters(message.topic.valueFilters)) foreach {
+    subscriptions.get(message.topic.urlFilter.specific).subRoutes filter (_._1.filters.matchFilters(message.topic.valueFilters)) foreach {
       case (subKey, subscriptionList) =>
 
         if (subKey.groupName.isEmpty) {
@@ -85,7 +85,7 @@ class InprocTransport(serialize: Boolean = false)
               //subscriber. partitionArgsExtractor(messageForSubscriber)
             ) foreach { args ⇒
 
-              if (subKey.partitionArgs.matchFilters(args)) {
+              if (subKey.filters.matchFilters(args)) {
                 // todo: log if not matched?
                 val handlerResult = subscriber.handler(messageForSubscriber)
                 result = if (serialize) {
@@ -126,7 +126,7 @@ class InprocTransport(serialize: Boolean = false)
             }
 
           ma.foreach { messageForSubscriber ⇒
-            if (subKey.partitionArgs.matchFilters(messageForSubscriber.topic.valueFilters)) {
+            if (subKey.filters.matchFilters(messageForSubscriber.topic.valueFilters)) {
               // todo: log if not matched?
               subscriber.handler(messageForSubscriber).onFailure {
                 case NonFatal(e) ⇒

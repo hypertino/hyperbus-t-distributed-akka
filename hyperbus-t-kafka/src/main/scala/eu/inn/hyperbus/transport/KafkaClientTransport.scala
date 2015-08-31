@@ -14,11 +14,11 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 
 case class KafkaRoute(urlArg: Filter,
-                     partitionArgs: Filters = Filters.empty,
+                     valueFilters: Filters = Filters.empty,
                      targetTopic: String = "hyperbus",
-                     targetPartitionArgs: List[String] = List.empty)
+                     targetPartitionKeys: List[String] = List.empty)
 
-class KafkaPartitionArgIsNotDefined(message: String) extends RuntimeException(message)
+class KafkaPartitionKeyIsNotDefined(message: String) extends RuntimeException(message)
 
 class KafkaClientTransport(producerProperties: Properties,
                           routes: List[KafkaRoute],
@@ -39,7 +39,7 @@ class KafkaClientTransport(producerProperties: Properties,
 
   override def publish(message: TransportRequest): Future[Unit] = {
     routes.find(r ⇒ r.urlArg.matchFilter(message.topic.urlFilter) &&
-      r.partitionArgs.matchFilters(message.topic.valueFilters)) map (publishToRoute(_, message)) getOrElse {
+      r.valueFilters.matchFilters(message.topic.valueFilters)) map (publishToRoute(_, message)) getOrElse {
       throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${message.topic}")
     }
   }
@@ -62,13 +62,13 @@ class KafkaClientTransport(producerProperties: Properties,
     val messageString = inputBytes.toString(encoding)
 
     val record: ProducerRecord[String,String] =
-      if (route.targetPartitionArgs.isEmpty) { // no partition key
+      if (route.targetPartitionKeys.isEmpty) { // no partition key
         new ProducerRecord(route.targetTopic, messageString)
       }
       else {
-        val recordKey = route.targetPartitionArgs.map { key: String ⇒ // todo: check partition key logic
+        val recordKey = route.targetPartitionKeys.map { key: String ⇒ // todo: check partition key logic
           message.topic.valueFilters.filterMap.getOrElse(key,
-            throw new KafkaPartitionArgIsNotDefined(s"PartitionArg $key is not defined in ${message.topic}")
+            throw new KafkaPartitionKeyIsNotDefined(s"Filter key $key is not defined for ${message.topic}")
           ).specific
         }.foldLeft("")(_+_)
 

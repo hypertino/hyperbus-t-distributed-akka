@@ -40,7 +40,7 @@ object TransportConfigurationLoader {
       throw new TransportConfigurationError(s"Couldn't find transport '$transportName'")
     ).asInstanceOf[T]
 
-    val urlArg = getPartitionArg(config.url, config.matchType)
+    val urlArg = getFilter(config.url, config.matchType)
     TransportRoute[T](transport, urlArg, config.partitionArgsN)
   }
 
@@ -59,7 +59,7 @@ object TransportConfigurationLoader {
     clazz.getConstructor(classOf[Config]).newInstance(transportConfig)
   }
 
-  def getPartitionArg(value: Option[String], matchType: Option[String]) = matchType match {
+  def getFilter(value: Option[String], matchType: Option[String]) = matchType match {
     case Some("Any") ⇒ AnyValue
     case Some("Regex") ⇒ RegexFilter(value.getOrElse(throw new TransportConfigurationError("Please provide value for Regex partition argument")))
     case _ ⇒ SpecificValue(value.getOrElse(throw new TransportConfigurationError("Please provide value for Exact partition argument")))
@@ -76,7 +76,7 @@ case class TransportRouteHolder(
   def partitionArgsN: Filters = {
     Filters(
       partitionArgs.map { case (partitionKey, partitionValue) ⇒
-        partitionKey → TransportConfigurationLoader.getPartitionArg(partitionValue.value, partitionValue.matchType)
+        partitionKey → TransportConfigurationLoader.getFilter(partitionValue.value, partitionValue.matchType)
       }
     )
   }
