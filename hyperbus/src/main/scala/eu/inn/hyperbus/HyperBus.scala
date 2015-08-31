@@ -71,16 +71,15 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
 
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
 
-  /*def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
+  def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
     ask(request,
       macroApiImpl.responseDecoder(_,_,PartialFunction.empty)
     ).asInstanceOf[Future[Response[DynamicBody]]]
   }
 
   def <|(request: DynamicRequest): Future[Unit] = {
-    import eu.inn.hyperbus.impl.Helpers._
     publish(request)
-  }*/
+  }
 
   protected case class RequestReplySubscription[REQ <: Request[Body]](
                                                                        handler: (REQ) => Future[Response[Body]],

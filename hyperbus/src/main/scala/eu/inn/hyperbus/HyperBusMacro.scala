@@ -2,6 +2,7 @@ package eu.inn.hyperbus
 
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{url, contentType, method}
+import eu.inn.hyperbus.serialization.{RequestDecoder, ResponseBodyDecoder}
 import eu.inn.servicebus.serialization._
 
 import scala.concurrent.Future
@@ -61,15 +62,19 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
-    val requestCompanionType = requestType.companion // todo: generate error if no companion is defined
+    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName // todo: generate error if no companion is defined
+    val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
+    val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
+    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDecoder[_]]).getOrElse {
+      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDecoder")
+    }*/
 
     val obj = q"""{
       val thiz = $thiz
-      val topic = thiz.macroApiImpl.topicWithAnyValue(${requestType}.url)
-      val contentType = ${bodySymbol}.contentType
-      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] = ${requestCompanionType}.apply _
-      thiz.process[Response[Body],$requestType](topic, $method, contentType, requestDecoder) { response: $requestType =>
+      val topic = thiz.macroApiImpl.topicWithAnyValue($url)
+      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] = $requestCompanionName.decoder _
+      thiz.process[Response[Body],$requestType](topic, $method, $contentType, requestDecoder) { response: $requestType =>
         $handler(response)
       }
     }"""
@@ -83,15 +88,19 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
-    val requestCompanionType = requestType.companion // todo: generate error if no companion is defined
+    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName // todo: generate error if no companion is defined
+    val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
+    val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
+    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDecoder[_]]).getOrElse {
+      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDecoder")
+    }*/
 
     val obj = q"""{
       val thiz = $thiz
-      val topic = thiz.macroApiImpl.topicWithAnyValue(${requestType}.url)
-      val contentType = ${bodySymbol}.contentType
-      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] =
-      thiz.subscribe[$requestType](topic, $method, contentType, $groupName, requestDecoder) { response: $requestType =>
+      val topic = thiz.macroApiImpl.topicWithAnyValue($url)
+      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] = $requestCompanionName.decoder _
+      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, requestDecoder) { response: $requestType =>
         $handler(response)
       }
     }"""
@@ -117,11 +126,15 @@ private[hyperbus] trait HyperBusMacroImplementation {
       t.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
-      val bodyCompanion = body.companion
+      val bodyCompanionName = body.companion.typeSymbol.name.toTermName
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
+      /*val applyMethod = getDecoder(body.companion, typeOf[ResponseBodyDecoder]).getOrElse {
+        c.abort(c.enclosingPosition, "Can't find method apply() compatible with ResponseBodyDecoder")
+      }*/
+      //val m = getApplyMethod(body.companion, typeOf[ResponseBodyDecoder]).get
       cq"""$ta => {
-        val rdb: eu.inn.hyperbus.serialization.ResponseBodyDecoder = ${bodyCompanion}.apply _
+        val rdb: eu.inn.hyperbus.serialization.ResponseBodyDecoder = $bodyCompanionName.decoder _
         rdb
       }"""
     }
@@ -144,7 +157,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       )
       $send
     }"""
-    println(obj)
+    //println(obj)
     obj
   }
 
@@ -233,4 +246,27 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
   }
+
+  /*private def getDecoder(companionType: c.Type, atype: c.Type): Option[MethodSymbol] = {
+    companionType.declaration(newTermName("apply")) match {
+      case NoSymbol => c.abort(c.enclosingPosition, s"No apply function found on $companionType")
+      case s =>
+        println(showRaw(s.asTerm.alternatives))
+        // searches apply method corresponding to unapply
+        val applies = s.asTerm.alternatives
+        applies.collectFirst {
+          case (apply: MethodSymbol)
+            if matchApply(apply, atype) ⇒ apply
+            //if (apply.paramss.headOption.map(_.map(_.asTerm.typeSignature)) == unapplyReturnTypes) => apply
+        }
+    }
+  }
+
+  def matchApply(apply: MethodSymbol, atype: Type): Boolean = {
+    val rht = Request
+
+    apply.paramss.headOption.map { params ⇒
+      params.headOption
+    }
+  }*/
 }

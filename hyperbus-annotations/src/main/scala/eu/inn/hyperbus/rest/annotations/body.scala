@@ -6,11 +6,11 @@ import scala.reflect.macros.blackbox.Context
 
 @compileTimeOnly("enable macro paradise to expand macro annotations")
 class body(v: String) extends StaticAnnotation {
-  def macroTransform(annottees: Any*): Any = macro BodyMacroImpl.contentType
+  def macroTransform(annottees: Any*): Any = macro BodyMacroImpl.body
 }
 
 private[annotations] object BodyMacroImpl {
-  def contentType(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+  def body(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
@@ -41,11 +41,13 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
     // check requestHeader
     val companionExtra = q"""
         def contentType = Some($annotationArgument)
-        def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
+        def decoder(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
             deserializer.unbind[$className]
           }
         }
+        def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className =
+          decoder(contentType, jsonParser)
         """
 
     val newCompanion = clzCompanion map { existingCompanion =>

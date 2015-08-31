@@ -69,13 +69,15 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
         }
 
-        def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser: com.fasterxml.jackson.core.JsonParser): $className = {
+        def decoder(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser: com.fasterxml.jackson.core.JsonParser): $className = {
           val body = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
           ${className.toTermName}($bodyFieldName = body,
             messageId = requestHeader.messageId,
             correlationId = requestHeader.correlationId.getOrElse(requestHeader.messageId)
           )
         }
+        def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className =
+          decoder(requestHeader, jsonParser)
         def url = $url
     """
 

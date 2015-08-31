@@ -108,7 +108,7 @@ object MainApp {
     val jf = new JsonFactory()
     val jp = jf.createParser(body)
     try {
-      eu.inn.hyperbus.impl.Helpers.decodeDynamicRequest(RequestHeader(url, method, contentType, IdUtils.createId, None), jp)
+      DynamicRequest(RequestHeader(url, method, contentType, IdGenerator.create(), None), jp)
     } finally {
       jp.close()
     }

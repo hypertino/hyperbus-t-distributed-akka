@@ -15,11 +15,12 @@ case object EmptyBody extends EmptyBody {
   def encode(outputStream: OutputStream): Unit = {
     MessageEncoder.writeUtf8("null", outputStream)
   }
-  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): EmptyBody = {
+  def decoder(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): EmptyBody = {
     import eu.inn.binders.json._
       SerializerFactory.findFactory().withJsonParser(jsonParser) {deserializer =>
       deserializer.unbind[Value]
     }
     EmptyBody
   }
+  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): EmptyBody = decoder(contentType, jsonParser)
 }

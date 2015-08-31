@@ -44,15 +44,15 @@ class ClientTransportTest(output: String) extends ClientTransport {
 
 class ServerTransportTest extends ServerTransport {
   var sTopicFilter: Topic = null
-  var sInputDecoder: Decoder[Any] = null
-  var sHandler: (Any) ⇒ Future[TransportMessage] = null
+  var sInputDecoder: Decoder[TransportRequest] = null
+  var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
   var sExceptionEncoder: Encoder[Throwable] = null
 
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
                                      (handler: (IN) => Future[TransportResponse]): String = {
 
     sInputDecoder = inputDecoder
-    sHandler = handler.asInstanceOf[(Any) ⇒ Future[TransportMessage]]
+    sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
     sExceptionEncoder = exceptionEncoder
     ""
   }

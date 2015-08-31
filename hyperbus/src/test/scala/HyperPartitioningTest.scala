@@ -23,6 +23,8 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
+
+  //todo: real partition test (with different suscribers)
   "HyperPartitioning " - {
     "Partitioning when asking" in {
       val ct = new ClientTransportTest(
@@ -55,19 +57,9 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       val msg = st.sInputDecoder(ba)
       msg should equal(TestPostPartition1(TestPartition("123", "abc"), messageId = "123", correlationId = "123"))
 
-      val partitionArgs = st.sExtractor(msg)
-      partitionArgs should equal(
+      msg.topic.valueFilters should equal(
         Filters(Map("partitionId" → SpecificValue("123")))
       )
-    }
-
-    "Parse Url" in {
-      val p: String ⇒ Seq[String] = Helpers.extractParametersFromUrl
-      p("{abc}") should equal(Seq("abc"))
-      p("/{abc}/") should equal(Seq("abc"))
-      p("x/{abc}/y") should equal(Seq("abc"))
-      p("x/{abc}/y/{def}") should equal(Seq("abc", "def"))
-      p("{abc}{def}") should equal(Seq("abc", "def"))
     }
   }
 
