@@ -244,9 +244,15 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
 
   protected def defaultResponseBodyDecoder(responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser): Body = {
     if (responseHeader.status >= 400 && responseHeader.status <= 599)
-      ErrorBody(responseBodyJson, responseHeader.contentType)
-    else
-      DynamicBody(responseHeader.contentType, responseBodyJson)
+      ErrorBody(responseHeader.contentType, responseBodyJson)
+    else {
+      responseHeader.status match {
+        case Status.CREATED ⇒
+          DynamicCreatedBody(responseHeader.contentType, responseBodyJson)
+        case _ ⇒
+          DynamicBody(responseHeader.contentType, responseBodyJson)
+      }
+    }
   }
 
   val macroApiImpl = new MacroApi {

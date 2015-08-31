@@ -4,6 +4,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.hyperbus.rest.annotations.{request}
 import eu.inn.hyperbus.serialization._
+import eu.inn.servicebus.transport.{SpecificValue, Filters, Topic}
 import org.scalatest.{FreeSpec, Matchers}
 
 @request("/test-post-1/{id}")
@@ -20,26 +21,28 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
 
     "TestPost1 should serialize" in {
       val ba = new ByteArrayOutputStream()
-      val post1 = TestPost1(TestBody1("1", "abcde"), messageId = "123", correlationId = "123")
+      val post1 = TestPost1(TestBody1("155", "abcde"), messageId = "123", correlationId = "123")
       post1.encode(ba)
       val str = ba.toString("UTF-8")
-      str should equal("""{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"1","data":"abcde"}}""")
+      str should equal("""{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"155","data":"abcde"}}""")
     }
 
     "TestPost1 should deserialize" in {
-      val str = """{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"1","data":"abcde"}}"""
+      val str = """{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"155","data":"abcde"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
-      MessageDecoder.decodeRequestWith(bi) { (requestHeader, jsonParser) ⇒
+      val post1 = MessageDecoder.decodeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         requestHeader.url should equal("/test-post-1/{id}")
         requestHeader.contentType should equal(Some("test-body-1"))
         requestHeader.method should equal("test-method")
         requestHeader.messageId should equal("123")
         requestHeader.correlationId should equal(None)
-
-        val testbody1 = TestBody1(requestHeader.contentType, jsonParser)
-        testbody1 should equal(TestBody1("1", "abcde"))
-        TestPost1(testbody1)
+        TestPost1(TestBody1(requestHeader.contentType, jsonParser))
       }
+
+      post1.body should equal(TestBody1("155", "abcde"))
+      post1.topic should equal(Topic("/test-post-1/{id}", Filters(Map(
+        "id" → SpecificValue("155")
+      ))))
     }
 
     /*

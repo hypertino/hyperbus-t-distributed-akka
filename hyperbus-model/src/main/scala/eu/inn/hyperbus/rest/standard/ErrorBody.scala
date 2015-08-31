@@ -3,7 +3,8 @@ package eu.inn.hyperbus.rest.standard
 import java.io.OutputStream
 
 import eu.inn.binders.dynamic.{Null, Value}
-import eu.inn.hyperbus.rest.{IdGenerator, Body}
+import eu.inn.hyperbus.rest.Body
+import eu.inn.servicebus.IdGenerator
 
 trait ErrorBody extends Body {
   def code: String
@@ -25,15 +26,17 @@ object ErrorBody {
     (errorBody.code, errorBody.description, errorBody.errorId, errorBody.extra, errorBody.contentType)
   )
 
-  def apply(jsonParser : com.fasterxml.jackson.core.JsonParser, contentType: Option[String]): ErrorBody = {
+  def decoder(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = {
     import eu.inn.binders._
     eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       deserializer.unbind[ErrorBodyContainer].copy(contentType = contentType)
     }
   }
-  def apply(jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = {
-    apply(jsonParser, None)
-  }
+
+  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = decoder(contentType, jsonParser)
+  /*def apply(jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = {
+    apply(jsonParser, )
+  }*/
 }
 
 private [standard] case class ErrorBodyContainer(code: String,

@@ -12,6 +12,7 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
+import eu.inn.servicebus.IdGenerator
 import eu.inn.servicebus.transport.config.TransportConfigurationLoader
 import eu.inn.servicebus.transport.{TransportManager, ActorSystemRegistry}
 import scala.concurrent.duration._

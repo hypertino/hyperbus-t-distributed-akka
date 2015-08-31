@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.rest
+package eu.inn.servicebus
 
 import java.security.SecureRandom
 

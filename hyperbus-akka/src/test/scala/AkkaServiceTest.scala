@@ -10,6 +10,7 @@ import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
+import eu.inn.servicebus.IdGenerator
 import eu.inn.servicebus.transport._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}

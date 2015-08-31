@@ -1,10 +1,10 @@
 import java.io.{InputStream, OutputStream}
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders._
 import eu.inn.binders.json.SerializerFactory
+import eu.inn.servicebus.IdGenerator
 import eu.inn.servicebus.serialization._
 import eu.inn.servicebus.transport._
 import eu.inn.servicebus.transport.config.TransportConfigurationLoader
@@ -71,8 +71,8 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 
 // move mocks to separate assembly
 case class MockRequest(specificTopic: String, message: String,
-                       correlationId: String = UUID.randomUUID().toString,
-                       messageId: String = UUID.randomUUID().toString) extends TransportRequest {
+                       correlationId: String = IdGenerator.create(),
+                       messageId: String = IdGenerator.create()) extends TransportRequest {
   def topic: Topic = Topic(specificTopic)
   override def encode(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
@@ -80,8 +80,8 @@ case class MockRequest(specificTopic: String, message: String,
 }
 
 case class MockResponse(message: String,
-                        correlationId: String = UUID.randomUUID().toString,
-                        messageId: String = UUID.randomUUID().toString) extends TransportResponse {
+                        correlationId: String = IdGenerator.create(),
+                        messageId: String = IdGenerator.create()) extends TransportResponse {
   override def encode(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }

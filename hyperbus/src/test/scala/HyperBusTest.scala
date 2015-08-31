@@ -16,11 +16,7 @@ import scala.concurrent.duration.FiniteDuration
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder
-  private var inputTopicVar: Topic = null
-
   def input = messageBuf.toString()
-
-  def inputTopic = inputTopicVar
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = {
     val ba = new ByteArrayOutputStream()
@@ -108,7 +104,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       whenReady(f) { r =>
         r shouldBe a[Created[_]]
-        r.body shouldBe a[DynamicCreatedBody]
+        r.body shouldBe a[DynamicBody]
+        r.body shouldBe a[CreatedBody]
       }
     }
 

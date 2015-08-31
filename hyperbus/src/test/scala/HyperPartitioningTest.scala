@@ -26,7 +26,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
   //todo: real partition test (with different suscribers)
   "HyperPartitioning " - {
-    "Partitioning when asking" in {
+    /*"Partitioning when asking" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":200,"messageId":"123"},"body":{}}"""
       )
@@ -60,7 +60,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       msg.topic.valueFilters should equal(
         Filters(Map("partitionId" → SpecificValue("123")))
       )
-    }
+    }*/
   }
 
   // todo: add partition tests for Dynamic

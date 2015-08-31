@@ -19,12 +19,12 @@ class TestBodyAnnotation extends FreeSpec with Matchers {
       import eu.inn.binders.json._
       val body = TestBody1("100500", "abcde")
       val s = body.toJson
-      s should equal("""{"id":"100500","data":"abcde"""")
+      s should equal("""{"id":"100500","data":"abcde"}""")
     }
 
     "Deserialize Body" in {
       import eu.inn.binders.json._
-      val s = """{"id":"100500","data":"abcde""""
+      val s = """{"id":"100500","data":"abcde"}"""
       val body = s.parseJson[TestBody1]
       body should equal(TestBody1("100500", "abcde"))
     }
