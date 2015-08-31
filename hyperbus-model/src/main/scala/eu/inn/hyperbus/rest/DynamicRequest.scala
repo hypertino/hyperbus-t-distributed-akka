@@ -27,7 +27,7 @@ object DynamicBody {
 
   def apply(content: Value): DynamicBody = DynamicBodyContainer(content, None)
 
-  def apply(jsonParser : com.fasterxml.jackson.core.JsonParser, contentType: Option[String]): DynamicBody = {
+  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(deserializer.unbind[Value], contentType)
@@ -48,7 +48,7 @@ trait DynamicRequest extends Request[DynamicBody] {
 
 object DynamicRequest {
   def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
-    val body = DynamicBody(jsonParser, requestHeader.contentType)
+    val body = DynamicBody(requestHeader.contentType, jsonParser)
     val messageId = requestHeader.messageId
     val correlationId = requestHeader.correlationId.getOrElse(messageId)
     requestHeader.method match {

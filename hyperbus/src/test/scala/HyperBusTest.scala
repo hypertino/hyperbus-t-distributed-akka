@@ -22,10 +22,9 @@ class ClientTransportTest(output: String) extends ClientTransport {
 
   def inputTopic = inputTopicVar
 
-  override def ask[OUT, IN](topic: Topic, message: IN, inputEncoder: Encoder[IN], outputDecoder: Decoder[OUT]): Future[OUT] = {
-    inputTopicVar = topic
+  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = {
     val ba = new ByteArrayOutputStream()
-    inputEncoder(message, ba)
+    message.encode(ba)
     messageBuf.append(ba.toString("UTF-8"))
 
     val os = new ByteArrayInputStream(output.getBytes("UTF-8"))
@@ -33,50 +32,38 @@ class ClientTransportTest(output: String) extends ClientTransport {
     Future.successful(out)
   }
 
-  override def publish[IN](topic: Topic, message: IN, inputEncoder: Encoder[IN]): Future[Unit] = {
-    ask[Any, IN](topic, message, inputEncoder, null) map { x =>
+  override def publish(message: TransportRequest): Future[Unit] = {
+    ask(message, null) map { x =>
     }
   }
 
-  def shutdown(duration: FiniteDuration): Future[Boolean] = {
+  override def shutdown(duration: FiniteDuration): Future[Boolean] = {
     Future.successful(true)
   }
 }
 
 class ServerTransportTest extends ServerTransport {
+  var sTopicFilter: Topic = null
   var sInputDecoder: Decoder[Any] = null
-  var sHandler: (Any) ⇒ SubscriptionHandlerResult[Any] = null
-  var sExtractor: FiltersExtractor[Any] = null
+  var sHandler: (Any) ⇒ Future[TransportMessage] = null
   var sExceptionEncoder: Encoder[Throwable] = null
 
-  def process[OUT, IN](topic: Topic,
-                  inputDecoder: Decoder[IN],
-                  partitionArgsExtractor: FiltersExtractor[IN],
-                  exceptionEncoder: Encoder[Throwable])
-                 (handler: (IN) => SubscriptionHandlerResult[OUT]): String = {
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+                                     (handler: (IN) => Future[TransportResponse]): String = {
 
     sInputDecoder = inputDecoder
-    sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
-    sExtractor = partitionArgsExtractor.asInstanceOf[FiltersExtractor[Any]]
+    sHandler = handler.asInstanceOf[(Any) ⇒ Future[TransportMessage]]
     sExceptionEncoder = exceptionEncoder
     ""
   }
 
-  def off(subscriptionId: String) = ???
-
   //todo: test this
-  def subscribe[IN](topic: Topic,
-                    groupName: String,
-                    inputDecoder: Decoder[IN],
-                    partitionArgsExtractor: FiltersExtractor[IN])
-                   (handler: (IN) ⇒ SubscriptionHandlerResult[Unit]): String = {
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+                                       (handler: (IN) => Future[Unit]): String = ???
 
-    sInputDecoder = inputDecoder
-    sHandler = handler.asInstanceOf[(Any) ⇒ SubscriptionHandlerResult[Any]]
-    ""
-  }
+  override def off(subscriptionId: String) = ???
 
-  def shutdown(duration: FiniteDuration): Future[Boolean] = {
+  override def shutdown(duration: FiniteDuration): Future[Boolean] = {
     Future.successful(true)
   }
 }
@@ -211,11 +198,11 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val msg = st.sInputDecoder(ba)
       msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))
 
-      val hres = st.sHandler(msg)
-      whenReady(hres.futureResult) { r =>
+      val futureResult = st.sHandler(msg)
+      whenReady(futureResult) { r =>
         r should equal(Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
-        hres.resultEncoder(r, ba)
+        r.encode(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":201,"contentType":"application/vnd+created-body.json","messageId":"123"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
@@ -237,11 +224,11 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val msg = st.sInputDecoder(ba)
       msg should equal(StaticPostWithEmptyBody(EmptyBody, messageId = "123", correlationId = "123"))
 
-      val hres = st.sHandler(msg)
-      whenReady(hres.futureResult) { r =>
+      val futureResult = st.sHandler(msg)
+      whenReady(futureResult) { r =>
         r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
-        hres.resultEncoder(r, ba)
+        r.encode(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":null}"""
@@ -263,11 +250,11 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val msg = st.sInputDecoder(ba)
       msg should equal(StaticPostWithDynamicBody(DynamicBody(Text("haha"), Some("some-content")), messageId = "123", correlationId = "123"))
 
-      val hres = st.sHandler(msg)
-      whenReady(hres.futureResult) { r =>
+      val futureResult = st.sHandler(msg)
+      whenReady(futureResult) { r =>
         r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
-        hres.resultEncoder(r, ba)
+        r.encode(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":null}"""
@@ -289,11 +276,11 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val msg = st.sInputDecoder(ba)
       msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))
 
-      val hres = st.sHandler(msg)
-      whenReady(hres.futureResult) { r =>
+      val futureResult = st.sHandler(msg)
+      whenReady(futureResult) { r =>
         r shouldBe a[Conflict[_]]
         val ba = new ByteArrayOutputStream()
-        hres.resultEncoder(r, ba)
+        r.encode(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":409,"messageId":"123"},"body":{"code":"failed","errorId":"abcde12345"}}"""

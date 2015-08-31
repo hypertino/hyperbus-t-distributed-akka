@@ -247,7 +247,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
     if (responseHeader.status >= 400 && responseHeader.status <= 599)
       ErrorBody(responseBodyJson, responseHeader.contentType)
     else
-      DynamicBody(responseBodyJson, responseHeader.contentType)
+      DynamicBody(responseHeader.contentType, responseBodyJson)
   }
 
   val macroApiImpl = new MacroApi {
@@ -256,7 +256,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
                         bodyDecoder: PartialFunction[ResponseHeader, ResponseBodyDecoder]): Response[Body] = {
       val body =
         if (bodyDecoder.isDefinedAt(responseHeader))
-          bodyDecoder(responseHeader)(responseBodyJson)
+          bodyDecoder(responseHeader)(responseHeader.contentType, responseBodyJson)
         else
           defaultResponseBodyDecoder(responseHeader, responseBodyJson)
       createStandardResponse(responseHeader, body)

@@ -57,7 +57,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
       hyperBus ~> { implicit post: TestPost1 =>
         Future {
-          Created(TestCreatedBody("100500"))
+          Created(TestCreatedBody("100501"))
         }
       }
 

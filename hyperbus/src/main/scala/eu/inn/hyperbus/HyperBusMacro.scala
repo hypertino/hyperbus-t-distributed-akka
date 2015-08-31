@@ -60,17 +60,17 @@ private[hyperbus] trait HyperBusMacroImplementation {
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
-    val in = weakTypeOf[IN]
-    val (method: String, bodySymbol) = getMethodAndBody(in)
+    val requestType = weakTypeOf[IN]
+    val requestCompanionType = requestType.companion // todo: generate error if no companion is defined
+    val (method: String, bodySymbol) = getMethodAndBody(requestType)
 
     val obj = q"""{
       val thiz = $thiz
-      val requestDecoder: RequestDecoder[$in] = ${in.termSymbol}.apply _
-      val topic = thiz.macroApiImpl.topicWithAnyValue(${in.termSymbol}.url)
-      val contentType = ${bodySymbol.termSymbol}.contentType
-
-      thiz.process[Response[Body],$in](topic, $method, contentType, requestDecoder) { case (response: $in) =>
-        Future[Response[Body]]($handler(response))
+      val topic = thiz.macroApiImpl.topicWithAnyValue(${requestType}.url)
+      val contentType = ${bodySymbol}.contentType
+      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] = ${requestCompanionType}.apply _
+      thiz.process[Response[Body],$requestType](topic, $method, contentType, requestDecoder) { response: $requestType =>
+        $handler(response)
       }
     }"""
     //println(obj)
@@ -82,17 +82,17 @@ private[hyperbus] trait HyperBusMacroImplementation {
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
-    val in = weakTypeOf[IN]
-    val (method: String, bodySymbol) = getMethodAndBody(in)
+    val requestType = weakTypeOf[IN]
+    val requestCompanionType = requestType.companion // todo: generate error if no companion is defined
+    val (method: String, bodySymbol) = getMethodAndBody(requestType)
 
     val obj = q"""{
       val thiz = $thiz
-      val requestDecoder: RequestDecoder[$in] = ${in.termSymbol}.apply _
-      val topic = thiz.macroApiImpl.topicWithAnyValue(${in.termSymbol}.url)
-      val contentType = ${bodySymbol.termSymbol}.contentType
-
-      thiz.subscribe[$in](topic, $method, contentType, $groupName, requestDecoder) { case (response: $in) =>
-        Future[Unit]($handler(response))
+      val topic = thiz.macroApiImpl.topicWithAnyValue(${requestType}.url)
+      val contentType = ${bodySymbol}.contentType
+      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] =
+      thiz.subscribe[$requestType](topic, $method, contentType, $groupName, requestDecoder) { response: $requestType =>
+        $handler(response)
       }
     }"""
     //println(obj)
@@ -103,7 +103,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
-    val url = getUrlAnnotation(in)
+    //val url = getUrlAnnotation(in)
     val responseBodyTypes = getUniqueResponseBodies(in)
 
     responseBodyTypes.groupBy(getContentTypeAnnotation(_) getOrElse "") foreach { kv =>
@@ -117,9 +117,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
       t.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
+      val bodyCompanion = body.companion
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
-      cq"$ta => ${body.termSymbol}.apply _"
+      cq"""$ta => {
+        val rdb: eu.inn.hyperbus.serialization.ResponseBodyDecoder = ${bodyCompanion}.apply _
+        rdb
+      }"""
     }
 
     val responses = getResponses(in)
@@ -140,7 +144,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       )
       $send
     }"""
-    //println(obj)
+    println(obj)
     obj
   }
 
