@@ -12,9 +12,9 @@ import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
-import eu.inn.servicebus.IdGenerator
-import eu.inn.servicebus.transport.config.TransportConfigurationLoader
-import eu.inn.servicebus.transport.{TransportManager, ActorSystemRegistry}
+import eu.inn.hyperbus.IdGenerator
+import eu.inn.hyperbus.transport.api.{TransportManager, TransportConfigurationLoader}
+import eu.inn.hyperbus.transport.ActorSystemRegistry
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
@@ -40,9 +40,9 @@ object MainApp {
 
     println("Starting hyperbus-cli...")
     val config = ConfigFactory.load()
-    val serviceBusConfig = TransportConfigurationLoader.fromConfig(config)
-    val serviceBus = new TransportManager(serviceBusConfig)
-    val hyperBus = new HyperBus(serviceBus)
+    val transportConfiguration = TransportConfigurationLoader.fromConfig(config)
+    val transportManager = new TransportManager(transportConfiguration)
+    val hyperBus = new HyperBus(transportManager)
 
     val actorSystem = ActorSystemRegistry.get("eu-inn").get
 

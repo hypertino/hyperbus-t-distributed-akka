@@ -10,8 +10,9 @@ import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.annotations.{body, request}
 import eu.inn.hyperbus.rest.standard._
-import eu.inn.servicebus.IdGenerator
-import eu.inn.servicebus.transport._
+import eu.inn.hyperbus.IdGenerator
+import eu.inn.hyperbus.transport._
+import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -104,8 +105,8 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
     val tr = new InprocTransport
     val cr = List(TransportRoute[ClientTransport](tr, AnyValue))
     val sr = List(TransportRoute[ServerTransport](tr, AnyValue))
-    val serviceBus = new TransportManager(cr, sr, ExecutionContext.global)
-    new HyperBus(serviceBus)
+    val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
+    new HyperBus(transportManager)
   }
 
   "AkkaHyperService " - {

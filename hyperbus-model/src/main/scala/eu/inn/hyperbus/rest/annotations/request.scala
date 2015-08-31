@@ -57,7 +57,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           correlationId: String) extends ..$bases {
           ..$body
 
-          import eu.inn.servicebus.transport._
+          import eu.inn.hyperbus.transport.api._
           override def url = ${className.toTermName}.url
           lazy val topic = Topic(url, Filters(Map(..$urlFilterFields)))
         }

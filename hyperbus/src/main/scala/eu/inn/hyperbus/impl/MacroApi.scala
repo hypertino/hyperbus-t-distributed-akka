@@ -2,7 +2,7 @@ package eu.inn.hyperbus.impl
 
 import eu.inn.hyperbus.rest.{Body, Response, UrlParser}
 import eu.inn.hyperbus.serialization.{ResponseBodyDecoder, ResponseHeader}
-import eu.inn.servicebus.transport.{AnyValue, Filters, Topic}
+import eu.inn.hyperbus.transport.api.{Topic, Filters, AnyValue}
 
 trait MacroApi {
   def responseDecoder(responseHeader: ResponseHeader,

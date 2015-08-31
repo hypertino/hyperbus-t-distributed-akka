@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader}
-import eu.inn.servicebus.transport.{SpecificValue, Filters, Topic}
+import eu.inn.hyperbus.transport.api.{SpecificValue, Filters, Topic}
 
 
 trait DynamicBody extends Body with Links {

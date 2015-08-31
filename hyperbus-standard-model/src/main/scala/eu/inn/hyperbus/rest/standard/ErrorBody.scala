@@ -4,7 +4,7 @@ import java.io.OutputStream
 
 import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.rest.Body
-import eu.inn.servicebus.IdGenerator
+import eu.inn.hyperbus.IdGenerator
 
 trait ErrorBody extends Body {
   def code: String

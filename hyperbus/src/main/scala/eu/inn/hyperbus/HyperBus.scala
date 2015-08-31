@@ -6,9 +6,8 @@ import eu.inn.hyperbus.impl.MacroApi
 import eu.inn.hyperbus.rest._
 import eu.inn.hyperbus.rest.standard._
 import eu.inn.hyperbus.serialization._
-import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport._
-import eu.inn.servicebus.util.Subscriptions
+import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -53,8 +52,7 @@ trait HyperBusApi {
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
-// todo: rename serviceBus!
-class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+class HyperBus(val transportManager: TransportManager)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
   protected trait Subscription[REQ <: Request[Body]] {
     def requestDecoder: RequestDecoder[REQ]
   }
@@ -155,14 +153,14 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
                                                         responseDecoder: ResponseDecoder[RESP]): Future[RESP] = {
 
     val outputDecoder = MessageDecoder.decodeResponseWith(_: InputStream)(responseDecoder)
-    serviceBus.ask[RESP](request, outputDecoder) map {
+    transportManager.ask[RESP](request, outputDecoder) map {
       case throwable: Throwable ⇒ throw throwable
       case other ⇒ other
     }
   }
 
   def publish[REQ <: Request[Body]](request: REQ): Future[Unit] = {
-    serviceBus.publish(request)
+    transportManager.publish(request)
   }
 
   def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
@@ -182,7 +180,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
-        val uid = serviceBus.process[REQ](topic, d, exceptionEncoder)(uh.handler)
+        val uid = transportManager.process[REQ](topic, d, exceptionEncoder)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -207,7 +205,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler[REQ](routeKey)
         val d: Decoder[REQ] = uh.decoder
-        val uid = serviceBus.subscribe[REQ](topic, groupName, d)(uh.handler)
+        val uid = transportManager.subscribe[REQ](topic, groupName, d)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -221,7 +219,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
           c + x._2.size
         }
         if (cnt <= 1) {
-          underlyingSubscriptions.get(routeKey).foreach(k => serviceBus.off(k._1))
+          underlyingSubscriptions.get(routeKey).foreach(k => transportManager.off(k._1))
         }
       }
       subscriptions.remove(subscriptionId)
@@ -229,7 +227,7 @@ class HyperBus(val serviceBus: TransportManager)(implicit val executionContext: 
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    serviceBus.shutdown(duration)
+    transportManager.shutdown(duration)
   }
 
   protected def exceptionEncoder(exception: Throwable, outputStream: java.io.OutputStream): Unit = {

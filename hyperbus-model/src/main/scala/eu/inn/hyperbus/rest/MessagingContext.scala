@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.rest
 
-import eu.inn.servicebus.IdGenerator
+import eu.inn.hyperbus.IdGenerator
 
 trait MessagingContextFactory {
   def newContext(): MessagingContext

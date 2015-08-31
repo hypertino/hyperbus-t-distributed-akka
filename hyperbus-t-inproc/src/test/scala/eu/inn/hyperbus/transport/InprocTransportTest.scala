@@ -3,7 +3,8 @@ package eu.inn.hyperbus.transport
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicInteger
 
-import eu.inn.servicebus.transport._
+import eu.inn.hyperbus.transport._
+import eu.inn.hyperbus.transport.api.{NoTransportRouteException, TransportResponse, TransportRequest, Topic}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 

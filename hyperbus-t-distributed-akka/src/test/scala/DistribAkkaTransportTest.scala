@@ -10,10 +10,9 @@ import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders._
 import eu.inn.binders.json._
-import eu.inn.servicebus.IdGenerator
-import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport._
-import eu.inn.servicebus.transport.config.TransportConfigurationLoader
+import eu.inn.hyperbus.IdGenerator
+import eu.inn.hyperbus.transport._
+import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
@@ -67,10 +66,10 @@ class TestActorX extends Actor with ActorLogging{
 class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
   //implicit var actorSystem: ActorSystem = null
 
-  var serviceBus: TransportManager = null
+  var transportManager: TransportManager = null
   before {
-    val serviceBusConfig = TransportConfigurationLoader.fromConfig(ConfigFactory.load())
-    serviceBus = new TransportManager(serviceBusConfig)
+    val transportConfiguration = TransportConfigurationLoader.fromConfig(ConfigFactory.load())
+    transportManager = new TransportManager(transportConfiguration)
     ActorSystemRegistry.get("eu-inn").foreach { implicit actorSystem ⇒
       val testActor = TestActorRef[TestActorX]
       Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
@@ -78,8 +77,8 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
   }
 
   after {
-    if (serviceBus != null) {
-      Await.result(serviceBus.shutdown(10.seconds), 10.seconds)
+    if (transportManager != null) {
+      Await.result(transportManager.shutdown(10.seconds), 10.seconds)
     }
   }
 
@@ -88,33 +87,33 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      val id = serviceBus.process(Topic("/topic/{abc}"), MockRequestDecoder, null) { msg: MockRequest =>
+      val id = transportManager.process(Topic("/topic/{abc}"), MockRequestDecoder, null) { msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)
         }
       }
 
-      val id2 = serviceBus.process(Topic("/topic/{abc}"), MockRequestDecoder, null){ msg: MockRequest =>
+      val id2 = transportManager.process(Topic("/topic/{abc}"), MockRequestDecoder, null){ msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)
         }
       }
 
-      serviceBus.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDecoder) { msg: MockRequest =>
+      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDecoder) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      serviceBus.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDecoder) { msg: MockRequest =>
+      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDecoder) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      serviceBus.subscribe(Topic("/topic/{abc}"), "sub2", MockRequestDecoder) { msg: MockRequest =>
+      transportManager.subscribe(Topic("/topic/{abc}"), "sub2", MockRequestDecoder) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
@@ -122,7 +121,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
       Thread.sleep(500) // we need to wait until subscriptions will go acros the
 
-      val f: Future[MockResponse] = serviceBus.ask(MockRequest("/topic/{abc}", "12345"), MockResponseDecoder)
+      val f: Future[MockResponse] = transportManager.ask(MockRequest("/topic/{abc}", "12345"), MockResponseDecoder)
 
       whenReady(f) { msg =>
         msg shouldBe a[MockResponse]
@@ -130,8 +129,8 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(3)
 
-        serviceBus.off(id)
-        serviceBus.off(id2)
+        transportManager.off(id)
+        transportManager.off(id2)
 
         /*
         Thread.sleep(500) // todo: find a way to know if the subscription is complete? future?

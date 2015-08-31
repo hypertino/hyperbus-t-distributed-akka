@@ -1,9 +1,7 @@
 package eu.inn.hyperbus.transport
 
 import com.typesafe.config.{Config, ConfigFactory}
-import eu.inn.servicebus.serialization.{Decoder, Encoder}
-import eu.inn.servicebus.transport._
-import eu.inn.servicebus.transport.config.TransportConfigurationLoader
+import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -24,7 +22,7 @@ class MockServerTransport(config: Config) extends ServerTransport {
 }
 
 class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with Matchers {
-  "ServiceBus " - {
+  "Transport Manager" - {
     "Configuration Test " in {
       val config = ConfigFactory.parseString("""
         service-bus: {

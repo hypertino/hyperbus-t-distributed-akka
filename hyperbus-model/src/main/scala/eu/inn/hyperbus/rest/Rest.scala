@@ -4,7 +4,8 @@ import java.io.OutputStream
 
 import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader, MessageEncoder}
-import eu.inn.servicebus.transport._
+import eu.inn.hyperbus.transport._
+import eu.inn.hyperbus.transport.api.{TransportResponse, TransportRequest, TransportMessage}
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
