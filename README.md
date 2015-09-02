@@ -12,7 +12,6 @@ TODO:
     replyTo ?
     + other headers? - extende RequestHeader & ResponseHeader
     + exception when duplicate subscription
-    + encode -> serialize
     + test serialize/deserialize exceptions
     
     low priority:
