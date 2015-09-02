@@ -58,9 +58,11 @@ trait Response[+B <: Body] extends Message[B] with TransportResponse {
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeResponse(this, outputStream)
 }
 
-// todo: DefinedResponse -> Tupple!
-
-trait DefinedResponse[R <: Response[_]]
+// defines responses:
+// * single:                DefinedResponse[Created[TestCreatedBody]]
+// * multiple:              DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
+// * alternative multiple:  DefinedResponse[|[Ok[DynamicBody], |[Created[TestCreatedBody], !]]]
+trait DefinedResponse[R]
 
 trait |[L <: Response[Body], R <: Response[Body]] extends Response[Body]
 

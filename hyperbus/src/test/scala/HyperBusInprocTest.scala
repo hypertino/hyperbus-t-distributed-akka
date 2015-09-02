@@ -34,9 +34,7 @@ with DefinedResponse[Created[TestCreatedBody]]
 
 @request("/resources")
 case class TestPost3(body: TestBody2) extends StaticPost(body)
-with DefinedResponse[
-  |[Ok[DynamicBody], |[Created[TestCreatedBody], !]]
-  ]
+with DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
 
 @request("/empty")
 case class TestPostWithNoContent(body: TestBody1) extends StaticPost(body)

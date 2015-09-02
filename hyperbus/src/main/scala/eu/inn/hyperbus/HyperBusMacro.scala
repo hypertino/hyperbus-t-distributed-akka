@@ -5,6 +5,7 @@ import eu.inn.hyperbus.model.annotations.{contentType, method, url}
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
+import scala.util.matching.Regex
 
 private[hyperbus] object HyperBusMacro {
 
@@ -199,17 +200,26 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getResponsesIn(tin: Seq[c.Type]): Seq[c.Type] = {
-    val tOr = typeOf[eu.inn.hyperbus.model.|[_, _]].typeSymbol.typeSignature
-    val tAsk = typeOf[eu.inn.hyperbus.model.!].typeSymbol.typeSignature
+    val tupleRegex = new Regex("^Tuple(\\d+)$")
 
-    tin.flatMap { t =>
-      if (t.typeSymbol.typeSignature <:< tOr) {
-        getResponsesIn(t.typeArgs)
-      } else
-      if (t.typeSymbol.typeSignature <:< tAsk) {
-        Seq.empty
-      } else {
-        Seq(t)
+    // DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
+    if (tin.length == 1 && tupleRegex.findFirstIn(tin.head.typeSymbol.name.toString).isDefined
+    ) {
+      tin.head.typeArgs
+    } //DefinedResponse[|[Ok[DynamicBody], |[Created[TestCreatedBody], !]]]
+    else {
+      val tOr = typeOf[eu.inn.hyperbus.model.|[_, _]].typeSymbol.typeSignature
+      val tAsk = typeOf[eu.inn.hyperbus.model.!].typeSymbol.typeSignature
+
+      tin.flatMap { t =>
+        if (t.typeSymbol.typeSignature <:< tOr) {
+          getResponsesIn(t.typeArgs)
+        } else
+        if (t.typeSymbol.typeSignature <:< tAsk) {
+          Seq.empty
+        } else {
+          Seq(t)
+        }
       }
     }
   }

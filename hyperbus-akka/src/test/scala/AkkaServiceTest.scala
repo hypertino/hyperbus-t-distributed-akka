@@ -50,9 +50,7 @@ with DefinedResponse[Created[TestCreatedBody]]
 
 @request("/resources")
 case class TestPost3(body: TestBody2) extends StaticPost(body)
-with DefinedResponse[
-  |[Ok[DynamicBody], |[Created[TestCreatedBody], |[NotFound[TestErrorBody], !]]]
-  ]
+with DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody], NotFound[TestErrorBody])]
 
 class TestActor extends Actor {
   var count = 0
