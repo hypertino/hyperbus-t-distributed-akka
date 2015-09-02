@@ -1,6 +1,6 @@
-package eu.inn.hyperbus.rest
+package eu.inn.hyperbus.model
 
-import eu.inn.hyperbus.rest.annotations.body
+import eu.inn.hyperbus.model.annotations.body
 import org.scalatest.{FreeSpec, Matchers}
 
 @body("test-body-1")

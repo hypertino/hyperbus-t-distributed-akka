@@ -30,7 +30,7 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
     this.lookupClientTransport(message.topic).ask[OUT](message, outputDecoder)
   }
 
-  def publish(message: TransportRequest): Future[Unit] = {
+  def publish(message: TransportRequest): Future[PublishResult] = {
     this.lookupClientTransport(message.topic).publish(message)
   }
 

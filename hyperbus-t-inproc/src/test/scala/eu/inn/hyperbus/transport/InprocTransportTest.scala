@@ -3,7 +3,7 @@ package eu.inn.hyperbus.transport
 import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicInteger
 
-import eu.inn.hyperbus.transport.api.{NoTransportRouteException, Topic, TransportRequest, TransportResponse}
+import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -152,9 +152,11 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       t.subscribe(Topic("a"), "group2", null)(group2Func)
       t.subscribe(Topic("a"), "group2", null)(group2Func)
 
-      val f: Future[Unit] = t.publish(MockRequest("a", "hey"))
+      val f: Future[PublishResult] = t.publish(MockRequest("a", "hey"))
 
-      whenReady(f) { _ =>
+      whenReady(f) { publishResult =>
+        publishResult.sent should equal(Some(true))
+        publishResult.offset should equal(None)
         processor.get() should equal(1)
         whenReady(group1promise.future) { _ =>
           whenReady(group2promise.future) { _ =>
@@ -194,9 +196,9 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       t.subscribe(Topic("a"), "group2", null)(group2Func)
       t.subscribe(Topic("a"), "group2", null)(group2Func)
 
-      val f: Future[Unit] = t.publish(MockRequest("a", "hey"))
+      val f: Future[PublishResult] = t.publish(MockRequest("a", "hey"))
 
-      whenReady(f) { _ =>
+      whenReady(f) { PublishResult =>
         whenReady(group1promise.future) { _ =>
           whenReady(group2promise.future) { _ =>
             Thread.sleep(300)

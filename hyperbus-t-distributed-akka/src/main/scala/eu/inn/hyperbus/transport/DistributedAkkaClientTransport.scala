@@ -63,7 +63,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     }
   }
 
-  override def publish(message: TransportRequest): Future[Unit] = {
+  override def publish(message: TransportRequest): Future[PublishResult] = {
     val specificUrl = message.topic.urlFilter.specific
     val inputBytes = new ByteArrayOutputStream()
     message.encode(inputBytes)
@@ -74,7 +74,12 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     }
 
     mediator ! Publish(specificUrl, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?
-    Future.successful{}
+    Future.successful{
+      new PublishResult {
+        def sent = None
+        def offset = None
+      }
+    }
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {

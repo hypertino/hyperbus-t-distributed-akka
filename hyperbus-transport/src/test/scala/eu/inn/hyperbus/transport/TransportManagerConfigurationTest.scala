@@ -11,7 +11,7 @@ import scala.concurrent.duration.FiniteDuration
 class MockClientTransport(config: Config) extends ClientTransport {
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = ???
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
-  override def publish(message: TransportRequest): Future[Unit] = ???
+  override def publish(message: TransportRequest): Future[PublishResult] = ???
 }
 
 class MockServerTransport(config: Config) extends ServerTransport {

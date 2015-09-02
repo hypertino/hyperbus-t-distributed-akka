@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.rest.annotations
+package eu.inn.hyperbus.model.annotations
 
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
@@ -26,7 +26,7 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
     val q"case class $className(..$fields) extends ..$bases { ..$body }" = existingClass
 
     val newClass = q"""
-        @eu.inn.hyperbus.rest.annotations.contentType($annotationArgument) case class $className(..$fields) extends ..$bases {
+        @eu.inn.hyperbus.model.annotations.contentType($annotationArgument) case class $className(..$fields) extends ..$bases {
           ..$body
           def contentType = Some($annotationArgument)
           override def encode(outputStream: java.io.OutputStream) = {

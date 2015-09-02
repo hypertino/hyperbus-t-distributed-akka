@@ -104,6 +104,10 @@ class InprocTransport(serialize: Boolean = false)
                 }
                 if (isPublish) { // convert to Future[Unit]
                   result = result.map {_ ⇒
+                    new PublishResult {
+                      def sent = Some(true)
+                      def offset = None
+                    }
                   }.asInstanceOf[Future[OUT]]
                 }
                 if (log.isTraceEnabled) {
@@ -134,7 +138,12 @@ class InprocTransport(serialize: Boolean = false)
               }
 
               if (result == null) {
-                result = Future.successful({}).asInstanceOf[Future[OUT]]
+                result = Future.successful(
+                  new PublishResult {
+                    def sent = Some(true)
+                    def offset = None
+                  }
+                ).asInstanceOf[Future[OUT]]
               }
               if (log.isTraceEnabled) {
                 log.trace(s"Message ($messageForSubscriber) is delivered to `subscriber` @$subKey}")
@@ -156,8 +165,8 @@ class InprocTransport(serialize: Boolean = false)
     _ask(message, outputDecoder, isPublish = false)
   }
 
-  override def publish(message: TransportRequest): Future[Unit] = {
-    _ask[TransportResponse](message, null, isPublish = true).asInstanceOf[Future[Unit]]
+  override def publish(message: TransportRequest): Future[PublishResult] = {
+    _ask[TransportResponse](message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
   }
 
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])

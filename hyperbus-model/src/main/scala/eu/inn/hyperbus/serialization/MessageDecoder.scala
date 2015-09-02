@@ -4,7 +4,7 @@ import java.io.InputStream
 
 import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import eu.inn.binders.core.BindOptions
-import eu.inn.hyperbus.rest.{Body, Request, Response}
+import eu.inn.hyperbus.model.{Body, Request, Response}
 
 object MessageDecoder {
   import eu.inn.binders.json._

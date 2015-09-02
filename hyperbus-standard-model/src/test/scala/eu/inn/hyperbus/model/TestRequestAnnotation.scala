@@ -1,8 +1,8 @@
-package eu.inn.hyperbus.rest
+package eu.inn.hyperbus.model
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import eu.inn.hyperbus.rest.annotations.request
+import eu.inn.hyperbus.model.annotations.request
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 import org.scalatest.{FreeSpec, Matchers}

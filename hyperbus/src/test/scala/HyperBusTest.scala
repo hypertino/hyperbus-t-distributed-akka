@@ -2,8 +2,8 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -26,8 +26,12 @@ class ClientTransportTest(output: String) extends ClientTransport {
     Future.successful(out)
   }
 
-  override def publish(message: TransportRequest): Future[Unit] = {
+  override def publish(message: TransportRequest): Future[PublishResult] = {
     ask(message, null) map { x =>
+      new PublishResult {
+        def sent = None
+        def offset = None
+      }
     }
   }
 

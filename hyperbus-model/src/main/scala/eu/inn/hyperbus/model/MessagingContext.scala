@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.rest
+package eu.inn.hyperbus.model
 
 import eu.inn.hyperbus.IdGenerator
 

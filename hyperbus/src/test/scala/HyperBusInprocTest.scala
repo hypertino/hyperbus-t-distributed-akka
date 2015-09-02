@@ -1,9 +1,9 @@
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.Text
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.rest.annotations.{body, request}
-import eu.inn.hyperbus.rest.standard._
-import eu.inn.hyperbus.rest.{Link, _}
+import eu.inn.hyperbus.model.annotations.{body, request}
+import eu.inn.hyperbus.model.standard._
+import eu.inn.hyperbus.model.{Link, _}
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures

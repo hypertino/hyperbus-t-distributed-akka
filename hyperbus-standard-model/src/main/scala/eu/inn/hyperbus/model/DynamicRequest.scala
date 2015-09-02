@@ -1,10 +1,10 @@
-package eu.inn.hyperbus.rest
+package eu.inn.hyperbus.model
 
 import java.io.OutputStream
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader}
 import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 
@@ -37,7 +37,7 @@ object DynamicBody {
   def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
 
-private [rest] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
+private [model] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
 
 trait DynamicRequest extends Request[DynamicBody] {
   lazy val topic = Topic(url, Filters(UrlParser.extractParameters(url).map { arg ⇒

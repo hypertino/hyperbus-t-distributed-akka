@@ -1,6 +1,6 @@
-package eu.inn.hyperbus.rest.annotations
+package eu.inn.hyperbus.model.annotations
 
-import eu.inn.hyperbus.rest.{Body, UrlParser}
+import eu.inn.hyperbus.model.{Body, UrlParser}
 
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
@@ -53,7 +53,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     }
 
     val newClass = q"""
-        @eu.inn.hyperbus.rest.annotations.url($url) case class $className(..$fieldsExcept,
+        @eu.inn.hyperbus.model.annotations.url($url) case class $className(..$fieldsExcept,
           messageId: String,
           correlationId: String) extends ..$bases {
           ..$body
@@ -65,7 +65,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       """
 
     val companionExtra = q"""
-        def apply(..$fieldsExcept)(implicit contextFactory: eu.inn.hyperbus.rest.MessagingContextFactory): $className = {
+        def apply(..$fieldsExcept)(implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className = {
           val ctx = contextFactory.newContext()
           ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
         }

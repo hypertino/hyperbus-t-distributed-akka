@@ -1,10 +1,10 @@
-package eu.inn.hyperbus.rest.standard
+package eu.inn.hyperbus.model.standard
 
 import java.io.OutputStream
 
 import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.IdGenerator
-import eu.inn.hyperbus.rest.Body
+import eu.inn.hyperbus.model.Body
 
 trait ErrorBody extends Body {
   def code: String

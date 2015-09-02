@@ -37,7 +37,7 @@ class KafkaClientTransport(producerProperties: Properties,
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = ???
 
-  override def publish(message: TransportRequest): Future[Unit] = {
+  override def publish(message: TransportRequest): Future[PublishResult] = {
     routes.find(r ⇒ r.urlArg.matchFilter(message.topic.urlFilter) &&
       r.valueFilters.matchFilters(message.topic.valueFilters)) map (publishToRoute(_, message)) getOrElse {
       throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${message.topic}")
@@ -56,7 +56,7 @@ class KafkaClientTransport(producerProperties: Properties,
     }
   }
 
-  private def publishToRoute(route: KafkaRoute, message: TransportRequest): Future[Unit] = {
+  private def publishToRoute(route: KafkaRoute, message: TransportRequest): Future[PublishResult] = {
     val inputBytes = new ByteArrayOutputStream()
     message.encode(inputBytes)
     val messageString = inputBytes.toString(encoding)
@@ -79,7 +79,7 @@ class KafkaClientTransport(producerProperties: Properties,
       log.trace(s"Sending to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $messageString")
     }
 
-    val promise = Promise[Unit]()
+    val promise = Promise[PublishResult]()
 
     producer.send(record, new Callback {
       def onCompletion(recordMetadata: RecordMetadata, e: Exception): Unit = {
@@ -88,7 +88,12 @@ class KafkaClientTransport(producerProperties: Properties,
           log.error(s"Can't send to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : $message", e)
         }
         else {
-          promise.success({})
+          promise.success(
+            new PublishResult {
+              def sent = Some(true)
+              def offset = Some(s"${recordMetadata.partition()}/${recordMetadata.offset()}}")
+            }
+          )
           if (logMessages && log.isTraceEnabled) {
             log.trace(s"Sent to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
               s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}")

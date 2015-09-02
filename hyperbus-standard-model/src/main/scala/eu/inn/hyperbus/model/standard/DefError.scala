@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.rest.standard
+package eu.inn.hyperbus.model.standard
 
 object DefError {
   val INTERNAL_ERROR = "internal_error"

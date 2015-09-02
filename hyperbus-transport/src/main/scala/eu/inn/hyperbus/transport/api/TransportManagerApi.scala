@@ -11,7 +11,7 @@ import scala.concurrent.duration.FiniteDuration
 trait TransportManagerApi {
   def ask[OUT <: TransportResponse](message: TransportRequest,outputDecoder: Decoder[OUT]): Future[OUT]
 
-  def publish(message: TransportRequest): Future[Unit]
+  def publish(message: TransportRequest): Future[PublishResult]
 
   def process[IN <: TransportRequest](topicFilter: Topic,
                                       inputDecoder: Decoder[IN],

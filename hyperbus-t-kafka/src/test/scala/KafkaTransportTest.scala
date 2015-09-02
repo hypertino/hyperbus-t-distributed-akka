@@ -57,10 +57,12 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       Thread.sleep(1000) // we need to wait until subscriptions will go acros the
       // clear counter
       cnt.set(0)
-      val f: Future[Unit] = transportManager.publish(MockRequest("/topic/{abc}", "12345"))
+      val f: Future[PublishResult] = transportManager.publish(MockRequest("/topic/{abc}", "12345"))
 
-      whenReady(f) { _ =>
+      whenReady(f) { publishResult =>
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
+        publishResult.sent should equal(Some(true))
+        publishResult.offset shouldNot equal(None)
         cnt.get should equal(2)
       }
     }

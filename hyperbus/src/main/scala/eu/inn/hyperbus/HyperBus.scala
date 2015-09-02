@@ -3,8 +3,8 @@ package eu.inn.hyperbus
 import java.io.InputStream
 
 import eu.inn.hyperbus.impl.MacroApi
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.util.Subscriptions
@@ -34,7 +34,7 @@ trait HyperBusApi {
   def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
                                                         responseDecoder: ResponseDecoder[RESP]): Future[RESP]
 
-  def publish[REQ <: Request[Body]](request: REQ): Future[Unit]
+  def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult]
 
   def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
                                                        method: String,
@@ -62,7 +62,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
 
   def <~[REQ <: Request[Body]](request: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
 
-  def <|[REQ <: Request[Body]](request: REQ): Future[Unit] = macro HyperBusMacro.publish[REQ]
+  def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
 
   def |>[IN <: Request[Body]](groupName: String)
                                     (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
@@ -75,7 +75,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
     ).asInstanceOf[Future[Response[DynamicBody]]]
   }
 
-  def <|(request: DynamicRequest): Future[Unit] = {
+  def <|(request: DynamicRequest): Future[PublishResult] = {
     publish(request)
   }
 
@@ -159,7 +159,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
     }
   }
 
-  def publish[REQ <: Request[Body]](request: REQ): Future[Unit] = {
+  def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult] = {
     transportManager.publish(request)
   }
 

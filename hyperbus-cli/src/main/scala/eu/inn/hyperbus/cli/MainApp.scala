@@ -7,9 +7,9 @@ import com.typesafe.config.ConfigFactory
 import eu.inn.binders.dynamic.Text
 import eu.inn.binders.naming.PlainConverter
 import eu.inn.hyperbus.{HyperBus, IdGenerator}
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{body, request}
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.annotations.{body, request}
+import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.hyperbus.transport.ActorSystemRegistry
 import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportManager}

@@ -1,7 +1,7 @@
 package eu.inn.hyperbus
 
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{contentType, method, url}
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.annotations.{contentType, method, url}
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
@@ -208,8 +208,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getResponsesIn(tin: Seq[c.Type]): Seq[c.Type] = {
-    val tOr = typeOf[eu.inn.hyperbus.rest.|[_, _]].typeSymbol.typeSignature
-    val tAsk = typeOf[eu.inn.hyperbus.rest.!].typeSymbol.typeSignature
+    val tOr = typeOf[eu.inn.hyperbus.model.|[_, _]].typeSymbol.typeSignature
+    val tAsk = typeOf[eu.inn.hyperbus.model.!].typeSymbol.typeSignature
 
     tin.flatMap { t =>
       if (t.typeSymbol.typeSignature <:< tOr) {

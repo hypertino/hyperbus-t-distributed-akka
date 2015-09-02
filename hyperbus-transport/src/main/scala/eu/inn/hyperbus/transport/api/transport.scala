@@ -75,9 +75,14 @@ trait TransportRequest extends TransportMessage {
 
 trait TransportResponse extends TransportMessage
 
+trait PublishResult {
+  def sent: Option[Boolean]
+  def offset: Option[String]
+}
+
 trait ClientTransport {
   def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT]
-  def publish(message: TransportRequest): Future[Unit]
+  def publish(message: TransportRequest): Future[PublishResult]
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 

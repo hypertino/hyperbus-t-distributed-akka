@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.rest
+package eu.inn.hyperbus.model
 
 import org.scalatest.{FreeSpec, Matchers}
 

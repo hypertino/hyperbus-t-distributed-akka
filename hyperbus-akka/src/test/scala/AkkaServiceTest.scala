@@ -7,9 +7,9 @@ import eu.inn.binders.dynamic.{Null, Text}
 import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{body, request}
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.annotations.{body, request}
+import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures

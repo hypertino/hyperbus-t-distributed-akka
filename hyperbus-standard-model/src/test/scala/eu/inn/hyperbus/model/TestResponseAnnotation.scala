@@ -1,10 +1,10 @@
-package eu.inn.hyperbus.rest
+package eu.inn.hyperbus.model
 
 import java.io.ByteArrayOutputStream
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.hyperbus.rest.annotations.body
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.model.annotations.body
+import eu.inn.hyperbus.model.standard._
 import org.scalatest.{FreeSpec, Matchers}
 
 @body("test-created-body")

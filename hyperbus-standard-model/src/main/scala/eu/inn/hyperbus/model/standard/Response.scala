@@ -1,8 +1,8 @@
-package eu.inn.hyperbus.rest.standard
+package eu.inn.hyperbus.model.standard
 
 import eu.inn.binders.dynamic.Value
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.response
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.annotations.response
 
 //todo: !format code
 
@@ -90,7 +90,7 @@ object DynamicCreatedBody {
   def unapply(dynamicBody: DynamicBody with CreatedBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
 
-private [rest] case class DynamicCreatedBodyContainer(contentType: Option[String], content: Value) extends DynamicBody with CreatedBody
+private [model] case class DynamicCreatedBodyContainer(contentType: Option[String], content: Value) extends DynamicBody with CreatedBody
 
 @response(Status.ACCEPTED) case class Accepted[+B <: Body](body: B) extends NormalResponse with Response[B]
 

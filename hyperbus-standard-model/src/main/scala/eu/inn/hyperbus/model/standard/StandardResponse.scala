@@ -1,6 +1,6 @@
-package eu.inn.hyperbus.rest.standard
+package eu.inn.hyperbus.model.standard
 
-import eu.inn.hyperbus.rest.{Body, Response}
+import eu.inn.hyperbus.model.{Body, Response}
 import eu.inn.hyperbus.serialization.ResponseHeader
 
 object StandardResponse {

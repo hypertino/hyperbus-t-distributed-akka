@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.rest.annotations
+package eu.inn.hyperbus.model.annotations
 
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
@@ -48,7 +48,7 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
 
     val companionExtra = q"""
         def apply[..$methodTypeArgs](..$fieldsExcept)
-          (implicit contextFactory: eu.inn.hyperbus.rest.MessagingContextFactory): $className[..$classTypeNames] = {
+          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames] = {
           val ctx = contextFactory.newContext()
           ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
         }
