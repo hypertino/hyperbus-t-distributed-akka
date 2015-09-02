@@ -60,13 +60,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
-    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName // todo: generate error if no companion is defined
+    if (requestType.companion == null) {
+      c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
+    }
+    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName
     val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
-    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDeserializer[_]]).getOrElse {
-      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDeserializer")
-    }*/
 
     val obj = q"""{
       val thiz = $thiz
@@ -85,13 +85,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
-    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName // todo: generate error if no companion is defined
+    if (requestType.companion == null) {
+      c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
+    }
+    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName
     val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
-    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDeserializer[_]]).getOrElse {
-      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDeserializer")
-    }*/
 
     val obj = q"""{
       val thiz = $thiz
@@ -125,10 +125,6 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val bodyCompanionName = body.companion.typeSymbol.name.toTermName
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
-      /*val applyMethod = getDecoder(body.companion, typeOf[ResponseBodyDeserializer]).getOrElse {
-        c.abort(c.enclosingPosition, "Can't find method apply() compatible with ResponseBodyDeserializer")
-      }*/
-      //val m = getApplyMethod(body.companion, typeOf[ResponseBodyDeserializer]).get
       cq"""$ta => $bodyCompanionName.deserializer _"""
     }
 
@@ -239,27 +235,4 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
   }
-
-  /*private def getDecoder(companionType: c.Type, atype: c.Type): Option[MethodSymbol] = {
-    companionType.declaration(newTermName("apply")) match {
-      case NoSymbol => c.abort(c.enclosingPosition, s"No apply function found on $companionType")
-      case s =>
-        println(showRaw(s.asTerm.alternatives))
-        // searches apply method corresponding to unapply
-        val applies = s.asTerm.alternatives
-        applies.collectFirst {
-          case (apply: MethodSymbol)
-            if matchApply(apply, atype) ⇒ apply
-            //if (apply.paramss.headOption.map(_.map(_.asTerm.typeSignature)) == unapplyReturnTypes) => apply
-        }
-    }
-  }
-
-  def matchApply(apply: MethodSymbol, atype: Type): Boolean = {
-    val rht = Request
-
-    apply.paramss.headOption.map { params ⇒
-      params.headOption
-    }
-  }*/
 }
