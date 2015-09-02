@@ -71,10 +71,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       val thiz = $thiz
       val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      val requestDeserializer: eu.inn.hyperbus.serialization.RequestDeserializer[${requestType}] =
-        $requestCompanionName.deserializer _
-      thiz.process[Response[Body],$requestType](topic, $method, $contentType, requestDeserializer) { response: $requestType =>
-        $handler(response)
+      thiz.process[Response[Body],$requestType](topic, $method, $contentType, $requestCompanionName.deserializer _) {
+        response: $requestType => $handler(response)
       }
     }"""
     //println(obj)
@@ -98,10 +96,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       val thiz = $thiz
       val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      val requestDeserializer: eu.inn.hyperbus.serialization.RequestDeserializer[${requestType}] =
-        $requestCompanionName.deserializer _
-      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, requestDeserializer) { response: $requestType =>
-        $handler(response)
+      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, $requestCompanionName.deserializer _) {
+        response: $requestType => $handler(response)
       }
     }"""
     //println(obj)
@@ -133,10 +129,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
         c.abort(c.enclosingPosition, "Can't find method apply() compatible with ResponseBodyDeserializer")
       }*/
       //val m = getApplyMethod(body.companion, typeOf[ResponseBodyDeserializer]).get
-      cq"""$ta => {
-        val rdb: eu.inn.hyperbus.serialization.ResponseBodyDeserializer = $bodyCompanionName.deserializer _
-        rdb
-      }"""
+      cq"""$ta => $bodyCompanionName.deserializer _"""
     }
 
     val responses = getResponses(in)
