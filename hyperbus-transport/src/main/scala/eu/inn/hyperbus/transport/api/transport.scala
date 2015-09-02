@@ -36,8 +36,6 @@ case class RegexFilter(value: String) extends Filter {
   }
 }
 
-// case class ExactPartition(partition: String) extends PartitionArg -- kafka?
-// todo: rename this class!
 case class Filters(filterMap: Map[String, Filter]) {
   def matchFilters(other: Filters): Boolean = {
     filterMap.map { case (k, v) ⇒
@@ -55,10 +53,13 @@ case object Filters {
 }
 
 case class Topic(urlFilter: Filter, valueFilters: Filters = Filters.empty) {
-  // todo: add topic matcher and used it!
+  def matchTopic(other: Topic): Boolean = urlFilter.matchFilter(other.urlFilter) &&
+    valueFilters.matchFilters(other.valueFilters)
+
   override def toString = s"Topic($urlFilter$valueFiltersFormat)"
 
-  private def valueFiltersFormat = if (valueFilters.filterMap.isEmpty) ""
+  private [this] def valueFiltersFormat =
+    if (valueFilters.filterMap.isEmpty) ""
   else
     valueFilters.filterMap.mkString("#", ",", "")
 }

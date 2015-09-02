@@ -114,8 +114,7 @@ class KafkaServerTransport(
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = inputDeserializer(inputBytes) // todo: encoding!
-        if (topicFilter.urlFilter.matchFilter(input.topic.urlFilter) && // todo: test order of matching!
-          topicFilter.valueFilters.matchFilters(input.topic.valueFilters)) {
+        if (topicFilter.matchTopic(input.topic)) { // todo: test order of matching?
           if (logMessages && log.isTraceEnabled) {
             log.trace(s"Consumer #$consumerId got message: $messageString")
           }

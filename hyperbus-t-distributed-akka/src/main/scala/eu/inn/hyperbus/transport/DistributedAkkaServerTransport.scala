@@ -69,7 +69,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     val actorStopFutures = subscriptions.map(s ⇒
       gracefulStop(s._2, duration) recover {
         case t: Throwable ⇒
-          log.error("Shutting down ditributed akka", t)
+          log.error("Shutting down distributed akka", t)
           false
       }
     )

@@ -4,8 +4,6 @@ import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.response
 
-//todo: !format code
-
 trait NormalResponse extends Response[Body]
 
 trait RedirectResponse extends Response[Body]
