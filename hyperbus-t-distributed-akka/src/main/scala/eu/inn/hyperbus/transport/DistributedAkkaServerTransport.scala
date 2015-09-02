@@ -29,7 +29,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                               (handler: (IN) => Future[TransportResponse]): String = {
 
     val topicUrl = topicFilter.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
@@ -37,20 +37,20 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     val actor = actorSystem.actorOf(Props[ProcessServerActor[IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[TransportResponse, IN](topicUrl, topicFilter, None, inputDecoder, exceptionEncoder, handler),
+      distributedakka.Subscription[TransportResponse, IN](topicUrl, topicFilter, None, inputDeserializer, exceptionSerializer, handler),
       logMessages
     )
     id
   }
 
-  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[Unit]): String = {
     val topicUrl = topicFilter.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[Unit, IN](topicUrl, topicFilter, Some(groupName), inputDecoder, null, handler),
+      distributedakka.Subscription[Unit, IN](topicUrl, topicFilter, Some(groupName), inputDeserializer, null, handler),
       logMessages
     )
     id

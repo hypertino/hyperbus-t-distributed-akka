@@ -16,13 +16,13 @@ class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder
   def input = messageBuf.toString()
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = {
+  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
     val ba = new ByteArrayOutputStream()
-    message.encode(ba)
+    message.serialize(ba)
     messageBuf.append(ba.toString("UTF-8"))
 
     val os = new ByteArrayInputStream(output.getBytes("UTF-8"))
-    val out = outputDecoder(os)
+    val out = outputDeserializer(os)
     Future.successful(out)
   }
 
@@ -42,21 +42,21 @@ class ClientTransportTest(output: String) extends ClientTransport {
 
 class ServerTransportTest extends ServerTransport {
   var sTopicFilter: Topic = null
-  var sInputDecoder: Decoder[TransportRequest] = null
+  var sInputDeserializer: Deserializer[TransportRequest] = null
   var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
-  var sExceptionEncoder: Encoder[Throwable] = null
+  var sExceptionSerializer: Serializer[Throwable] = null
 
-  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                      (handler: (IN) => Future[TransportResponse]): String = {
 
-    sInputDecoder = inputDecoder
+    sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
-    sExceptionEncoder = exceptionEncoder
+    sExceptionSerializer = exceptionSerializer
     ""
   }
 
   //todo: test this
-  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                        (handler: (IN) => Future[Unit]): String = ???
 
   override def off(subscriptionId: String) = ???
@@ -194,14 +194,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDecoder(ba)
+      val msg = st.sInputDeserializer(ba)
       msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
         r should equal(Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
-        r.encode(ba)
+        r.serialize(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":201,"contentType":"application/vnd+created-body.json","messageId":"123"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
@@ -220,14 +220,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"url":"/empty","method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDecoder(ba)
+      val msg = st.sInputDeserializer(ba)
       msg should equal(StaticPostWithEmptyBody(EmptyBody, messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
         r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
-        r.encode(ba)
+        r.serialize(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":null}"""
@@ -246,14 +246,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"url":"/empty","method":"post","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDecoder(ba)
+      val msg = st.sInputDeserializer(ba)
       msg should equal(StaticPostWithDynamicBody(DynamicBody(Some("some-content"), Text("haha")), messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
         r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
-        r.encode(ba)
+        r.serialize(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":null}"""
@@ -272,14 +272,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDecoder(ba)
+      val msg = st.sInputDeserializer(ba)
       msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
         r shouldBe a[Conflict[_]]
         val ba = new ByteArrayOutputStream()
-        r.encode(ba)
+        r.serialize(ba)
         val s = ba.toString("UTF-8")
         s should equal(
           """{"response":{"status":409,"messageId":"123"},"body":{"code":"failed","errorId":"abcde12345"}}"""

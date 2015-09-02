@@ -22,7 +22,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     "TestPost1 should serialize" in {
       val ba = new ByteArrayOutputStream()
       val post1 = TestPost1(TestBody1("155", "abcde"), messageId = "123", correlationId = "123")
-      post1.encode(ba)
+      post1.serialize(ba)
       val str = ba.toString("UTF-8")
       str should equal("""{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"155","data":"abcde"}}""")
     }
@@ -30,7 +30,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     "TestPost1 should deserialize" in {
       val str = """{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"155","data":"abcde"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
-      val post1 = MessageDecoder.decodeRequestWith(bi) { (requestHeader, jsonParser) ⇒
+      val post1 = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         requestHeader.url should equal("/test-post-1/{id}")
         requestHeader.contentType should equal(Some("test-body-1"))
         requestHeader.method should equal("test-method")

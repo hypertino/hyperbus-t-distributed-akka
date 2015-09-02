@@ -5,6 +5,6 @@ import java.io.{InputStream, OutputStream}
 import scala.language.experimental.macros
 
 package object api {
-  type Encoder[T] = Function2[T, OutputStream, Unit]  // todo: OutputStream -> String
-  type Decoder[T] = Function1[InputStream, T]         // todo: InputStream -> String
+  type Serializer[T] = Function2[T, OutputStream, Unit]
+  type Deserializer[T] = Function1[InputStream, T]
 }

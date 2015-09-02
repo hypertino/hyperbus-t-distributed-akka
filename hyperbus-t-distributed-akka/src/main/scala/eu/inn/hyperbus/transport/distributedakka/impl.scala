@@ -18,8 +18,8 @@ private [transport] trait Command
 private [transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl: String,
                                                      topic: Topic,
                                                      groupName: Option[String],
-                                                     inputDecoder: Decoder[IN],
-                                                     exceptionEncoder: Encoder[Throwable],
+                                                     inputDeserializer: Deserializer[IN],
+                                                     exceptionSerializer: Serializer[Throwable],
                                                      handler: (IN) => Future[OUT])
 
 private [transport] case class Start[OUT,IN<: TransportRequest](id: String, subscription: Subscription[OUT,IN], logMessages: Boolean) extends Command
@@ -49,11 +49,11 @@ private [transport] abstract class ServerActor[OUT, IN <: TransportRequest] exte
   protected def handleException(e: Throwable, sendReply: Boolean): Option[String] = {
     val msg = try {
       val outputBytes = new ByteArrayOutputStream()
-      subscription.exceptionEncoder(e, outputBytes)
+      subscription.exceptionSerializer(e, outputBytes)
       Some(outputBytes.toString(Util.defaultEncoding))
     } catch {
       case NonFatal(e2) ⇒
-        log.error("Can't encode exception: " + e, e2)
+        log.error("Can't serialize exception: " + e, e2)
         None
     }
 
@@ -71,7 +71,7 @@ private [transport] abstract class ServerActor[OUT, IN <: TransportRequest] exte
 
     try {
       val inputBytes = new ByteArrayInputStream(input.getBytes(Util.defaultEncoding))
-      Some(subscription.inputDecoder(inputBytes))
+      Some(subscription.inputDeserializer(inputBytes))
     }
     catch {
       case NonFatal(e) ⇒
@@ -96,7 +96,7 @@ private [transport] class ProcessServerActor[IN <: TransportRequest] extends Ser
         val result = subscription.handler(inputMessage) // todo: test result with partitonArgs?
         val futureMessage = result.map { out ⇒
           val outputBytes = new ByteArrayOutputStream()
-          out.encode(outputBytes)
+          out.serialize(outputBytes)
           outputBytes.toString(Util.defaultEncoding)
         } recover {
           case NonFatal(e) ⇒ handleException(e, sendReply = false).getOrElse(throw e) // todo: test this scenario

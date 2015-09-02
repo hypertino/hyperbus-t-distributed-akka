@@ -3,14 +3,14 @@ package eu.inn.hyperbus.model
 import java.io.OutputStream
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.hyperbus.serialization.MessageEncoder
+import eu.inn.hyperbus.serialization.MessageSerializer
 import eu.inn.hyperbus.transport.api.{TransportMessage, TransportRequest, TransportResponse}
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
 trait Body {
   def contentType: Option[String]
-  def encode(output: OutputStream)
+  def serialize(output: OutputStream)
 }
 
 trait NoContentType {
@@ -38,7 +38,7 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
   type bodyType = Body
   def url: String
   def method: String
-  override def encode(outputStream: java.io.OutputStream) = MessageEncoder.encodeRequest(this, outputStream)
+  override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeRequest(this, outputStream)
 }
 
 /*trait StaticRequestObject {
@@ -55,7 +55,7 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
 
 trait Response[+B <: Body] extends Message[B] with TransportResponse {
   def status: Int
-  override def encode(outputStream: java.io.OutputStream) = MessageEncoder.encodeResponse(this, outputStream)
+  override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeResponse(this, outputStream)
 }
 
 // todo: DefinedResponse -> Tupple!

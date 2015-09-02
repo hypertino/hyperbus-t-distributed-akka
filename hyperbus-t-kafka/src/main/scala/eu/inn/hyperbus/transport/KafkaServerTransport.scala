@@ -33,10 +33,10 @@ class KafkaServerTransport(
   protected [this] val idCounter = new AtomicLong(0)
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                               (handler: (IN) => Future[TransportResponse]): String = ???
 
-  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[Unit]): String = {
 
     routes.find(r ⇒ r.urlArg.matchFilter(topicFilter.urlFilter) &&
@@ -44,7 +44,7 @@ class KafkaServerTransport(
 
       val id = idCounter.incrementAndGet().toHexString
       val subscription = new Subscription[Unit,IN](1, /*todo: per topic thread count*/
-        route, topicFilter, groupName, inputDecoder, handler
+        route, topicFilter, groupName, inputDeserializer, handler
       )
       subscriptions.put(id, subscription)
       subscription.run()
@@ -76,7 +76,7 @@ class KafkaServerTransport(
                                route: KafkaRoute,
                                topicFilter: Topic,
                                groupName: String,
-                               inputDecoder: Decoder[IN],
+                               inputDeserializer: Deserializer[IN],
                                handler: (IN) ⇒ Future[OUT]) {
 
     val consumer = {
@@ -113,7 +113,7 @@ class KafkaServerTransport(
       lazy val messageString = new String(message, encoding)
       try {
         val inputBytes = new ByteArrayInputStream(message)
-        val input = inputDecoder(inputBytes) // todo: encoding!
+        val input = inputDeserializer(inputBytes) // todo: encoding!
         if (topicFilter.urlFilter.matchFilter(input.topic.urlFilter) &&  // todo: test order of matching!
           topicFilter.valueFilters.matchFilters(input.topic.valueFilters)) {
           if (logMessages && log.isTraceEnabled) {

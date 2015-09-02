@@ -24,7 +24,7 @@ case class MockRequest(specificTopic: String, message: String,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
   def topic: Topic = Topic(specificTopic)
-  override def encode(output: OutputStream): Unit = {
+  override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }
 }
@@ -32,18 +32,18 @@ case class MockRequest(specificTopic: String, message: String,
 case class MockResponse(message: String,
                         correlationId: String = IdGenerator.create(),
                         messageId: String = IdGenerator.create()) extends TransportResponse {
-  override def encode(output: OutputStream): Unit = {
+  override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }
 }
 
-object MockRequestDecoder extends Decoder[MockRequest] {
+object MockRequestDeserializer extends Deserializer[MockRequest] {
   override def apply(input: InputStream): MockRequest = {
     SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockRequest])
   }
 }
 
-object MockResponseDecoder extends Decoder[MockResponse] {
+object MockResponseDeserializer extends Deserializer[MockResponse] {
   override def apply(input: InputStream): MockResponse = {
     SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockResponse])
   }
@@ -86,33 +86,33 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      val id = transportManager.process(Topic("/topic/{abc}"), MockRequestDecoder, null) { msg: MockRequest =>
+      val id = transportManager.process(Topic("/topic/{abc}"), MockRequestDeserializer, null) { msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)
         }
       }
 
-      val id2 = transportManager.process(Topic("/topic/{abc}"), MockRequestDecoder, null){ msg: MockRequest =>
+      val id2 = transportManager.process(Topic("/topic/{abc}"), MockRequestDeserializer, null){ msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)
         }
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDecoder) { msg: MockRequest =>
+      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDecoder) { msg: MockRequest =>
+      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub2", MockRequestDecoder) { msg: MockRequest =>
+      transportManager.subscribe(Topic("/topic/{abc}"), "sub2", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
@@ -120,7 +120,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
       Thread.sleep(500) // we need to wait until subscriptions will go acros the
 
-      val f: Future[MockResponse] = transportManager.ask(MockRequest("/topic/{abc}", "12345"), MockResponseDecoder)
+      val f: Future[MockResponse] = transportManager.ask(MockRequest("/topic/{abc}", "12345"), MockResponseDeserializer)
 
       whenReady(f) { msg =>
         msg shouldBe a[MockResponse]

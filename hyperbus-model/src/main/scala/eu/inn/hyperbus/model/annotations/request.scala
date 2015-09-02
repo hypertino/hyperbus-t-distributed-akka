@@ -70,7 +70,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
         }
 
-        def decoder(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser: com.fasterxml.jackson.core.JsonParser): $className = {
+        def deserializer(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser: com.fasterxml.jackson.core.JsonParser): $className = {
           val body = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
           ${className.toTermName}($bodyFieldName = body,
             messageId = requestHeader.messageId,
@@ -78,7 +78,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           )
         }
         def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className =
-          decoder(requestHeader, jsonParser)
+          deserializer(requestHeader, jsonParser)
         def url = $url
     """
 

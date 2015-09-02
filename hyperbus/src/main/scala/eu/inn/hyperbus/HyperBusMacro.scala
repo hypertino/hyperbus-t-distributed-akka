@@ -64,15 +64,16 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
-    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDecoder[_]]).getOrElse {
-      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDecoder")
+    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDeserializer[_]]).getOrElse {
+      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDeserializer")
     }*/
 
     val obj = q"""{
       val thiz = $thiz
       val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] = $requestCompanionName.decoder _
-      thiz.process[Response[Body],$requestType](topic, $method, $contentType, requestDecoder) { response: $requestType =>
+      val requestDeserializer: eu.inn.hyperbus.serialization.RequestDeserializer[${requestType}] =
+        $requestCompanionName.deserializer _
+      thiz.process[Response[Body],$requestType](topic, $method, $contentType, requestDeserializer) { response: $requestType =>
         $handler(response)
       }
     }"""
@@ -90,15 +91,16 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
-    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDecoder[_]]).getOrElse {
-      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDecoder")
+    /*val applyMethod = getDecoder(requestType.companion, typeOf[RequestDeserializer[_]]).getOrElse {
+      c.abort(c.enclosingPosition, "Can't find method apply() compatible with RequestDeserializer")
     }*/
 
     val obj = q"""{
       val thiz = $thiz
       val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      val requestDecoder: eu.inn.hyperbus.serialization.RequestDecoder[${requestType}] = $requestCompanionName.decoder _
-      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, requestDecoder) { response: $requestType =>
+      val requestDeserializer: eu.inn.hyperbus.serialization.RequestDeserializer[${requestType}] =
+        $requestCompanionName.deserializer _
+      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, requestDeserializer) { response: $requestType =>
         $handler(response)
       }
     }"""
@@ -127,12 +129,12 @@ private[hyperbus] trait HyperBusMacroImplementation {
       val bodyCompanionName = body.companion.typeSymbol.name.toTermName
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
-      /*val applyMethod = getDecoder(body.companion, typeOf[ResponseBodyDecoder]).getOrElse {
-        c.abort(c.enclosingPosition, "Can't find method apply() compatible with ResponseBodyDecoder")
+      /*val applyMethod = getDecoder(body.companion, typeOf[ResponseBodyDeserializer]).getOrElse {
+        c.abort(c.enclosingPosition, "Can't find method apply() compatible with ResponseBodyDeserializer")
       }*/
-      //val m = getApplyMethod(body.companion, typeOf[ResponseBodyDecoder]).get
+      //val m = getApplyMethod(body.companion, typeOf[ResponseBodyDeserializer]).get
       cq"""$ta => {
-        val rdb: eu.inn.hyperbus.serialization.ResponseBodyDecoder = $bodyCompanionName.decoder _
+        val rdb: eu.inn.hyperbus.serialization.ResponseBodyDeserializer = $bodyCompanionName.deserializer _
         rdb
       }"""
     }
@@ -140,13 +142,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"thiz.ask($r, responseDecoder).asInstanceOf[Future[${responses.head}]]"
+        q"thiz.ask($r, responseDeserializer).asInstanceOf[Future[${responses.head}]]"
       else
-        q"thiz.ask($r, responseDecoder)"
+        q"thiz.ask($r, responseDeserializer)"
 
     val obj = q"""{
       val thiz = $thiz
-      val responseDecoder = thiz.macroApiImpl.responseDecoder(
+      val responseDeserializer = thiz.macroApiImpl.responseDeserializer(
         _: eu.inn.hyperbus.serialization.ResponseHeader,
         _: com.fasterxml.jackson.core.JsonParser,
         _.contentType match {

@@ -26,8 +26,8 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
   def this(configuration: TransportConfiguration) = this(configuration.clientRoutes,
     configuration.serverRoutes, ExecutionContext.global)
 
-  def ask[OUT <: TransportResponse](message: TransportRequest,outputDecoder: Decoder[OUT]): Future[OUT] = {
-    this.lookupClientTransport(message.topic).ask[OUT](message, outputDecoder)
+  def ask[OUT <: TransportResponse](message: TransportRequest,outputDeserializer: Deserializer[OUT]): Future[OUT] = {
+    this.lookupClientTransport(message.topic).ask[OUT](message, outputDeserializer)
   }
 
   def publish(message: TransportRequest): Future[PublishResult] = {
@@ -47,14 +47,14 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
   }
 
   def process[IN <: TransportRequest](topicFilter: Topic,
-                                      inputDecoder: Decoder[IN],
-                                      exceptionEncoder: Encoder[Throwable])
+                                      inputDeserializer: Deserializer[IN],
+                                      exceptionSerializer: Serializer[Throwable])
                                      (handler: (IN) => Future[TransportResponse]): String = {
 
     val underlyingSubscriptionId = lookupServerTransport(topicFilter).process[IN](
       topicFilter,
-      inputDecoder,
-      exceptionEncoder)(handler)
+      inputDeserializer,
+      exceptionSerializer)(handler)
 
     val result = addSubscriptionLink(topicFilter, underlyingSubscriptionId)
     log.info(s"New processor on $topicFilter: #${handler.hashCode.toHexString}. Id = $result")
@@ -62,12 +62,12 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
   }
 
   def subscribe[IN <: TransportRequest ](topicFilter: Topic, groupName: String,
-                                         inputDecoder: Decoder[IN])
+                                         inputDeserializer: Deserializer[IN])
                                         (handler: (IN) => Future[Unit]): String = {
     val underlyingSubscriptionId = lookupServerTransport(topicFilter).subscribe[IN](
       topicFilter,
       groupName,
-      inputDecoder)(handler)
+      inputDeserializer)(handler)
     val result = addSubscriptionLink(topicFilter, underlyingSubscriptionId)
     log.info(s"New subscription on $topicFilter($groupName): #${handler.hashCode.toHexString}. Id = $result")
     result

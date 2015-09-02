@@ -13,9 +13,9 @@ trait DynamicBody extends Body with Links {
   def content: Value
   lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]].getOrElse(Map.empty)
 
-  def encode(outputStream: OutputStream): Unit = {
+  def serialize(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
-    import eu.inn.hyperbus.serialization.MessageEncoder.bindOptions
+    import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
     eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer=>
       serializer.bind[Value](content)
     }

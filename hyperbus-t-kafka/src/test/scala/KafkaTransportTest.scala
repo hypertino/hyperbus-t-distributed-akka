@@ -31,7 +31,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       val cnt = new AtomicInteger(0)
 
       transportManager.subscribe(Topic("/topic/{abc}"), "sub1",
-        MockRequestDecoder) { msg: MockRequest =>
+        MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
           cnt.incrementAndGet()
@@ -39,7 +39,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       }
 
       transportManager.subscribe(Topic("/topic/{abc}"), "sub1",
-        MockRequestDecoder) { msg: MockRequest =>
+        MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
           cnt.incrementAndGet()
@@ -47,7 +47,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       }
 
       transportManager.subscribe(Topic("/topic/{abc}"), "sub2",
-        MockRequestDecoder) { msg: MockRequest =>
+        MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
           cnt.incrementAndGet()
@@ -74,7 +74,7 @@ case class MockRequest(specificTopic: String, message: String,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
   def topic: Topic = Topic(specificTopic)
-  override def encode(output: OutputStream): Unit = {
+  override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }
 }
@@ -82,18 +82,18 @@ case class MockRequest(specificTopic: String, message: String,
 case class MockResponse(message: String,
                         correlationId: String = IdGenerator.create(),
                         messageId: String = IdGenerator.create()) extends TransportResponse {
-  override def encode(output: OutputStream): Unit = {
+  override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }
 }
 
-object MockRequestDecoder extends Decoder[MockRequest] {
+object MockRequestDeserializer extends Deserializer[MockRequest] {
   override def apply(input: InputStream): MockRequest = {
     SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockRequest])
   }
 }
 
-object MockResponseDecoder extends Decoder[MockResponse] {
+object MockResponseDeserializer extends Deserializer[MockResponse] {
   override def apply(input: InputStream): MockResponse = {
     SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockResponse])
   }

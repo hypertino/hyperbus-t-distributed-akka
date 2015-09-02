@@ -35,7 +35,7 @@ class KafkaClientTransport(producerProperties: Properties,
   protected [this] val log = LoggerFactory.getLogger(this.getClass)
   protected [this] val producer = new KafkaProducer[String,String](producerProperties)
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = ???
+  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
     routes.find(r ⇒ r.urlArg.matchFilter(message.topic.urlFilter) &&
@@ -58,7 +58,7 @@ class KafkaClientTransport(producerProperties: Properties,
 
   private def publishToRoute(route: KafkaRoute, message: TransportRequest): Future[PublishResult] = {
     val inputBytes = new ByteArrayOutputStream()
-    message.encode(inputBytes)
+    message.serialize(inputBytes)
     val messageString = inputBytes.toString(encoding)
 
     val record: ProducerRecord[String,String] =

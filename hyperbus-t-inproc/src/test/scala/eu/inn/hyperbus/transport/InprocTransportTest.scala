@@ -13,7 +13,7 @@ import scala.concurrent.{Future, Promise}
 case class MockRequest(topic: Topic, message: String) extends TransportRequest {
   override def correlationId: String = ???
   override def messageId: String = ???
-  override def encode(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
+  override def serialize(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
 }
 
 object MockRequest{
@@ -23,7 +23,7 @@ object MockRequest{
 case class MockResponse(message: String) extends TransportResponse {
   override def correlationId: String = ???
   override def messageId: String = ???
-  override def encode(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
+  override def serialize(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
 }
 
 class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {

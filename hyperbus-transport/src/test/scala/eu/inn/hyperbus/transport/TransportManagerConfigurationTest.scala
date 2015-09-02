@@ -9,15 +9,15 @@ import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
 class MockClientTransport(config: Config) extends ClientTransport {
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = ???
+  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
   override def publish(message: TransportRequest): Future[PublishResult] = ???
 }
 
 class MockServerTransport(config: Config) extends ServerTransport {
-  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])(handler: (IN) ⇒ Future[TransportResponse]): String = ???
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])(handler: (IN) ⇒ Future[TransportResponse]): String = ???
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
-  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])(handler: (IN) ⇒ Future[Unit]): String = ???
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) ⇒ Future[Unit]): String = ???
   override def off(subscriptionId: String): Unit = ???
 }
 

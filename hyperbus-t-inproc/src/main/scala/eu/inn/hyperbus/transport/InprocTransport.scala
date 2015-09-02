@@ -23,32 +23,32 @@ class InprocTransport(serialize: Boolean = false)
   protected val subscriptions = new Subscriptions[SubKey, Subscription]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  protected def reencodeMessage[OUT <: TransportMessage](message: TransportMessage, decoder: Decoder[OUT]): OUT = {
+  protected def reserializeMessage[OUT <: TransportMessage](message: TransportMessage, deserializer: Deserializer[OUT]): OUT = {
     if (serialize) {
       val ba = new ByteArrayOutputStream()
-      message.encode(ba)
+      message.serialize(ba)
       val bi = new ByteArrayInputStream(ba.toByteArray)
-      decoder(bi)
+      deserializer(bi)
     }
     else {
       message.asInstanceOf[OUT]
     }
   }
 
-  protected def reencodeException[IN <: TransportRequest, OUT <: TransportResponse](e: Throwable,
-                                                                         exceptionEncoder: Encoder[Throwable],
-                                                                         decoder: Decoder[OUT]): OUT = {
+  protected def reserializeException[IN <: TransportRequest, OUT <: TransportResponse](e: Throwable,
+                                                                         exceptionSerializer: Serializer[Throwable],
+                                                                         deserializer: Deserializer[OUT]): OUT = {
     val ba = new ByteArrayOutputStream()
-    exceptionEncoder(e, ba)
+    exceptionSerializer(e, ba)
     val bi = new ByteArrayInputStream(ba.toByteArray)
-    decoder(bi)
+    deserializer(bi)
   }
 
   // todo: refactor this method, it's awful
-  protected def _ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT], isPublish: Boolean): Future[OUT] = {
+  protected def _ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT], isPublish: Boolean): Future[OUT] = {
     var result: Future[OUT] = null
 
-    def tryX[T] (failMsg: String, exceptionEncoder: Encoder[Throwable], code: ⇒ T): Option[T] = {
+    def tryX[T] (failMsg: String, exceptionSerializer: Serializer[Throwable], code: ⇒ T): Option[T] = {
       try {
         Some(code)
       }
@@ -57,7 +57,7 @@ class InprocTransport(serialize: Boolean = false)
           result =
             if (serialize)
               Future.successful {
-                reencodeException(e, exceptionEncoder, outputDecoder)
+                reserializeException(e, exceptionSerializer, outputDeserializer)
               }
             else
               Future.failed {
@@ -76,11 +76,11 @@ class InprocTransport(serialize: Boolean = false)
           // default subscription (groupName="") returns reply
           val subscriber = subscriptionList.getRandomSubscription
 
-          tryX ("Decode failed", subscriber.exceptionEncoder,
-            reencodeMessage(message, subscriber.inputDecoder)
+          tryX ("Decode failed", subscriber.exceptionSerializer,
+            reserializeMessage(message, subscriber.inputDeserializer)
           ) foreach { messageForSubscriber ⇒
 
-            tryX ("Decode failed", subscriber.exceptionEncoder,
+            tryX ("Decode failed", subscriber.exceptionSerializer,
               messageForSubscriber.topic.valueFilters
               //subscriber. partitionArgsExtractor(messageForSubscriber)
             ) foreach { args ⇒
@@ -90,12 +90,12 @@ class InprocTransport(serialize: Boolean = false)
                 val handlerResult = subscriber.handler(messageForSubscriber)
                 result = if (serialize) {
                   handlerResult map { out ⇒
-                    reencodeMessage(out, outputDecoder)
+                    reserializeMessage(out, outputDeserializer)
                   } recoverWith {
                     case NonFatal(e) ⇒
                       log.error("`process` handler failed with", e)
                       Future.successful {
-                        reencodeException(e, subscriber.exceptionEncoder, outputDecoder)
+                        reserializeException(e, subscriber.exceptionSerializer, outputDeserializer)
                       }
                   }
                 }
@@ -121,11 +121,11 @@ class InprocTransport(serialize: Boolean = false)
 
           val ma: Option[TransportRequest] =
             try {
-              Some(reencodeMessage(message, subscriber.inputDecoder))
+              Some(reserializeMessage(message, subscriber.inputDeserializer))
             }
             catch {
               case NonFatal(e) ⇒
-                log.error("`subscription` decoder failed with", e)
+                log.error("`subscription` deserializer failed with", e)
                 None
             }
 
@@ -161,30 +161,30 @@ class InprocTransport(serialize: Boolean = false)
     }
   }
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = {
-    _ask(message, outputDecoder, isPublish = false)
+  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
+    _ask(message, outputDeserializer, isPublish = false)
   }
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
     _ask[TransportResponse](message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
   }
 
-  override def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+  override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                      (handler: (IN) => Future[TransportResponse]): String = {
 
     subscriptions.add(
       topicFilter.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(None, topicFilter.valueFilters),
-      Subscription(inputDecoder, exceptionEncoder, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
+      Subscription(inputDeserializer, exceptionSerializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }
 
-  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                        (handler: (IN) => Future[Unit]): String = {
     subscriptions.add(
       topicFilter.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(Some(groupName), topicFilter.valueFilters),
-      Subscription(inputDecoder, null, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
+      Subscription(inputDeserializer, null, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }
 

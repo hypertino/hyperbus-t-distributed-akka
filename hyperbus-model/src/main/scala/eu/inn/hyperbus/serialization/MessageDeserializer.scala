@@ -6,11 +6,11 @@ import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import eu.inn.binders.core.BindOptions
 import eu.inn.hyperbus.model.{Body, Request, Response}
 
-object MessageDecoder {
+object MessageDeserializer {
   import eu.inn.binders.json._
   implicit val bindOptions = new BindOptions(true)
 
-  def decodeRequestWith[REQ <: Request[Body]](inputStream: InputStream)(decoder: (RequestHeader, JsonParser) => REQ): REQ = {
+  def deserializeRequestWith[REQ <: Request[Body]](inputStream: InputStream)(deserializer: (RequestHeader, JsonParser) => REQ): REQ = {
     val jf = new JsonFactory()
     val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
     val factory = SerializerFactory.findFactory()
@@ -30,7 +30,7 @@ object MessageDecoder {
       val fieldName2 = jp.getCurrentName
       val result =
         if (fieldName2 == "body") {
-          decoder(requestHeader, jp)
+          deserializer(requestHeader, jp)
         } else {
           throw DecodeException(s"'body' field expected, but found: '$fieldName'")
         }
@@ -41,7 +41,7 @@ object MessageDecoder {
     }
   }
 
-  def decodeResponseWith[RESP <: Response[Body]](inputStream: InputStream)(decoder: (ResponseHeader, JsonParser) => RESP): RESP = {
+  def deserializeResponseWith[RESP <: Response[Body]](inputStream: InputStream)(deserializer: (ResponseHeader, JsonParser) => RESP): RESP = {
     val jf = new JsonFactory()
     val jp = jf.createParser(inputStream) // todo: this move to SerializerFactory
     val factory = SerializerFactory.findFactory()
@@ -61,7 +61,7 @@ object MessageDecoder {
       val fieldName2 = jp.getCurrentName
       val result =
         if (fieldName2 == "body") {
-          decoder(responseHeader, jp)
+          deserializer(responseHeader, jp)
         } else {
           throw DecodeException(s"'body' field expected, but found: '$fieldName'")
         }

@@ -39,11 +39,11 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   protected [this] val mediator = DistributedPubSubExtension(actorSystem).mediator
 
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT] = {
+  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
 
     val specificUrl = message.topic.urlFilter.specific
     val inputBytes = new ByteArrayOutputStream()
-    message.encode(inputBytes)
+    message.serialize(inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
     import eu.inn.hyperbus.util.LogUtils._
 
@@ -58,7 +58,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
           log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus ~(R)~> $result")
         }
         val outputBytes = new ByteArrayInputStream(result.getBytes(Util.defaultEncoding))
-        outputDecoder(outputBytes)
+        outputDeserializer(outputBytes)
       // todo: case _ ⇒
     }
   }
@@ -66,7 +66,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   override def publish(message: TransportRequest): Future[PublishResult] = {
     val specificUrl = message.topic.urlFilter.specific
     val inputBytes = new ByteArrayOutputStream()
-    message.encode(inputBytes)
+    message.serialize(inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
 
     if (logMessages && log.isTraceEnabled) {

@@ -29,8 +29,8 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
         @eu.inn.hyperbus.model.annotations.contentType($annotationArgument) case class $className(..$fields) extends ..$bases {
           ..$body
           def contentType = Some($annotationArgument)
-          override def encode(outputStream: java.io.OutputStream) = {
-            import eu.inn.hyperbus.serialization.MessageEncoder.bindOptions
+          override def serialize(outputStream: java.io.OutputStream) = {
+            import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
             eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer=>
               serializer.bind[$className](this)
             }
@@ -41,13 +41,13 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
     // check requestHeader
     val companionExtra = q"""
         def contentType = Some($annotationArgument)
-        def decoder(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
+        def deserializer(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
             deserializer.unbind[$className]
           }
         }
         def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className =
-          decoder(contentType, jsonParser)
+          deserializer(contentType, jsonParser)
         """
 
     val newCompanion = clzCompanion map { existingCompanion =>

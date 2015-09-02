@@ -26,14 +26,14 @@ object ErrorBody {
     (errorBody.code, errorBody.description, errorBody.errorId, errorBody.extra, errorBody.contentType)
   )
 
-  def decoder(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = {
+  def deserializer(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = {
     import eu.inn.binders._
     eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       deserializer.unbind[ErrorBodyContainer].copy(contentType = contentType)
     }
   }
 
-  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = decoder(contentType, jsonParser)
+  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = deserializer(contentType, jsonParser)
   /*def apply(jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = {
     apply(jsonParser, )
   }*/
@@ -46,9 +46,9 @@ private [standard] case class ErrorBodyContainer(code: String,
                                              contentType: Option[String]) extends ErrorBody {
   def message = code + description.map(": " + _).getOrElse("") + ". #" + errorId
 
-  def encode(outputStream: OutputStream): Unit = {
+  def serialize(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
-    import eu.inn.hyperbus.serialization.MessageEncoder.bindOptions
+    import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
     eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer=>
       serializer.bind(this.copy(contentType = None)) // find other way to skip contentType
     }

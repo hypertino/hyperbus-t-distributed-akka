@@ -66,7 +66,7 @@ object Topic {
 trait TransportMessage {
   def messageId: String
   def correlationId: String
-  def encode(output: OutputStream)
+  def serialize(output: OutputStream)
 }
 
 trait TransportRequest extends TransportMessage {
@@ -81,16 +81,16 @@ trait PublishResult {
 }
 
 trait ClientTransport {
-  def ask[OUT <: TransportResponse](message: TransportRequest, outputDecoder: Decoder[OUT]): Future[OUT]
+  def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT]
   def publish(message: TransportRequest): Future[PublishResult]
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
 trait ServerTransport {
-  def process[IN <: TransportRequest](topicFilter: Topic, inputDecoder: Decoder[IN], exceptionEncoder: Encoder[Throwable])
+  def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                  (handler: (IN) => Future[TransportResponse]): String
 
-  def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDecoder: Decoder[IN])
+  def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                    (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
