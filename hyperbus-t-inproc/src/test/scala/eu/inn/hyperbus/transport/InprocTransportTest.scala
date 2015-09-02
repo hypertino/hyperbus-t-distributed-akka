@@ -12,17 +12,21 @@ import scala.concurrent.{Future, Promise}
 
 case class MockRequest(topic: Topic, message: String) extends TransportRequest {
   override def correlationId: String = ???
+
   override def messageId: String = ???
+
   override def serialize(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
 }
 
-object MockRequest{
-  def apply(topic: String, message:String): MockRequest = MockRequest(Topic(topic), message)
+object MockRequest {
+  def apply(topic: String, message: String): MockRequest = MockRequest(Topic(topic), message)
 }
 
 case class MockResponse(message: String) extends TransportResponse {
   override def correlationId: String = ???
+
   override def messageId: String = ???
+
   override def serialize(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
 }
 

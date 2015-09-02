@@ -27,7 +27,7 @@ case class DynamicGet(
 object DynamicGet {
   def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicGet = {
     val ctx = contextFactory.newContext()
-    DynamicGet(url,body,ctx.messageId,ctx.correlationId)
+    DynamicGet(url, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -47,7 +47,7 @@ case class DynamicDelete(
 object DynamicDelete {
   def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicDelete = {
     val ctx = contextFactory.newContext()
-    DynamicDelete(url,body,ctx.messageId,ctx.correlationId)
+    DynamicDelete(url, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -66,7 +66,7 @@ case class DynamicPost(url: String,
 object DynamicPost {
   def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPost = {
     val ctx = contextFactory.newContext()
-    DynamicPost(url,body,ctx.messageId,ctx.correlationId)
+    DynamicPost(url, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -86,7 +86,7 @@ case class DynamicPut(
 object DynamicPut {
   def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPut = {
     val ctx = contextFactory.newContext()
-    DynamicPut(url,body,ctx.messageId,ctx.correlationId)
+    DynamicPut(url, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -106,6 +106,6 @@ case class DynamicPatch(
 object DynamicPatch {
   def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPatch = {
     val ctx = contextFactory.newContext()
-    DynamicPatch(url,body,ctx.messageId,ctx.correlationId)
+    DynamicPatch(url, body, ctx.messageId, ctx.correlationId)
   }
 }

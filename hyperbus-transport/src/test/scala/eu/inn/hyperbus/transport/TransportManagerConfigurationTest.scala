@@ -10,14 +10,19 @@ import scala.concurrent.duration.FiniteDuration
 
 class MockClientTransport(config: Config) extends ClientTransport {
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
+
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
+
   override def publish(message: TransportRequest): Future[PublishResult] = ???
 }
 
 class MockServerTransport(config: Config) extends ServerTransport {
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])(handler: (IN) ⇒ Future[TransportResponse]): String = ???
+
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
+
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) ⇒ Future[Unit]): String = ???
+
   override def off(subscriptionId: String): Unit = ???
 }
 
@@ -54,14 +59,14 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
       sbc.clientRoutes.head.valueFilters should equal(Filters(Map(
         "userId" → AnyValue
       )))
-      sbc.clientRoutes.head.transport shouldBe a [MockClientTransport]
+      sbc.clientRoutes.head.transport shouldBe a[MockClientTransport]
 
       assert(sbc.serverRoutes.nonEmpty)
       sbc.serverRoutes.head.urlArg should equal(SpecificValue("/topic/{userId}"))
       sbc.serverRoutes.head.valueFilters should equal(Filters(Map(
         "userId" → RegexFilter(".*")
       )))
-      sbc.serverRoutes.head.transport shouldBe a [MockServerTransport]
+      sbc.serverRoutes.head.transport shouldBe a[MockServerTransport]
     }
   }
 }

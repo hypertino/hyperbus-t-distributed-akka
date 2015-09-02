@@ -29,9 +29,9 @@ class KafkaServerTransport(
     encoding = config.getOptionString("encoding") getOrElse "UTF-8"
   )
 
-  protected [this] val subscriptions = new TrieMap[String, Subscription[_, _]]
-  protected [this] val idCounter = new AtomicLong(0)
-  protected [this] val log = LoggerFactory.getLogger(this.getClass)
+  protected[this] val subscriptions = new TrieMap[String, Subscription[_, _]]
+  protected[this] val idCounter = new AtomicLong(0)
+  protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                               (handler: (IN) => Future[TransportResponse]): String = ???
@@ -43,7 +43,7 @@ class KafkaServerTransport(
       r.valueFilters.matchFilters(topicFilter.valueFilters)) map { route ⇒
 
       val id = idCounter.incrementAndGet().toHexString
-      val subscription = new Subscription[Unit,IN](1, /*todo: per topic thread count*/
+      val subscription = new Subscription[Unit, IN](1, /*todo: per topic thread count*/
         route, topicFilter, groupName, inputDeserializer, handler
       )
       subscriptions.put(id, subscription)
@@ -56,14 +56,14 @@ class KafkaServerTransport(
   }
 
   override def off(subscriptionId: String): Unit = {
-    subscriptions.get(subscriptionId).foreach{ s⇒
+    subscriptions.get(subscriptionId).foreach { s ⇒
       s.stop()
       subscriptions.remove(subscriptionId)
     }
   }
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    subscriptions.foreach{ kv ⇒
+    subscriptions.foreach { kv ⇒
       kv._2.stop()
     }
     subscriptions.clear()
@@ -72,12 +72,12 @@ class KafkaServerTransport(
 
 
   class Subscription[OUT, IN <: TransportRequest](
-                               threadCount: Int,
-                               route: KafkaRoute,
-                               topicFilter: Topic,
-                               groupName: String,
-                               inputDeserializer: Deserializer[IN],
-                               handler: (IN) ⇒ Future[OUT]) {
+                                                   threadCount: Int,
+                                                   route: KafkaRoute,
+                                                   topicFilter: Topic,
+                                                   groupName: String,
+                                                   inputDeserializer: Deserializer[IN],
+                                                   handler: (IN) ⇒ Future[OUT]) {
 
     val consumer = {
       val props = consumerProperties.clone().asInstanceOf[Properties]
@@ -114,7 +114,7 @@ class KafkaServerTransport(
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = inputDeserializer(inputBytes) // todo: encoding!
-        if (topicFilter.urlFilter.matchFilter(input.topic.urlFilter) &&  // todo: test order of matching!
+        if (topicFilter.urlFilter.matchFilter(input.topic.urlFilter) && // todo: test order of matching!
           topicFilter.valueFilters.matchFilters(input.topic.valueFilters)) {
           if (logMessages && log.isTraceEnabled) {
             log.trace(s"Consumer #$consumerId got message: $messageString")
@@ -132,7 +132,7 @@ class KafkaServerTransport(
       }
     }
 
-    private def consumeStream(stream: KafkaStream[Array[Byte],Array[Byte]]): Unit = {
+    private def consumeStream(stream: KafkaStream[Array[Byte], Array[Byte]]): Unit = {
       val consumerId = Thread.currentThread().getName
       log.info(s"Starting consumer #$consumerId on topic ${route.targetTopic} -> $topicFilter}")
       try {
@@ -149,4 +149,5 @@ class KafkaServerTransport(
       }
     }
   }
+
 }

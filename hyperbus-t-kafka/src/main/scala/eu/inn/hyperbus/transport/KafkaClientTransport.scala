@@ -14,16 +14,16 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 
 case class KafkaRoute(urlArg: Filter,
-                     valueFilters: Filters = Filters.empty,
-                     targetTopic: String = "hyperbus",
-                     targetPartitionKeys: List[String] = List.empty)
+                      valueFilters: Filters = Filters.empty,
+                      targetTopic: String = "hyperbus",
+                      targetPartitionKeys: List[String] = List.empty)
 
 class KafkaPartitionKeyIsNotDefined(message: String) extends RuntimeException(message)
 
 class KafkaClientTransport(producerProperties: Properties,
-                          routes: List[KafkaRoute],
-                          logMessages: Boolean = false,
-                          encoding: String = "UTF-8") extends ClientTransport {
+                           routes: List[KafkaRoute],
+                           logMessages: Boolean = false,
+                           encoding: String = "UTF-8") extends ClientTransport {
 
   def this(config: Config) = this(
     producerProperties = ConfigLoader.loadProducerProperties(config.getConfig("producer")),
@@ -32,8 +32,8 @@ class KafkaClientTransport(producerProperties: Properties,
     encoding = config.getOptionString("encoding").getOrElse("UTF-8")
   )
 
-  protected [this] val log = LoggerFactory.getLogger(this.getClass)
-  protected [this] val producer = new KafkaProducer[String,String](producerProperties)
+  protected[this] val log = LoggerFactory.getLogger(this.getClass)
+  protected[this] val producer = new KafkaProducer[String, String](producerProperties)
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
 
@@ -61,8 +61,9 @@ class KafkaClientTransport(producerProperties: Properties,
     message.serialize(inputBytes)
     val messageString = inputBytes.toString(encoding)
 
-    val record: ProducerRecord[String,String] =
-      if (route.targetPartitionKeys.isEmpty) { // no partition key
+    val record: ProducerRecord[String, String] =
+      if (route.targetPartitionKeys.isEmpty) {
+        // no partition key
         new ProducerRecord(route.targetTopic, messageString)
       }
       else {
@@ -70,7 +71,7 @@ class KafkaClientTransport(producerProperties: Properties,
           message.topic.valueFilters.filterMap.getOrElse(key,
             throw new KafkaPartitionKeyIsNotDefined(s"Filter key $key is not defined for ${message.topic}")
           ).specific
-        }.foldLeft("")(_+_)
+        }.foldLeft("")(_ + _)
 
         new ProducerRecord(route.targetTopic, recordKey, messageString)
       }
@@ -91,6 +92,7 @@ class KafkaClientTransport(producerProperties: Properties,
           promise.success(
             new PublishResult {
               def sent = Some(true)
+
               def offset = Some(s"${recordMetadata.partition()}/${recordMetadata.offset()}}")
             }
           )

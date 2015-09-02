@@ -8,6 +8,7 @@ import scala.util.matching.Regex
 
 sealed trait Filter {
   def matchFilter(other: Filter): Boolean
+
   def specific: String = this match {
     case SpecificValue(value) ⇒ value
     case _ ⇒ throw new UnsupportedOperationException(s"Specific value expected but got $getClass")
@@ -27,6 +28,7 @@ case class SpecificValue(value: String) extends Filter {
 
 case class RegexFilter(value: String) extends Filter {
   lazy val valueRegex = new Regex(value)
+
   def matchFilter(other: Filter) = other match {
     case SpecificValue(otherValue) ⇒ valueRegex.findFirstMatchIn(otherValue).isDefined
     case RegexFilter(otherRegexValue) ⇒ otherRegexValue == value
@@ -37,7 +39,7 @@ case class RegexFilter(value: String) extends Filter {
 // case class ExactPartition(partition: String) extends PartitionArg -- kafka?
 // todo: rename this class!
 case class Filters(filterMap: Map[String, Filter]) {
-  def matchFilters(other:Filters): Boolean = {
+  def matchFilters(other: Filters): Boolean = {
     filterMap.map { case (k, v) ⇒
       other.filterMap.get(k).map { av ⇒
         v.matchFilter(av)
@@ -52,20 +54,26 @@ case object Filters {
   val empty = Filters(Map.empty)
 }
 
-case class Topic(urlFilter: Filter, valueFilters: Filters = Filters.empty) { // todo: add topic matcher and used it!
+case class Topic(urlFilter: Filter, valueFilters: Filters = Filters.empty) {
+  // todo: add topic matcher and used it!
   override def toString = s"Topic($urlFilter$valueFiltersFormat)"
-  private def valueFiltersFormat = if(valueFilters.filterMap.isEmpty) "" else
-    valueFilters.filterMap.mkString("#",",","")
+
+  private def valueFiltersFormat = if (valueFilters.filterMap.isEmpty) ""
+  else
+    valueFilters.filterMap.mkString("#", ",", "")
 }
 
 object Topic {
   def apply(url: String): Topic = Topic(SpecificValue(url), Filters.empty)
+
   def apply(url: String, valueFilters: Filters): Topic = Topic(SpecificValue(url), valueFilters)
 }
 
 trait TransportMessage {
   def messageId: String
+
   def correlationId: String
+
   def serialize(output: OutputStream)
 }
 
@@ -77,23 +85,27 @@ trait TransportResponse extends TransportMessage
 
 trait PublishResult {
   def sent: Option[Boolean]
+
   def offset: Option[String]
 }
 
 trait ClientTransport {
   def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT]
+
   def publish(message: TransportRequest): Future[PublishResult]
+
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
 trait ServerTransport {
   def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
-                 (handler: (IN) => Future[TransportResponse]): String
+                                     (handler: (IN) => Future[TransportResponse]): String
 
   def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
-                   (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
+                                       (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
+
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 

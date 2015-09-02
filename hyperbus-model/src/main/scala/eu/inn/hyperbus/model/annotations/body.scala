@@ -20,6 +20,7 @@ private[annotations] object BodyMacroImpl {
 }
 
 private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBase {
+
   import c.universe._
 
   def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {

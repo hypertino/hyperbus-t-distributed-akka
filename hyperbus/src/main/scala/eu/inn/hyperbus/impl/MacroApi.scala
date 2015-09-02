@@ -6,8 +6,8 @@ import eu.inn.hyperbus.transport.api.{AnyValue, Filters, Topic}
 
 trait MacroApi {
   def responseDeserializer(responseHeader: ResponseHeader,
-                      responseBodyJson: com.fasterxml.jackson.core.JsonParser,
-                      bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body]
+                           responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                           bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body]
 
   def topicWithAnyValue(url: String): Topic = Topic(url, Filters(UrlParser.extractParameters(url).map(_ → AnyValue).toMap))
 }

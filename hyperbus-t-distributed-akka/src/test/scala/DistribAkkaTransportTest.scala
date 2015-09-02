@@ -24,6 +24,7 @@ case class MockRequest(specificTopic: String, message: String,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
   def topic: Topic = Topic(specificTopic)
+
   override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }
@@ -49,10 +50,11 @@ object MockResponseDeserializer extends Deserializer[MockResponse] {
   }
 }
 
-class TestActorX extends Actor with ActorLogging{
+class TestActorX extends Actor with ActorLogging {
   val membersUp = new AtomicInteger(0)
   val memberUpPromise = Promise[Unit]()
   val memberUpFuture: Future[Unit] = memberUpPromise.future
+
   override def receive: Receive = LoggingReceive {
     case MemberUp(member) => {
       membersUp.incrementAndGet()
@@ -93,7 +95,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         }
       }
 
-      val id2 = transportManager.process(Topic("/topic/{abc}"), MockRequestDeserializer, null){ msg: MockRequest =>
+      val id2 = transportManager.process(Topic("/topic/{abc}"), MockRequestDeserializer, null) { msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)

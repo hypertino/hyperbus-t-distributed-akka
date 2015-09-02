@@ -14,6 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder
+
   def input = messageBuf.toString()
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
@@ -30,6 +31,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
     ask(message, null) map { x =>
       new PublishResult {
         def sent = None
+
         def offset = None
       }
     }
@@ -47,7 +49,7 @@ class ServerTransportTest extends ServerTransport {
   var sExceptionSerializer: Serializer[Throwable] = null
 
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
-                                     (handler: (IN) => Future[TransportResponse]): String = {
+                                              (handler: (IN) => Future[TransportResponse]): String = {
 
     sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
@@ -57,7 +59,7 @@ class ServerTransportTest extends ServerTransport {
 
   //todo: test this
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
-                                       (handler: (IN) => Future[Unit]): String = ???
+                                                (handler: (IN) => Future[Unit]): String = ???
 
   override def off(subscriptionId: String) = ???
 
@@ -73,7 +75,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         """{"response":{"status":201,"contentType":"application/vnd+created-body.json","messageId":"123"},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}"""
       )
 
-      val hyperBus = newHyperBus(ct,null)
+      val hyperBus = newHyperBus(ct, null)
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
 
       ct.input should equal(
@@ -164,13 +166,13 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         r.body shouldBe a[EmptyBody]
       }
     }
-    
+
     "<~ client got exception" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":409,"messageId":"abcde12345"},"body":{"code":"failed","errorId":"abcde12345"}}"""
       )
 
-      val hyperBus = newHyperBus(ct,null)
+      val hyperBus = newHyperBus(ct, null)
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
 
       ct.input should equal(
@@ -185,7 +187,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "~> (server)" in {
       val st = new ServerTransportTest()
-      val hyperBus = newHyperBus(null,st)
+      val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: TestPost1 =>
         Future {
           Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123")
@@ -211,7 +213,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "~> static request with empty body (server)" in {
       val st = new ServerTransportTest()
-      val hyperBus = newHyperBus(null,st)
+      val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: StaticPostWithEmptyBody =>
         Future {
           NoContent(EmptyBody, messageId = "123", correlationId = "123")
@@ -237,7 +239,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "~> static request with dynamic body (server)" in {
       val st = new ServerTransportTest()
-      val hyperBus = newHyperBus(null,st)
+      val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: StaticPostWithDynamicBody =>
         Future {
           NoContent(EmptyBody, messageId = "123", correlationId = "123")
@@ -263,7 +265,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "~> (server throw exception)" in {
       val st = new ServerTransportTest()
-      val hyperBus = newHyperBus(null,st)
+      val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: TestPost1 =>
         Future {
           throw Conflict(ErrorBody("failed", errorId = "abcde12345"), messageId = "123", correlationId = "123")

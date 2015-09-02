@@ -12,15 +12,18 @@ trait EmptyBody extends Body
 
 case object EmptyBody extends EmptyBody {
   def contentType: Option[String] = Some(ContentType.NO_CONTENT)
+
   def serialize(outputStream: OutputStream): Unit = {
     MessageSerializer.writeUtf8("null", outputStream)
   }
-  def deserializer(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): EmptyBody = {
+
+  def deserializer(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): EmptyBody = {
     import eu.inn.binders.json._
-      SerializerFactory.findFactory().withJsonParser(jsonParser) {deserializer =>
+    SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       deserializer.unbind[Value]
     }
     EmptyBody
   }
-  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): EmptyBody = deserializer(contentType, jsonParser)
+
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): EmptyBody = deserializer(contentType, jsonParser)
 }

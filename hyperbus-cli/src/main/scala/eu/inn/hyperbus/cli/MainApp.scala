@@ -20,7 +20,9 @@ import scala.concurrent.{Await, Future}
 import scala.util.control.Breaks._
 
 trait Commands
+
 case class InitCommand(hyperBus: HyperBus) extends Commands
+
 case class InputCommand(message: String) extends Commands
 
 @body("application/vnd+test-body.json")
@@ -35,7 +37,7 @@ object MainApp {
   //console.getTerminal.setEchoEnabled(false)
   //console.setPrompt(">")
 
-  def main(args : Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
 
     println("Starting hyperbus-cli...")
     val config = ConfigFactory.load()
@@ -68,38 +70,40 @@ object MainApp {
     val downMember = """^down (.+)://(.+)@(.+):(\d+)$""".r
     val leaveMember = """^leave (.+)://(.+)@(.+):(\d+)$""".r
 
-    breakable{ while(true) {
-      console.readLine(">") match {
-        case "quit" ⇒ break()
+    breakable {
+      while (true) {
+        console.readLine(">") match {
+          case "quit" ⇒ break()
 
-        case askCommand(method, url, contentType, body) ⇒
-          val r = createDynamicRequest(method, url, Some(contentType), body)
-          out(s"<~$r")
-          val f = hyperBus <~ r
-          printResponse(f)
+          case askCommand(method, url, contentType, body) ⇒
+            val r = createDynamicRequest(method, url, Some(contentType), body)
+            out(s"<~$r")
+            val f = hyperBus <~ r
+            printResponse(f)
 
-        case publishCommand(method, url, contentType, body) ⇒
-          val r = createDynamicRequest(method, url, Some(contentType), body)
-          out(s"<!$r")
-          val f = hyperBus <| r
+          case publishCommand(method, url, contentType, body) ⇒
+            val r = createDynamicRequest(method, url, Some(contentType), body)
+            out(s"<!$r")
+            val f = hyperBus <| r
 
-        case downMember(protocol,system,host,port) ⇒
-          val cluster = Cluster(actorSystem)
-          val address = Address(protocol,system,host,port.toInt)
-          out("Downing: " + address)
-          cluster.down(address)
+          case downMember(protocol, system, host, port) ⇒
+            val cluster = Cluster(actorSystem)
+            val address = Address(protocol, system, host, port.toInt)
+            out("Downing: " + address)
+            cluster.down(address)
 
-        case leaveMember(protocol,system,host,port) ⇒
-          val cluster = Cluster(actorSystem)
-          val address = Address(protocol,system,host,port.toInt)
-          out("Leaving: " + address)
-          cluster.leave(address)
+          case leaveMember(protocol, system, host, port) ⇒
+            val cluster = Cluster(actorSystem)
+            val address = Address(protocol, system, host, port.toInt)
+            out("Leaving: " + address)
+            cluster.leave(address)
 
-        case cmd ⇒
-          out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
+          case cmd ⇒
+            out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
             |Example: ~> get /test application/vnd+test-body.json {"someValue":"abc"}""".stripMargin('|'))
+        }
       }
-    }}
+    }
 
     quit()
   }
@@ -115,7 +119,7 @@ object MainApp {
   }
 
   def printResponse(response: Future[Response[Body]]) = {
-    response map out recover{
+    response map out recover {
       case x ⇒ out(x)
     }
   }

@@ -17,10 +17,10 @@ import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
 class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
-              val localAffinity: Boolean = true,
-              val logMessages: Boolean = false,
-              val releaseActorSystem: Boolean = false,
-              implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
+                                     val localAffinity: Boolean = true,
+                                     val logMessages: Boolean = false,
+                                     val releaseActorSystem: Boolean = false,
+                                     implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
 
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
     localAffinity = config.getOptionBoolean("local-afinity") getOrElse true,
@@ -29,14 +29,14 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
-  protected [this] val cluster = Cluster(actorSystem)
-  protected [this] val log = LoggerFactory.getLogger(this.getClass)
+  protected[this] val cluster = Cluster(actorSystem)
+  protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
   /*val noRouteActor = actorSystem.actorSelection("no-route-watcher").resolveOne().recover {
     case _ ⇒ actorSystem.actorOf(Props(new NoRouteWatcher), "no-route-watcher")
   }*/
 
-  protected [this] val mediator = DistributedPubSubExtension(actorSystem).mediator
+  protected[this] val mediator = DistributedPubSubExtension(actorSystem).mediator
 
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
@@ -74,9 +74,10 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     }
 
     mediator ! Publish(specificUrl, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?
-    Future.successful{
+    Future.successful {
       new PublishResult {
         def sent = None
+
         def offset = None
       }
     }

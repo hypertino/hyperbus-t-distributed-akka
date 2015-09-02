@@ -15,18 +15,18 @@ import scala.concurrent.{ExecutionContext, Future}
  * @param serverRoutes - routes messages from specific transport to server/producer subscribed on topic
  * @param executionContext - execution context used by transport layer
  */
-class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[ClientTransport]],
-                       protected [this] val serverRoutes: Seq[TransportRoute[ServerTransport]],
-                       implicit protected [this] val executionContext: ExecutionContext) extends TransportManagerApi {
+class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[ClientTransport]],
+                       protected[this] val serverRoutes: Seq[TransportRoute[ServerTransport]],
+                       implicit protected[this] val executionContext: ExecutionContext) extends TransportManagerApi {
 
-  protected [this] val subscriptions = new TrieMap[String, (Topic, String)]
-  protected [this] val idCounter = new AtomicLong(0)
-  protected [this] val log = LoggerFactory.getLogger(this.getClass)
+  protected[this] val subscriptions = new TrieMap[String, (Topic, String)]
+  protected[this] val idCounter = new AtomicLong(0)
+  protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
   def this(configuration: TransportConfiguration) = this(configuration.clientRoutes,
     configuration.serverRoutes, ExecutionContext.global)
 
-  def ask[OUT <: TransportResponse](message: TransportRequest,outputDeserializer: Deserializer[OUT]): Future[OUT] = {
+  def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
     this.lookupClientTransport(message.topic).ask[OUT](message, outputDeserializer)
   }
 
@@ -61,9 +61,9 @@ class TransportManager(protected [this] val clientRoutes: Seq[TransportRoute[Cli
     result
   }
 
-  def subscribe[IN <: TransportRequest ](topicFilter: Topic, groupName: String,
-                                         inputDeserializer: Deserializer[IN])
-                                        (handler: (IN) => Future[Unit]): String = {
+  def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String,
+                                        inputDeserializer: Deserializer[IN])
+                                       (handler: (IN) => Future[Unit]): String = {
     val underlyingSubscriptionId = lookupServerTransport(topicFilter).subscribe[IN](
       topicFilter,
       groupName,

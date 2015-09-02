@@ -6,6 +6,7 @@ import eu.inn.hyperbus.util.ConfigUtils
 class TransportConfigurationError(message: String) extends RuntimeException(message)
 
 object TransportConfigurationLoader {
+
   import ConfigUtils._
 
   import scala.collection.JavaConversions._
@@ -16,7 +17,7 @@ object TransportConfigurationLoader {
     val st = sc.getObject("transports")
     val transportMap = st.entrySet().map { entry ⇒
       val transportTag = entry.getKey
-      val transportConfig = sc.getConfig("transports."+transportTag)
+      val transportConfig = sc.getConfig("transports." + transportTag)
       val transport = createTransport(transportConfig)
       transportTag → transport
     }.toMap
@@ -24,11 +25,11 @@ object TransportConfigurationLoader {
     import eu.inn.binders.tconfig._
 
     TransportConfiguration(
-      sc.getList("client-routes").map{ li⇒
+      sc.getList("client-routes").map { li ⇒
         val transportName = li.read[TransportNameHolder].transport
         getTransportRoute[ClientTransport](transportName, transportMap, li.read[TransportRouteHolder])
       }.toSeq,
-      sc.getList("server-routes").map{ li⇒
+      sc.getList("server-routes").map { li ⇒
         val transportName = li.read[TransportNameHolder].transport
         getTransportRoute[ServerTransport](transportName, transportMap, li.read[TransportRouteHolder])
       }.toSeq
@@ -66,13 +67,16 @@ object TransportConfigurationLoader {
   }
 }
 
-case class TransportNameHolder(transport: String) // todo: separate transport name and route!
+case class TransportNameHolder(transport: String)
+
+// todo: separate transport name and route!
 
 // todo: do we really need this? maybe it's just a Topic!
 case class TransportRouteHolder(
                                  url: Option[String],
                                  matchType: Option[String],
-                                 partitionArgs: Map[String, PartitionArgHolder] = Map.empty[String, PartitionArgHolder]) {// todo: rename partitionArgs
+                                 partitionArgs: Map[String, PartitionArgHolder] = Map.empty[String, PartitionArgHolder]) {
+  // todo: rename partitionArgs
   def partitionArgsN: Filters = {
     Filters(
       partitionArgs.map { case (partitionKey, partitionValue) ⇒
@@ -81,4 +85,5 @@ case class TransportRouteHolder(
     )
   }
 }
+
 case class PartitionArgHolder(value: Option[String], matchType: Option[String])

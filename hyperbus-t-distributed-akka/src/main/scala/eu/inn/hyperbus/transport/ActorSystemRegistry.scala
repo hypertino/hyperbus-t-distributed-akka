@@ -16,6 +16,7 @@ object ActorSystemRegistry {
   private val registry = new TrieMap[String, (ActorSystem, AtomicInteger)]
   private val lock = new Object
   private val log = LoggerFactory.getLogger(this.getClass)
+
   import eu.inn.hyperbus.util.ConfigUtils._
 
   def addRef(config: Config): ActorSystem = {
@@ -58,7 +59,7 @@ object ActorSystemRegistry {
     log.info(s"Leaving cluster $me...")
     cluster.leave(me.address)
 
-    val result = Await.result(exitPromise.future, timeout/2)
+    val result = Await.result(exitPromise.future, timeout / 2)
     if (!result)
       log.warn(s"Didn't get confirmation that node left: $me")
 
@@ -89,4 +90,5 @@ object ActorSystemRegistry {
       case _ ⇒ //ignore
     }
   }
+
 }

@@ -74,6 +74,7 @@ case class MockRequest(specificTopic: String, message: String,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
   def topic: Topic = Topic(specificTopic)
+
   override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
   }

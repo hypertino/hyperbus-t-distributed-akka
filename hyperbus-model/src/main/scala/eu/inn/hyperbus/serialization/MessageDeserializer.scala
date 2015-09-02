@@ -7,7 +7,9 @@ import eu.inn.binders.core.BindOptions
 import eu.inn.hyperbus.model.{Body, Request, Response}
 
 object MessageDeserializer {
+
   import eu.inn.binders.json._
+
   implicit val bindOptions = new BindOptions(true)
 
   def deserializeRequestWith[REQ <: Request[Body]](inputStream: InputStream)(deserializer: (RequestHeader, JsonParser) => REQ): REQ = {

@@ -22,6 +22,7 @@ private[annotations] object RequestMacro {
 }
 
 private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImplBase {
+
   import c.universe._
 
   def updateRequestClass(url: String, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
@@ -31,7 +32,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       f.name.toString == "correlationId" || f.name.toString == "messageId"
     }
 
-    val (bodyFieldName,bodyType) = fields.flatMap { field ⇒
+    val (bodyFieldName, bodyType) = fields.flatMap { field ⇒
       field.tpt match {
         case i: Ident ⇒
           val typeName = i.name.toTypeName

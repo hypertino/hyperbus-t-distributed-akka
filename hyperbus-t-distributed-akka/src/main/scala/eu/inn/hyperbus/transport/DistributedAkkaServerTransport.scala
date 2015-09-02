@@ -24,10 +24,10 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     true)
 
-  protected [this] val subscriptions = new TrieMap[String, ActorRef]
-  protected [this] val cluster = Cluster(actorSystem)
-  protected [this] val idCounter = new AtomicLong(0)
-  protected [this] val log = LoggerFactory.getLogger(this.getClass)
+  protected[this] val subscriptions = new TrieMap[String, ActorRef]
+  protected[this] val cluster = Cluster(actorSystem)
+  protected[this] val idCounter = new AtomicLong(0)
+  protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                               (handler: (IN) => Future[TransportResponse]): String = {
@@ -57,7 +57,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   }
 
   override def off(subscriptionId: String): Unit = {
-    subscriptions.get(subscriptionId).foreach{ s⇒
+    subscriptions.get(subscriptionId).foreach { s ⇒
       actorSystem.stop(s)
       subscriptions.remove(subscriptionId)
     }

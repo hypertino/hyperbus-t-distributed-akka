@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit
 import com.typesafe.config.{Config, ConfigObject}
 
 object ConfigUtils {
+
   import scala.collection.JavaConversions._
 
   implicit class ExtendConfig(config: Config) {
@@ -32,6 +33,8 @@ object ConfigUtils {
     def getOptionDuration(key: String): Option[scala.concurrent.duration.FiniteDuration] =
       if (config.hasPath(key)) Some(
         scala.concurrent.duration.Duration(config.getDuration(key, TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS)
-      ) else None
+      )
+      else None
   }
+
 }

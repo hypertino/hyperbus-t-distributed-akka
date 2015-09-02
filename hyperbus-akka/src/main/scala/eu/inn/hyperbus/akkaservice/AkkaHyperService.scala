@@ -143,7 +143,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       (member.name.decodedName.toString.startsWith("process") ||
         member.name.decodedName.toString.startsWith("subscribe") ||
         member.name.decodedName.toString.startsWith("~>") || // ~>
-        member.name.decodedName.toString.startsWith("|>")) &&  // |>
+        member.name.decodedName.toString.startsWith("|>")) && // |>
       member.isPublic && {
       val m = member.asInstanceOf[MethodSymbol]
       //println("method: " + member.name.decoded + " params: " + m.paramss)

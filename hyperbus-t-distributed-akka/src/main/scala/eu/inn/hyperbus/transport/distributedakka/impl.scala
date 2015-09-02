@@ -13,25 +13,25 @@ import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 // todo: REMOVE OUT/IN in this file
-private [transport] trait Command
+private[transport] trait Command
 
-private [transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl: String,
-                                                     topic: Topic,
-                                                     groupName: Option[String],
-                                                     inputDeserializer: Deserializer[IN],
-                                                     exceptionSerializer: Serializer[Throwable],
-                                                     handler: (IN) => Future[OUT])
+private[transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl: String,
+                                                                        topic: Topic,
+                                                                        groupName: Option[String],
+                                                                        inputDeserializer: Deserializer[IN],
+                                                                        exceptionSerializer: Serializer[Throwable],
+                                                                        handler: (IN) => Future[OUT])
 
-private [transport] case class Start[OUT,IN<: TransportRequest](id: String, subscription: Subscription[OUT,IN], logMessages: Boolean) extends Command
+private[transport] case class Start[OUT, IN <: TransportRequest](id: String, subscription: Subscription[OUT, IN], logMessages: Boolean) extends Command
 
-private [transport] abstract class ServerActor[OUT, IN <: TransportRequest] extends Actor {
-  protected [this] val mediator = DistributedPubSubExtension(context.system).mediator
-  protected [this] var subscription: Subscription[OUT,IN] = null
-  protected [this] var logMessages = false
-  protected [this] var log = LoggerFactory.getLogger(getClass)
+private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] extends Actor {
+  protected[this] val mediator = DistributedPubSubExtension(context.system).mediator
+  protected[this] var subscription: Subscription[OUT, IN] = null
+  protected[this] var logMessages = false
+  protected[this] var log = LoggerFactory.getLogger(getClass)
 
   override def receive: Receive = {
-    case start: Start[OUT,IN] ⇒
+    case start: Start[OUT, IN] ⇒
       subscription = start.subscription
       logMessages = start.logMessages
       mediator ! Subscribe(subscription.topicUrl, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
@@ -81,7 +81,8 @@ private [transport] abstract class ServerActor[OUT, IN <: TransportRequest] exte
   }
 }
 
-private [transport] class ProcessServerActor[IN <: TransportRequest] extends ServerActor[TransportResponse, IN] {
+private[transport] class ProcessServerActor[IN <: TransportRequest] extends ServerActor[TransportResponse, IN] {
+
   import context._
   import eu.inn.hyperbus.util.LogUtils._
 
@@ -94,7 +95,7 @@ private [transport] class ProcessServerActor[IN <: TransportRequest] extends Ser
 
       decodeMessage(input, sendReply = true) map { inputMessage ⇒
         val result = subscription.handler(inputMessage) // todo: test result with partitonArgs?
-        val futureMessage = result.map { out ⇒
+      val futureMessage = result.map { out ⇒
           val outputBytes = new ByteArrayOutputStream()
           out.serialize(outputBytes)
           outputBytes.toString(Util.defaultEncoding)
@@ -115,16 +116,19 @@ private [transport] class ProcessServerActor[IN <: TransportRequest] extends Ser
   }
 }
 
-private [transport] class SubscribeServerActor[IN <: TransportRequest] extends ServerActor[Unit,IN] {
+private[transport] class SubscribeServerActor[IN <: TransportRequest] extends ServerActor[Unit, IN] {
+
   import context._
   import eu.inn.hyperbus.util.LogUtils._
+
   def start: Receive = {
     case input: String ⇒
       if (logMessages && log.isTraceEnabled) {
         log.trace(Map("subscriptionId" → subscription.handler.hashCode.toHexString), s"hyperBus |> $input")
       }
       decodeMessage(input, sendReply = false) map { inputMessage ⇒
-        subscription.handler(inputMessage).recover { // todo: test result with partitonArgs?
+        subscription.handler(inputMessage).recover {
+          // todo: test result with partitonArgs?
           case NonFatal(e) ⇒ log.error(Map("subscriptionId" → subscription.handler.hashCode.toHexString),
             "Subscriber handler failed", e)
         }

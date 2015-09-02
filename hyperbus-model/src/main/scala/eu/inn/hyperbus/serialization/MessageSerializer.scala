@@ -6,7 +6,9 @@ import eu.inn.binders.core.BindOptions
 import eu.inn.hyperbus.model.{Body, Request, Response}
 
 object MessageSerializer {
+
   import eu.inn.binders.json._
+
   implicit val bindOptions = new BindOptions(true)
 
   def serializeRequest[B <: Body](request: Request[B], outputStream: OutputStream) = {

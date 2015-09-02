@@ -9,6 +9,7 @@ import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportRou
 case class TopicInfoHolder(topic: Option[String], partitionKeys: Option[List[String]])
 
 object ConfigLoader {
+
   import scala.collection.JavaConversions._
 
   def loadRoutes(routesConfigList: java.util.List[_ <: ConfigValue]): List[KafkaRoute] = {
@@ -30,7 +31,7 @@ object ConfigLoader {
 
   def loadProducerProperties(config: Config) = loadProperties(config, defaultProducerProperties)
 
-  private def loadProperties(config: Config, defaultProperties: Map[String,String]) = {
+  private def loadProperties(config: Config, defaultProperties: Map[String, String]) = {
     val properties = new Properties()
     config.entrySet().map { entry ⇒
       properties.setProperty(entry.getKey, entry.getValue.unwrapped().toString)
@@ -42,13 +43,13 @@ object ConfigLoader {
     properties
   }
 
-  private val defaultConsumerProperties = Map[String,String](
+  private val defaultConsumerProperties = Map[String, String](
     "key.deserializer" → "org.apache.kafka.common.serialization.StringDeserializer",
     "value.deserializer" → "org.apache.kafka.common.serialization.StringDeserializer",
     "partition.assignment.strategy" → "range"
   )
 
-  private val defaultProducerProperties = Map[String,String](
+  private val defaultProducerProperties = Map[String, String](
     "key.serializer" → "org.apache.kafka.common.serialization.StringSerializer",
     "value.serializer" → "org.apache.kafka.common.serialization.StringSerializer"
   )

@@ -29,13 +29,16 @@ case class TestBody2(resourceData: Long) extends Body
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
-  extends CreatedBody// with NoContentType
+  extends CreatedBody
+
+// with NoContentType
 
 @body("application/vnd+test-error-body.json")
 case class TestErrorBody(code: String,
                          description: Option[String] = None,
                          errorId: String = IdGenerator.create()) extends ErrorBody {
   def message = code + description.map(": " + _).getOrElse("")
+
   def extra = Null
 }
 
@@ -68,7 +71,7 @@ class TestActor extends Actor {
     count += 1
     Future {
       if (testPost3.body.resourceData == 1)
-        Created(TestCreatedBody("100500"), messageId="123", correlationId = "123")
+        Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123")
       else
       if (testPost3.body.resourceData == -1)
         throw Conflict(ErrorBody("failed"))
@@ -79,7 +82,7 @@ class TestActor extends Actor {
       if (testPost3.body.resourceData == -3)
         NotFound(TestErrorBody("not_found"))
       else
-        Ok(DynamicBody(Text("another result")), messageId="123", correlationId = "123")
+        Ok(DynamicBody(Text("another result")), messageId = "123", correlationId = "123")
     }
   }
 }
@@ -117,7 +120,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       hyperBus.routeTo[TestActor](actorRef)
       hyperBus.routeTo[TestGroupActor](groupActorRef)
 
-      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId="abc", correlationId="xyz")
+      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "abc", correlationId = "xyz")
 
       whenReady(f1) { r =>
         //r.messageId should equal("123")

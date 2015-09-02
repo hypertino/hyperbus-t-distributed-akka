@@ -7,9 +7,13 @@ import eu.inn.hyperbus.model.annotations.response
 //todo: !format code
 
 trait NormalResponse extends Response[Body]
+
 trait RedirectResponse extends Response[Body]
+
 trait ErrorResponse extends Response[ErrorBody]
+
 trait ServerError extends ErrorResponse
+
 trait ClientError extends ErrorResponse
 
 object Status {
@@ -73,24 +77,24 @@ trait CreatedBody extends Body with Links {
 @response(Status.CREATED) case class Created[+B <: CreatedBody](body: B) extends NormalResponse with Response[B]
 
 
-
 object DynamicCreatedBody {
   def apply(contentType: Option[String], content: Value): DynamicBody with CreatedBody = DynamicCreatedBodyContainer(contentType, content)
 
   def apply(content: Value): DynamicBody with CreatedBody = apply(None, content)
 
-  def decode(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = {
+  def decode(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(contentType, deserializer.unbind[Value])
     }
   }
 
-  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = decode(contentType, jsonParser)
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = decode(contentType, jsonParser)
+
   def unapply(dynamicBody: DynamicBody with CreatedBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
 
-private [model] case class DynamicCreatedBodyContainer(contentType: Option[String], content: Value) extends DynamicBody with CreatedBody
+private[model] case class DynamicCreatedBodyContainer(contentType: Option[String], content: Value) extends DynamicBody with CreatedBody
 
 @response(Status.ACCEPTED) case class Accepted[+B <: Body](body: B) extends NormalResponse with Response[B]
 
@@ -144,7 +148,7 @@ abstract class HyperBusClientException[+B <: ErrorBody](body: B) extends HyperBu
 
 @response(Status.NOT_FOUND) case class NotFound[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
 
-@response( Status.METHOD_NOT_ALLOWED) case class MethodNotAllowed[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.METHOD_NOT_ALLOWED) case class MethodNotAllowed[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
 
 @response(Status.NOT_ACCEPTABLE) case class NotAcceptable[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
 
@@ -177,6 +181,7 @@ abstract class HyperBusClientException[+B <: ErrorBody](body: B) extends HyperBu
 @response(Status.FAILED_DEPENDENCY) case class FailedDependency[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
 
 @response(Status.TOO_MANY_REQUEST) case class TooManyRequest[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+
 // ----------------- Server Error responses -----------------
 
 @response(Status.INTERNAL_SERVER_ERROR) case class InternalServerError[+B <: ErrorBody](body: B) extends HyperBusServerException(body)

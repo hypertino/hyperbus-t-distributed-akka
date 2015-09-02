@@ -11,7 +11,9 @@ import org.scalatest.{FreeSpec, Matchers}
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
-  extends CreatedBody// with NoContentType
+  extends CreatedBody
+
+// with NoContentType
 
 
 class TestResponseAnnotation extends FreeSpec with Matchers {

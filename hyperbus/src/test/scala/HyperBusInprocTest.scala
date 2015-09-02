@@ -22,7 +22,9 @@ case class TestBody2(resourceData: Long) extends Body
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
-  extends CreatedBody// with NoContentType
+  extends CreatedBody
+
+// with NoContentType
 
 @request("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
@@ -61,8 +63,8 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       }
 
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"),
-        messageId="abc",
-        correlationId="xyz")
+        messageId = "abc",
+        correlationId = "xyz")
 
       whenReady(f) { r =>
         r.correlationId should equal("xyz")

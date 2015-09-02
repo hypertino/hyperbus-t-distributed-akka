@@ -11,12 +11,13 @@ import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 
 trait DynamicBody extends Body with Links {
   def content: Value
+
   lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]].getOrElse(Map.empty)
 
   def serialize(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
     import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
-    eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer=>
+    eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer =>
       serializer.bind[Value](content)
     }
   }
@@ -27,17 +28,19 @@ object DynamicBody {
 
   def apply(content: Value): DynamicBody = DynamicBodyContainer(None, content)
 
-  def decode(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody = {
+  def decode(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(contentType, deserializer.unbind[Value])
     }
   }
-  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): DynamicBody = decode(contentType, jsonParser)
+
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = decode(contentType, jsonParser)
+
   def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
 
-private [model] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
+private[model] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
 
 trait DynamicRequest extends Request[DynamicBody] {
   lazy val topic = Topic(url, Filters(UrlParser.extractParameters(url).map { arg ⇒

@@ -36,8 +36,8 @@ class InprocTransport(serialize: Boolean = false)
   }
 
   protected def reserializeException[IN <: TransportRequest, OUT <: TransportResponse](e: Throwable,
-                                                                         exceptionSerializer: Serializer[Throwable],
-                                                                         deserializer: Deserializer[OUT]): OUT = {
+                                                                                       exceptionSerializer: Serializer[Throwable],
+                                                                                       deserializer: Deserializer[OUT]): OUT = {
     val ba = new ByteArrayOutputStream()
     exceptionSerializer(e, ba)
     val bi = new ByteArrayInputStream(ba.toByteArray)
@@ -48,7 +48,7 @@ class InprocTransport(serialize: Boolean = false)
   protected def _ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT], isPublish: Boolean): Future[OUT] = {
     var result: Future[OUT] = null
 
-    def tryX[T] (failMsg: String, exceptionSerializer: Serializer[Throwable], code: ⇒ T): Option[T] = {
+    def tryX[T](failMsg: String, exceptionSerializer: Serializer[Throwable], code: ⇒ T): Option[T] = {
       try {
         Some(code)
       }
@@ -76,11 +76,11 @@ class InprocTransport(serialize: Boolean = false)
           // default subscription (groupName="") returns reply
           val subscriber = subscriptionList.getRandomSubscription
 
-          tryX ("Decode failed", subscriber.exceptionSerializer,
+          tryX("Decode failed", subscriber.exceptionSerializer,
             reserializeMessage(message, subscriber.inputDeserializer)
           ) foreach { messageForSubscriber ⇒
 
-            tryX ("Decode failed", subscriber.exceptionSerializer,
+            tryX("Decode failed", subscriber.exceptionSerializer,
               messageForSubscriber.topic.valueFilters
               //subscriber. partitionArgsExtractor(messageForSubscriber)
             ) foreach { args ⇒
@@ -102,10 +102,12 @@ class InprocTransport(serialize: Boolean = false)
                 else {
                   handlerResult.asInstanceOf[Future[OUT]]
                 }
-                if (isPublish) { // convert to Future[Unit]
-                  result = result.map {_ ⇒
+                if (isPublish) {
+                  // convert to Future[Unit]
+                  result = result.map { _ ⇒
                     new PublishResult {
                       def sent = Some(true)
+
                       def offset = None
                     }
                   }.asInstanceOf[Future[OUT]]
@@ -141,6 +143,7 @@ class InprocTransport(serialize: Boolean = false)
                 result = Future.successful(
                   new PublishResult {
                     def sent = Some(true)
+
                     def offset = None
                   }
                 ).asInstanceOf[Future[OUT]]
@@ -170,7 +173,7 @@ class InprocTransport(serialize: Boolean = false)
   }
 
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
-                                     (handler: (IN) => Future[TransportResponse]): String = {
+                                              (handler: (IN) => Future[TransportResponse]): String = {
 
     subscriptions.add(
       topicFilter.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
@@ -180,7 +183,7 @@ class InprocTransport(serialize: Boolean = false)
   }
 
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
-                                       (handler: (IN) => Future[Unit]): String = {
+                                                (handler: (IN) => Future[Unit]): String = {
     subscriptions.add(
       topicFilter.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(Some(groupName), topicFilter.valueFilters),

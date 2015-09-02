@@ -24,10 +24,10 @@ trait HyperBusApi {
   def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult]
 
   def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
-                                                       method: String,
-                                                       contentType: Option[String],
-                                                       requestDeserializer: RequestDeserializer[REQ])
-                                                      (handler: (REQ) => Future[RESP]): String
+                                                            method: String,
+                                                            contentType: Option[String],
+                                                            requestDeserializer: RequestDeserializer[REQ])
+                                                           (handler: (REQ) => Future[RESP]): String
 
   def subscribe[REQ <: Request[Body]](topic: Topic,
                                       method: String,
@@ -40,9 +40,11 @@ trait HyperBusApi {
 }
 
 class HyperBus(val transportManager: TransportManager)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+
   protected trait Subscription[REQ <: Request[Body]] {
     def requestDeserializer: RequestDeserializer[REQ]
   }
+
   protected val subscriptions = new Subscriptions[SubKey, Subscription[_]]
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
@@ -52,13 +54,13 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
   def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
 
   def |>[IN <: Request[Body]](groupName: String)
-                                    (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
+                             (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
     ask(request,
-      macroApiImpl.responseDeserializer(_,_,PartialFunction.empty)
+      macroApiImpl.responseDeserializer(_, _, PartialFunction.empty)
     ).asInstanceOf[Future[Response[DynamicBody]]]
   }
 
@@ -202,7 +204,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
   def off(subscriptionId: String): Unit = {
     underlyingSubscriptions.synchronized {
       subscriptions.getRouteKeyById(subscriptionId) foreach { routeKey =>
-        val cnt = subscriptions.get(routeKey).subRoutes.foldLeft(0){ (c, x) =>
+        val cnt = subscriptions.get(routeKey).subRoutes.foldLeft(0) { (c, x) =>
           c + x._2.size
         }
         if (cnt <= 1) {
@@ -229,8 +231,8 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
 
   val macroApiImpl = new MacroApi {
     def responseDeserializer(responseHeader: ResponseHeader,
-                        responseBodyJson: com.fasterxml.jackson.core.JsonParser,
-                        bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body] = {
+                             responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                             bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body] = {
       val body =
         if (bodyDeserializer.isDefinedAt(responseHeader))
           bodyDeserializer(responseHeader)(responseHeader.contentType, responseBodyJson)

@@ -10,6 +10,7 @@ case class Link(href: String, templated: Option[Boolean] = None, @fieldName("typ
 
 trait Body {
   def contentType: Option[String]
+
   def serialize(output: OutputStream)
 }
 
@@ -28,7 +29,9 @@ object Body {
 trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory {
   outer ⇒
   def body: B
+
   def messageId: String
+
   def correlationId: String
 
   def newContext() = MessagingContext(correlationId)
@@ -36,8 +39,11 @@ trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory 
 
 trait Request[+B <: Body] extends Message[B] with TransportRequest {
   type bodyType = Body
+
   def url: String
+
   def method: String
+
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeRequest(this, outputStream)
 }
 
@@ -55,6 +61,7 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
 
 trait Response[+B <: Body] extends Message[B] with TransportResponse {
   def status: Int
+
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeResponse(this, outputStream)
 }
 

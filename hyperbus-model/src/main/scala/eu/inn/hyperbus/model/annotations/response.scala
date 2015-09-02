@@ -21,6 +21,7 @@ private[annotations] object ResponseMacro {
 
 // todo: status annotation?
 private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroImplBase {
+
   import c.universe._
 
   def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
