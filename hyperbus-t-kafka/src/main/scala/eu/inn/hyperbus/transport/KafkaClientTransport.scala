@@ -11,7 +11,7 @@ import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecor
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 case class KafkaRoute(topic: Topic,
                       kafkaTopic: String,
@@ -22,14 +22,15 @@ class KafkaPartitionKeyIsNotDefined(message: String) extends RuntimeException(me
 class KafkaClientTransport(producerProperties: Properties,
                            routes: List[KafkaRoute],
                            logMessages: Boolean = false,
-                           encoding: String = "UTF-8") extends ClientTransport {
+                           encoding: String = "UTF-8")
+                          (implicit val executionContext: ExecutionContext) extends ClientTransport {
 
   def this(config: Config) = this(
     producerProperties = ConfigLoader.loadProducerProperties(config.getConfig("producer")),
     routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding").getOrElse("UTF-8")
-  )
+  )(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
 
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
   protected[this] val producer = new KafkaProducer[String, String](producerProperties)
@@ -43,7 +44,6 @@ class KafkaClientTransport(producerProperties: Properties,
   }
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    import scala.concurrent.ExecutionContext.Implicits.global
     Future {
       producer.close()
       true

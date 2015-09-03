@@ -2,7 +2,7 @@ package eu.inn.hyperbus.transport
 
 import java.io.ByteArrayInputStream
 import java.util.Properties
-import java.util.concurrent.Executors
+import java.util.concurrent.{TimeUnit, ExecutorService, Executors}
 import java.util.concurrent.atomic.AtomicLong
 
 import com.typesafe.config.Config
@@ -13,21 +13,23 @@ import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
+import scala.concurrent.duration._
 
 class KafkaServerTransport(
                             consumerProperties: Properties,
                             routes: List[KafkaRoute],
                             logMessages: Boolean = false,
-                            encoding: String = "UTF-8") extends ServerTransport {
+                            encoding: String = "UTF-8")
+                          (implicit val executionContext: ExecutionContext) extends ServerTransport {
   def this(config: Config) = this(
     consumerProperties = ConfigLoader.loadConsumerProperties(config.getConfig("consumer")),
     routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding") getOrElse "UTF-8"
-  )
+  )(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
 
   protected[this] val subscriptions = new TrieMap[String, Subscription[_, _]]
   protected[this] val idCounter = new AtomicLong(0)
@@ -56,17 +58,21 @@ class KafkaServerTransport(
 
   override def off(subscriptionId: String): Unit = {
     subscriptions.get(subscriptionId).foreach { s ⇒
-      s.stop()
+      s.stop(0.seconds)
       subscriptions.remove(subscriptionId)
     }
   }
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    subscriptions.foreach { kv ⇒
-      kv._2.stop()
+    val futures = subscriptions.map { kv ⇒
+      Future {
+        kv._2.stop(duration)
+      }
     }
     subscriptions.clear()
-    Future.successful(true) // todo: normal result
+    Future.sequence(futures) map { _ ⇒
+      true
+    }
   }
 
 
@@ -90,9 +96,10 @@ class KafkaServerTransport(
       props.setProperty("group.id", newGroupId)
       Consumer.create(new ConsumerConfig(props))
     }
+    @volatile var threadPool: ExecutorService = null
 
     def run(): Unit = {
-      val threadPool = Executors.newFixedThreadPool(threadCount) // todo: release on shutdown!!!!
+      threadPool = Executors.newFixedThreadPool(threadCount)
       val consumerMap = consumer.createMessageStreams(Map(route.kafkaTopic → threadCount))
       val streams = consumerMap(route.kafkaTopic)
 
@@ -103,9 +110,22 @@ class KafkaServerTransport(
       }
     }
 
-    def stop(): Unit = {
+    def stop(duration: FiniteDuration): Unit = {
       consumer.commitOffsets
       consumer.shutdown()
+      val t = threadPool
+      if (t != null) {
+        t.shutdown()
+        if (duration.toMillis > 0) {
+          try {
+            t.awaitTermination(duration.toMillis, TimeUnit.MILLISECONDS)
+          }
+          catch {
+            case t: InterruptedException ⇒ // .. do nothing
+          }
+        }
+        threadPool = null
+      }
     }
 
     def consumeMessage(consumerId: String, message: Array[Byte]): Unit = {
