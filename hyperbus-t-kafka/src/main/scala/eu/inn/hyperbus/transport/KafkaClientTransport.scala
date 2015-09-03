@@ -69,9 +69,9 @@ class KafkaClientTransport(producerProperties: Properties,
           message.topic.extra.filterMap.getOrElse(key,
             throw new KafkaPartitionKeyIsNotDefined(s"Filter key $key is not defined for ${message.topic}")
           ).specific
-        }.foldLeft("")(_ + _)
+        }.foldLeft("")(_ + "," + _.replace("\\","\\\\").replace(",", "\\,"))
 
-        new ProducerRecord(route.kafkaTopic, recordKey, messageString)
+        new ProducerRecord(route.kafkaTopic, recordKey.substring(1), messageString)
       }
 
     if (logMessages && log.isTraceEnabled) {
@@ -95,7 +95,7 @@ class KafkaClientTransport(producerProperties: Properties,
             }
           )
           if (logMessages && log.isTraceEnabled) {
-            log.trace(s"Sent to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
+            log.trace(s"Sent to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode().toHexString}." +
               s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}")
           }
         }

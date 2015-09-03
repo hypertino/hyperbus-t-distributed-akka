@@ -128,25 +128,26 @@ class KafkaServerTransport(
       }
     }
 
-    def consumeMessage(consumerId: String, message: Array[Byte]): Unit = {
+    def consumeMessage(consumerId: String, next: kafka.message.MessageAndMetadata[Array[Byte], Array[Byte]]): Unit = {
+      val message = next.message()
       lazy val messageString = new String(message, encoding)
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = inputDeserializer(inputBytes) // todo: encoding!
         if (topicFilter.matchTopic(input.topic)) { // todo: test order of matching?
           if (logMessages && log.isTraceEnabled) {
-            log.trace(s"Consumer #$consumerId got message: $messageString")
+            log.trace(s"Consumer #$consumerId got message from partiton#${next.partition}: $messageString")
           }
           handler(input)
         } else {
           if (logMessages && log.isTraceEnabled) {
-            log.trace(s"Consumer #$consumerId. Skipped message: $messageString")
+            log.trace(s"Consumer #$consumerId. Skipped message from partiton#${next.partition}: $messageString")
           }
         }
       }
       catch {
         case NonFatal(e) ⇒
-          log.error(s"Consumer #$consumerId can't deserialize message: $messageString", e)
+          log.error(s"Consumer #$consumerId can't deserialize message from partiton#${next.partition}: $messageString", e)
       }
     }
 
@@ -156,8 +157,8 @@ class KafkaServerTransport(
       try {
         val iterator = stream.iterator()
         while (iterator.hasNext()) {
-          val message = iterator.next().message()
-          consumeMessage(consumerId, message)
+          val next = iterator.next()
+          consumeMessage(consumerId, next)
         }
         log.info(s"Stopping consumer #$consumerId on topic ${route.kafkaTopic}")
       }
