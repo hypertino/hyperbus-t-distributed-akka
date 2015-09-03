@@ -57,23 +57,30 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       Thread.sleep(1000) // we need to wait until subscriptions will go acros the
       // clear counter
       cnt.set(0)
-      val f: Future[PublishResult] = transportManager.publish(MockRequest("/topic/{abc}", "12345"))
+      val f = Future.sequence (List(
+        transportManager.publish(MockRequest("/topic/{abc}", "1", "12345")),
+        transportManager.publish(MockRequest("/topic/{abc}", "2", "12345")))
+      )
 
-      whenReady(f) { publishResult =>
+      whenReady(f) { publishResults =>
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
-        publishResult.sent should equal(Some(true))
-        publishResult.offset shouldNot equal(None)
-        cnt.get should equal(2)
+        publishResults.foreach { publishResult ⇒
+          publishResult.sent should equal(Some(true))
+          publishResult.offset shouldNot equal(None)
+        }
+        cnt.get should equal(4)
       }
     }
   }
 }
 
 // move mocks to separate assembly
-case class MockRequest(specificTopic: String, message: String,
+case class MockRequest(specificTopic: String,
+                       partitionId: String,
+                       message: String,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
-  def topic: Topic = Topic(specificTopic)
+  def topic: Topic = Topic(specificTopic, Filters(Map("partitionId" → SpecificValue(partitionId))))
 
   override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
@@ -81,6 +88,7 @@ case class MockRequest(specificTopic: String, message: String,
 }
 
 case class MockResponse(message: String,
+                        partitionId: String,
                         correlationId: String = IdGenerator.create(),
                         messageId: String = IdGenerator.create()) extends TransportResponse {
   override def serialize(output: OutputStream): Unit = {
