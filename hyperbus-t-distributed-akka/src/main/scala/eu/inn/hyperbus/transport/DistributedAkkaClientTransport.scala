@@ -41,7 +41,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
 
-    val specificUrl = message.topic.urlFilter.specific
+    val specificUrl = message.topic.url.specific
     val inputBytes = new ByteArrayOutputStream()
     message.serialize(inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
@@ -64,7 +64,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   }
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
-    val specificUrl = message.topic.urlFilter.specific
+    val specificUrl = message.topic.url.specific
     val inputBytes = new ByteArrayOutputStream()
     message.serialize(inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)

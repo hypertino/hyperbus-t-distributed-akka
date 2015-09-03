@@ -157,7 +157,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
                                                             contentType: Option[String],
                                                             requestDeserializer: RequestDeserializer[REQ])
                                                            (handler: (REQ) => Future[RESP]): String = {
-    val routeKey = getRouteKey(topic.urlFilter, None)
+    val routeKey = getRouteKey(topic.url, None)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -182,7 +182,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
                                       groupName: String,
                                       requestDeserializer: RequestDeserializer[REQ])
                                      (handler: (REQ) => Future[Unit]): String = {
-    val routeKey = getRouteKey(topic.urlFilter, Some(groupName))
+    val routeKey = getRouteKey(topic.url, Some(groupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -270,12 +270,12 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
 
   protected def responseSerializerNotFound(response: Response[Body]) = log.error("Can't serialize response: {}", response)
 
-  protected def getRouteKey(urlFilter: Filter, groupName: Option[String]) = {
-    val url = urlFilter.asInstanceOf[SpecificValue].value // todo: implement other filters?
+  protected def getRouteKey(url: Filter, groupName: Option[String]) = {
+    val urlSpecific = url.specific // todo: implement other filters?
 
     groupName.map {
-      url + "#" + _
-    } getOrElse url
+      urlSpecific + "#" + _
+    } getOrElse urlSpecific
   }
 
   protected def safe(t: () => String): String = Try(t()).getOrElse("???")

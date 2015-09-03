@@ -37,15 +37,15 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
           },
           client-routes: [
             {
-              url: "/topic/{userId}", match-type: Exact
-              partition-args: { userId: { value: null, match-type: Any } },
+              topic.url: { value: "/topic/{userId}", match-type: Exact }
+              topic.extra: { userId: { match-type: Any } }
               transport: mock-client
             }
           ],
           server-routes: [
             {
-              url: "/topic/{userId}", match-type: Exact
-              partition-args: { userId: { value: ".*", match-type: Regex } },
+              topic.url: { value: "/topic/{userId}", match-type: Exact }
+              topic.extra: { userId: { value: ".*", match-type: Regex } }
               transport: mock-server
             }
           ]
@@ -55,15 +55,15 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
       val sbc = TransportConfigurationLoader.fromConfig(config)
 
       assert(sbc.clientRoutes.nonEmpty)
-      sbc.clientRoutes.head.urlArg should equal(SpecificValue("/topic/{userId}"))
-      sbc.clientRoutes.head.valueFilters should equal(Filters(Map(
+      sbc.clientRoutes.head.topic.url should equal(SpecificValue("/topic/{userId}"))
+      sbc.clientRoutes.head.topic.extra should equal(Filters(Map(
         "userId" → AnyValue
       )))
       sbc.clientRoutes.head.transport shouldBe a[MockClientTransport]
 
       assert(sbc.serverRoutes.nonEmpty)
-      sbc.serverRoutes.head.urlArg should equal(SpecificValue("/topic/{userId}"))
-      sbc.serverRoutes.head.valueFilters should equal(Filters(Map(
+      sbc.serverRoutes.head.topic.url should equal(SpecificValue("/topic/{userId}"))
+      sbc.serverRoutes.head.topic.extra should equal(Filters(Map(
         "userId" → RegexFilter(".*")
       )))
       sbc.serverRoutes.head.transport shouldBe a[MockServerTransport]

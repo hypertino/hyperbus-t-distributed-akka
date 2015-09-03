@@ -32,7 +32,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                               (handler: (IN) => Future[TransportResponse]): String = {
 
-    val topicUrl = topicFilter.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
+    val topicUrl = topicFilter.url.specific // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[ProcessServerActor[IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
@@ -45,7 +45,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
 
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[Unit]): String = {
-    val topicUrl = topicFilter.urlFilter.asInstanceOf[SpecificValue].value // currently only Specific url's are supported, todo: add Regex, Any, etc...
+    val topicUrl = topicFilter.url.specific // currently only Specific url's are supported, todo: add Regex, Any, etc...
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)

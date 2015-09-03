@@ -4,26 +4,22 @@ import java.util.Properties
 
 import com.typesafe.config.{Config, ConfigValue}
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportRouteHolder}
-
-case class TopicInfoHolder(topic: Option[String], partitionKeys: Option[List[String]])
+import eu.inn.hyperbus.transport.api.{Topic, AnyValue}
 
 object ConfigLoader {
 
   import scala.collection.JavaConversions._
 
-  def loadRoutes(routesConfigList: java.util.List[_ <: ConfigValue]): List[KafkaRoute] = {
+  def loadRoutes(routesConfigList: java.util.List[_ <: Config]): List[KafkaRoute] = {
     import eu.inn.binders.tconfig._
 
     routesConfigList.map { config ⇒
-      //val urlArg = TransportConfigurationLoader.getPartitionArg(config.getOptionString("url"), config.getOptionString("match-type"))
-      //val partitionArgs = TransportConfigurationLoader.readPartitionArgs(config)
-      val th = config.read[TransportRouteHolder]
-      val ti = config.read[TopicInfoHolder]
-      val topic = ti.topic.getOrElse("hyperbus")
-      val partitionKeys = ti.partitionKeys.getOrElse(List.empty)
-      val urlArg = TransportConfigurationLoader.getFilter(th.url, th.matchType)
-      KafkaRoute(urlArg, th.partitionArgsN, topic, partitionKeys)
+      val kafkaTopic = config.read[KafkaTopicPojo]("kafka")
+      val topic = if (config.hasPath("topic"))
+        Topic(config.getValue("topic"))
+      else
+        Topic(AnyValue)
+      KafkaRoute(topic, kafkaTopic.topic, kafkaTopic.partitionKeys.getOrElse(List.empty))
     }.toList
   }
 
@@ -54,3 +50,5 @@ object ConfigLoader {
     "value.serializer" → "org.apache.kafka.common.serialization.StringSerializer"
   )
 }
+
+private [kafkatransport] case class KafkaTopicPojo(topic: String, partitionKeys: Option[List[String]])

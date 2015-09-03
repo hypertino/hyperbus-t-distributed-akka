@@ -24,7 +24,7 @@ class KafkaServerTransport(
                             encoding: String = "UTF-8") extends ServerTransport {
   def this(config: Config) = this(
     consumerProperties = ConfigLoader.loadConsumerProperties(config.getConfig("consumer")),
-    routes = ConfigLoader.loadRoutes(config.getList("routes")),
+    routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding") getOrElse "UTF-8"
   )
@@ -39,8 +39,7 @@ class KafkaServerTransport(
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[Unit]): String = {
 
-    routes.find(r ⇒ r.urlArg.matchFilter(topicFilter.urlFilter) &&
-      r.valueFilters.matchFilters(topicFilter.valueFilters)) map { route ⇒
+    routes.find(r ⇒ r.topic.matchTopic(topicFilter)) map { route ⇒
 
       val id = idCounter.incrementAndGet().toHexString
       val subscription = new Subscription[Unit, IN](1, /*todo: per topic thread count*/
@@ -94,8 +93,8 @@ class KafkaServerTransport(
 
     def run(): Unit = {
       val threadPool = Executors.newFixedThreadPool(threadCount) // todo: release on shutdown!!!!
-      val consumerMap = consumer.createMessageStreams(Map(route.targetTopic → threadCount))
-      val streams = consumerMap(route.targetTopic)
+      val consumerMap = consumer.createMessageStreams(Map(route.kafkaTopic → threadCount))
+      val streams = consumerMap(route.kafkaTopic)
 
       streams.map { stream ⇒
         threadPool.submit(new Runnable {
@@ -133,14 +132,14 @@ class KafkaServerTransport(
 
     private def consumeStream(stream: KafkaStream[Array[Byte], Array[Byte]]): Unit = {
       val consumerId = Thread.currentThread().getName
-      log.info(s"Starting consumer #$consumerId on topic ${route.targetTopic} -> $topicFilter}")
+      log.info(s"Starting consumer #$consumerId on topic ${route.kafkaTopic} -> $topicFilter}")
       try {
         val iterator = stream.iterator()
         while (iterator.hasNext()) {
           val message = iterator.next().message()
           consumeMessage(consumerId, message)
         }
-        log.info(s"Stopping consumer #$consumerId on topic ${route.targetTopic}")
+        log.info(s"Stopping consumer #$consumerId on topic ${route.kafkaTopic}")
       }
       catch {
         case NonFatal(t) ⇒

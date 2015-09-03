@@ -2,73 +2,11 @@ package eu.inn.hyperbus.transport.api
 
 import java.io.OutputStream
 
+import com.typesafe.config.ConfigValue
+
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
-
-sealed trait Filter {
-  def matchFilter(other: Filter): Boolean
-
-  def specific: String = this match {
-    case SpecificValue(value) ⇒ value
-    case _ ⇒ throw new UnsupportedOperationException(s"Specific value expected but got $getClass")
-  }
-}
-
-case object AnyValue extends Filter {
-  def matchFilter(other: Filter) = true
-}
-
-case class SpecificValue(value: String) extends Filter {
-  def matchFilter(other: Filter) = other match {
-    case SpecificValue(otherValue) ⇒ otherValue == value
-    case _ ⇒ other.matchFilter(this)
-  }
-}
-
-case class RegexFilter(value: String) extends Filter {
-  lazy val valueRegex = new Regex(value)
-
-  def matchFilter(other: Filter) = other match {
-    case SpecificValue(otherValue) ⇒ valueRegex.findFirstMatchIn(otherValue).isDefined
-    case RegexFilter(otherRegexValue) ⇒ otherRegexValue == value
-    case _ ⇒ other.matchFilter(this)
-  }
-}
-
-case class Filters(filterMap: Map[String, Filter]) {
-  def matchFilters(other: Filters): Boolean = {
-    filterMap.map { case (k, v) ⇒
-      other.filterMap.get(k).map { av ⇒
-        v.matchFilter(av)
-      } getOrElse {
-        v == AnyValue
-      }
-    }.forall(r => r)
-  }
-}
-
-case object Filters {
-  val empty = Filters(Map.empty)
-}
-
-case class Topic(urlFilter: Filter, valueFilters: Filters = Filters.empty) {
-  def matchTopic(other: Topic): Boolean = urlFilter.matchFilter(other.urlFilter) &&
-    valueFilters.matchFilters(other.valueFilters)
-
-  override def toString = s"Topic($urlFilter$valueFiltersFormat)"
-
-  private [this] def valueFiltersFormat =
-    if (valueFilters.filterMap.isEmpty) ""
-  else
-    valueFilters.filterMap.mkString("#", ",", "")
-}
-
-object Topic {
-  def apply(url: String): Topic = Topic(SpecificValue(url), Filters.empty)
-
-  def apply(url: String, valueFilters: Filters): Topic = Topic(SpecificValue(url), valueFilters)
-}
 
 trait TransportMessage {
   def messageId: String

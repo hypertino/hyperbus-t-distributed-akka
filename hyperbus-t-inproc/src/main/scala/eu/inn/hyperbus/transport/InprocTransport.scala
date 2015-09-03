@@ -69,7 +69,7 @@ class InprocTransport(serialize: Boolean = false)
     }
 
     // todo: filter is redundant for inproc?
-    subscriptions.get(message.topic.urlFilter.specific).subRoutes filter (_._1.filters.matchFilters(message.topic.valueFilters)) foreach {
+    subscriptions.get(message.topic.url.specific).subRoutes filter (_._1.filters.matchFilters(message.topic.extra)) foreach {
       case (subKey, subscriptionList) =>
 
         if (subKey.groupName.isEmpty) {
@@ -81,7 +81,7 @@ class InprocTransport(serialize: Boolean = false)
           ) foreach { messageForSubscriber ⇒
 
             tryX("Decode failed", subscriber.exceptionSerializer,
-              messageForSubscriber.topic.valueFilters
+              messageForSubscriber.topic.extra
               //subscriber. partitionArgsExtractor(messageForSubscriber)
             ) foreach { args ⇒
 
@@ -132,7 +132,7 @@ class InprocTransport(serialize: Boolean = false)
             }
 
           ma.foreach { messageForSubscriber ⇒
-            if (subKey.filters.matchFilters(messageForSubscriber.topic.valueFilters)) {
+            if (subKey.filters.matchFilters(messageForSubscriber.topic.extra)) {
               // todo: log if not matched?
               subscriber.handler(messageForSubscriber).onFailure {
                 case NonFatal(e) ⇒
@@ -176,8 +176,8 @@ class InprocTransport(serialize: Boolean = false)
                                               (handler: (IN) => Future[TransportResponse]): String = {
 
     subscriptions.add(
-      topicFilter.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(None, topicFilter.valueFilters),
+      topicFilter.url.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      SubKey(None, topicFilter.extra),
       Subscription(inputDeserializer, exceptionSerializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }
@@ -185,8 +185,8 @@ class InprocTransport(serialize: Boolean = false)
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[Unit]): String = {
     subscriptions.add(
-      topicFilter.urlFilter.asInstanceOf[SpecificValue].value, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(Some(groupName), topicFilter.valueFilters),
+      topicFilter.url.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      SubKey(Some(groupName), topicFilter.extra),
       Subscription(inputDeserializer, null, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }

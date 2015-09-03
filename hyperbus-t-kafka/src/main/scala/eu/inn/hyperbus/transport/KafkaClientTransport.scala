@@ -13,10 +13,9 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 
-case class KafkaRoute(urlArg: Filter,
-                      valueFilters: Filters = Filters.empty,
-                      targetTopic: String = "hyperbus",
-                      targetPartitionKeys: List[String] = List.empty)
+case class KafkaRoute(topic: Topic,
+                      kafkaTopic: String,
+                      kafkaPartitionKeys: List[String])
 
 class KafkaPartitionKeyIsNotDefined(message: String) extends RuntimeException(message)
 
@@ -27,7 +26,7 @@ class KafkaClientTransport(producerProperties: Properties,
 
   def this(config: Config) = this(
     producerProperties = ConfigLoader.loadProducerProperties(config.getConfig("producer")),
-    routes = ConfigLoader.loadRoutes(config.getList("routes")),
+    routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding").getOrElse("UTF-8")
   )
@@ -38,8 +37,7 @@ class KafkaClientTransport(producerProperties: Properties,
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
-    routes.find(r ⇒ r.urlArg.matchFilter(message.topic.urlFilter) &&
-      r.valueFilters.matchFilters(message.topic.valueFilters)) map (publishToRoute(_, message)) getOrElse {
+    routes.find(r ⇒ r.topic.matchTopic(message.topic)) map (publishToRoute(_, message)) getOrElse {
       throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${message.topic}")
     }
   }
@@ -62,22 +60,22 @@ class KafkaClientTransport(producerProperties: Properties,
     val messageString = inputBytes.toString(encoding)
 
     val record: ProducerRecord[String, String] =
-      if (route.targetPartitionKeys.isEmpty) {
+      if (route.kafkaPartitionKeys.isEmpty) {
         // no partition key
-        new ProducerRecord(route.targetTopic, messageString)
+        new ProducerRecord(route.kafkaTopic, messageString)
       }
       else {
-        val recordKey = route.targetPartitionKeys.map { key: String ⇒ // todo: check partition key logic
-          message.topic.valueFilters.filterMap.getOrElse(key,
+        val recordKey = route.kafkaPartitionKeys.map { key: String ⇒ // todo: check partition key logic
+          message.topic.extra.filterMap.getOrElse(key,
             throw new KafkaPartitionKeyIsNotDefined(s"Filter key $key is not defined for ${message.topic}")
           ).specific
         }.foldLeft("")(_ + _)
 
-        new ProducerRecord(route.targetTopic, recordKey, messageString)
+        new ProducerRecord(route.kafkaTopic, recordKey, messageString)
       }
 
     if (logMessages && log.isTraceEnabled) {
-      log.trace(s"Sending to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $messageString")
+      log.trace(s"Sending to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $messageString")
     }
 
     val promise = Promise[PublishResult]()
@@ -86,7 +84,7 @@ class KafkaClientTransport(producerProperties: Properties,
       def onCompletion(recordMetadata: RecordMetadata, e: Exception): Unit = {
         if (e != null) {
           promise.failure(e)
-          log.error(s"Can't send to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : $message", e)
+          log.error(s"Can't send to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : $message", e)
         }
         else {
           promise.success(
@@ -97,7 +95,7 @@ class KafkaClientTransport(producerProperties: Properties,
             }
           )
           if (logMessages && log.isTraceEnabled) {
-            log.trace(s"Sent to kafka. ${route.targetTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
+            log.trace(s"Sent to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()}." +
               s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}")
           }
         }

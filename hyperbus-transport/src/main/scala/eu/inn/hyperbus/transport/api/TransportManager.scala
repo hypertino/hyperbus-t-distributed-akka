@@ -35,9 +35,8 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
   }
 
   protected def lookupClientTransport(topic: Topic): ClientTransport = {
-    clientRoutes.find(r  ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
-      r.valueFilters.matchFilters(topic.valueFilters)) map (_.transport) getOrElse {
-      throw new NoTransportRouteException(s"Topic: $topic")
+    clientRoutes.find(_.topic.matchTopic(topic)) map (_.transport) getOrElse {
+      throw new NoTransportRouteException(topic.toString)
     }
   }
 
@@ -80,9 +79,8 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
   }
 
   protected def lookupServerTransport(topic: Topic): ServerTransport = {
-    serverRoutes.find(r ⇒ r.urlArg.matchFilter(topic.urlFilter) &&
-      r.valueFilters.matchFilters(topic.valueFilters)) map (_.transport) getOrElse {
-      throw new NoTransportRouteException(s"TopicFilter: ${topic.urlFilter}/${topic.valueFilters.toString}")
+    serverRoutes.find(_.topic.matchTopic(topic)) map (_.transport) getOrElse {
+      throw new NoTransportRouteException(topic.toString)
     }
   }
 

@@ -291,8 +291,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   }
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, AnyValue))
-    val sr = List(TransportRoute(st, AnyValue))
+    val cr = List(TransportRoute(ct, Topic(AnyValue)))
+    val sr = List(TransportRoute(st, Topic(AnyValue)))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(transportManager)
   }
