@@ -32,16 +32,16 @@ sleep 5
 kafka/bin/kafka-topics.sh --create --partitions 1 --replication-factor 1 --topic hyperbus-test --zookeeper localhost:2181
 
 if [ -n "$publish" ] ; then
-	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test \
-		hyperbus-transport/publish \
-		hyperbus-model/publish \
-		hyperbus-standard-model/publish \
-		hyperbus/publish \
-		hyperbus-t-inproc/publish \
-		hyperbus-t-distributed-akka/publish \
-		hyperbus-t-kafka/publish \		
-		hyperbus-akka/publish \
-		hyperbus-cli/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-transport/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-model/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-standard-model/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-t-inproc/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-t-distributed-akka/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-t-kafka/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-akka/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' hyperbus-cli/publish
 fi
 
 kill -s kill $KAFKA_PID
