@@ -27,6 +27,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 
   "KafkaTransport " - {
     "Publish and Subscribe" in {
+
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
