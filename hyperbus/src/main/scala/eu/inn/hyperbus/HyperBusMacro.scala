@@ -1,11 +1,11 @@
 package eu.inn.hyperbus
 
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{urlMarker, contentTypeMarker, method}
-import eu.inn.servicebus.serialization._
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.annotations.{contentType, method, url}
 
 import scala.concurrent.Future
 import scala.reflect.macros.blackbox.Context
+import scala.util.matching.Regex
 
 private[hyperbus] object HyperBusMacro {
 
@@ -60,38 +60,20 @@ private[hyperbus] trait HyperBusMacroImplementation {
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
-
-    val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(in)
-
-    val (method: String, bodySymbol) = getMethodAndBody(in)
-
-    val dynamicBodyTypeSig = typeOf[DynamicBody].typeSymbol.typeSignature
-    val bodyCases: Seq[c.Tree] = getUniqueResponseBodies(in).filterNot {
-      _.typeSymbol.typeSignature =:= dynamicBodyTypeSig
-    } map { body =>
-      cq"_: $body => hbs.createEncoder[Response[$body]].asInstanceOf[hbs.ResponseEncoder]"
+    val requestType = weakTypeOf[IN]
+    if (requestType.companion == null) {
+      c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
-
+    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName
+    val url = getUrlAnnotation(requestType)
+    val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
-      import eu.inn.hyperbus.rest._
-      import eu.inn.hyperbus.{serialization=>hbs}
-      import eu.inn.{servicebus=>sb}
       val thiz = $thiz
-      val requestDecoder = hbs.createRequestDecoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
-      val responseEncoder = thiz.macroApiImpl.responseEncoder(
-        _: Response[Body],
-        _: java.io.OutputStream,
-        _.body match {
-          case ..$bodyCases
-        }
-      )
-      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
-      thiz.process[Response[Body],$in](topic, $method, $contentType, requestDecoder, extractor) { case (response: $in) =>
-        sb.transport.SubscriptionHandlerResult[Response[Body]]($handler(response),responseEncoder)
+      val topic = thiz.macroApiImpl.topicWithAnyValue($url)
+      thiz.process[Response[Body],$requestType](topic, $method, $contentType, $requestCompanionName.deserializer _) {
+        response: $requestType => $handler(response)
       }
     }"""
     //println(obj)
@@ -101,24 +83,22 @@ private[hyperbus] trait HyperBusMacroImplementation {
   def subscribe[IN <: Request[Body] : c.WeakTypeTag]
   (groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+
     val thiz = c.prefix.tree
-
-    val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(in)
-
-    val (method: String, bodySymbol) = getMethodAndBody(in)
+    val requestType = weakTypeOf[IN]
+    if (requestType.companion == null) {
+      c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
+    }
+    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName
+    val url = getUrlAnnotation(requestType)
+    val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val obj = q"""{
-      import eu.inn.hyperbus.rest._
-      import eu.inn.hyperbus.{serialization=>hbs}
-      import eu.inn.{servicebus=>sb}
       val thiz = $thiz
-      val requestDecoder = hbs.createRequestDecoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
-      val topic = eu.inn.hyperbus.impl.Helpers.topicWithAllPartitions($url)
-      thiz.subscribe[$in](topic, $method, $contentType, $groupName, requestDecoder, extractor) { case (response: $in) =>
-        sb.transport.SubscriptionHandlerResult[Unit]($handler(response),null)
+      val topic = thiz.macroApiImpl.topicWithAnyValue($url)
+      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, $requestCompanionName.deserializer _) {
+        response: $requestType => $handler(response)
       }
     }"""
     //println(obj)
@@ -129,7 +109,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
-    val url = getUrlAnnotation(in)
+    //val url = getUrlAnnotation(in)
     val responseBodyTypes = getUniqueResponseBodies(in)
 
     responseBodyTypes.groupBy(getContentTypeAnnotation(_) getOrElse "") foreach { kv =>
@@ -143,25 +123,23 @@ private[hyperbus] trait HyperBusMacroImplementation {
       t.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
+      val bodyCompanionName = body.companion.typeSymbol.name.toTermName
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
-      cq"$ta => eu.inn.hyperbus.serialization.createResponseBodyDecoder[$body]"
+      cq"""$ta => $bodyCompanionName.deserializer _"""
     }
 
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"thiz.ask($r, requestEncoder, extractor, responseDecoder).asInstanceOf[Future[${responses.head}]]"
+        q"thiz.ask($r, responseDeserializer).asInstanceOf[Future[${responses.head}]]"
       else
-        q"thiz.ask($r, requestEncoder, extractor, responseDecoder)"
+        q"thiz.ask($r, responseDeserializer)"
 
     val obj = q"""{
-      import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hbs.createEncoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
-      val responseDecoder = thiz.macroApiImpl.responseDecoder(
-        _: hbs.ResponseHeader,
+      val responseDeserializer = thiz.macroApiImpl.responseDeserializer(
+        _: eu.inn.hyperbus.serialization.ResponseHeader,
         _: com.fasterxml.jackson.core.JsonParser,
         _.contentType match {
           case ..$bodyCases
@@ -179,11 +157,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val thiz = c.prefix.tree
 
     val obj = q"""{
-      import eu.inn.hyperbus.{serialization=>hbs}
       val thiz = $thiz
-      val requestEncoder = hbs.createEncoder[$in]
-      val extractor = ${defineExtractor[IN](url)}
-      thiz.publish($r, requestEncoder, extractor)
+      thiz.publish($r)
     }"""
     //println(obj)
     obj
@@ -225,28 +200,37 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getResponsesIn(tin: Seq[c.Type]): Seq[c.Type] = {
-    val tOr = typeOf[eu.inn.hyperbus.rest.|[_, _]].typeSymbol.typeSignature
-    val tAsk = typeOf[eu.inn.hyperbus.rest.!].typeSymbol.typeSignature
+    val tupleRegex = new Regex("^Tuple(\\d+)$")
 
-    tin.flatMap { t =>
-      if (t.typeSymbol.typeSignature <:< tOr) {
-        getResponsesIn(t.typeArgs)
-      } else
-      if (t.typeSymbol.typeSignature <:< tAsk) {
-        Seq.empty
-      } else {
-        Seq(t)
+    // DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
+    if (tin.length == 1 && tupleRegex.findFirstIn(tin.head.typeSymbol.name.toString).isDefined
+    ) {
+      tin.head.typeArgs
+    } //DefinedResponse[|[Ok[DynamicBody], |[Created[TestCreatedBody], !]]]
+    else {
+      val tOr = typeOf[eu.inn.hyperbus.model.|[_, _]].typeSymbol.typeSignature
+      val tAsk = typeOf[eu.inn.hyperbus.model.!].typeSymbol.typeSignature
+
+      tin.flatMap { t =>
+        if (t.typeSymbol.typeSignature <:< tOr) {
+          getResponsesIn(t.typeArgs)
+        } else
+        if (t.typeSymbol.typeSignature <:< tAsk) {
+          Seq.empty
+        } else {
+          Seq(t)
+        }
       }
     }
   }
 
   private def getUrlAnnotation(t: c.Type): String =
-    getStringAnnotation(t.typeSymbol, c.typeOf[urlMarker]).getOrElse {
+    getStringAnnotation(t.typeSymbol, c.typeOf[url]).getOrElse {
       c.abort(c.enclosingPosition, s"@url annotation is not defined for $t.}")
     }
 
   private def getContentTypeAnnotation(t: c.Type): Option[String] =
-    getStringAnnotation(t.typeSymbol, c.typeOf[contentTypeMarker])
+    getStringAnnotation(t.typeSymbol, c.typeOf[contentType])
 
   private def getMethodAnnotation(t: c.Type): Option[String] =
     getStringAnnotation(t.typeSymbol, c.typeOf[method])
@@ -260,26 +244,5 @@ private[hyperbus] trait HyperBusMacroImplementation {
         case _ => None
       }
     }
-  }
-
-  def defineExtractor[REQ <: Request[Body] : c.WeakTypeTag](url: String): c.Expr[PartitionArgsExtractor[REQ]] = {
-    import c.universe._
-
-    // todo: test urls with args
-    val t = weakTypeOf[REQ]
-    val lst = impl.Helpers.extractParametersFromUrl(url).map { arg ⇒
-      q"$arg -> ExactArg(r.body.${TermName(arg)}.toString)" // todo remove toString if string
-    }
-
-    val obj = q"""{
-      import eu.inn.servicebus.transport._
-      (r:$t) => {
-        PartitionArgs(Map(
-          ..$lst
-        ))
-      }
-    }"""
-
-    c.Expr[PartitionArgsExtractor[REQ]](obj)
   }
 }

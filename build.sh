@@ -13,5 +13,14 @@ for param in "$@"
 done
 
 if [ -n "$publish" ] ; then
-	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test servicebus/publish hyperbus-inner/publish hyperbus/publish hyperbus-akka/publish servicebus-t-distributed-akka/publish hyperbus-cli/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test \
+		hyperbus-transport/publish \
+		hyperbus-model/publish \
+		hyperbus-standard-model/publish \
+		hyperbus/publish \
+		hyperbus-t-inproc/publish \
+		hyperbus-t-distributed-akka/publish \
+		hyperbus-t-kafka/publish \		
+		hyperbus-akka/publish \
+		hyperbus-cli/publish
 fi

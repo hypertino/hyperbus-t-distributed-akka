@@ -10,7 +10,7 @@ object Build extends sbt.Build {
   override lazy val settings =
     super.settings ++ Seq(
       organization := "eu.inn",
-      scalaVersion := "2.11.6",
+      scalaVersion := "2.11.7",
       projectMajorVersion := "0.1",
       projectBuildNumber := "SNAPSHOT",
       version := projectMajorVersion.value + "." + projectBuildNumber.value,
@@ -39,11 +39,24 @@ object Build extends sbt.Build {
       addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersionRoot cross CrossVersion.full)
     )
 
-  lazy val `hyperbus-root` = project.in(file(".")) aggregate(servicebus, `hyperbus-inner`, hyperbus, `hyperbus-akka`, `servicebus-t-distributed-akka`, `hyperbus-cli`)
-  lazy val servicebus = project.in(file("servicebus"))
-  lazy val `hyperbus-inner` = project.in(file("hyperbus-inner")) dependsOn servicebus
-  lazy val hyperbus = project.in(file("hyperbus")) dependsOn `hyperbus-inner`
-  lazy val `hyperbus-akka` = project.in(file("hyperbus-akka")) dependsOn hyperbus
-  lazy val `servicebus-t-distributed-akka` = project.in(file("servicebus-t-distributed-akka")) dependsOn servicebus
-  lazy val `hyperbus-cli` = project.in(file("hyperbus-cli")) dependsOn (hyperbus, `servicebus-t-distributed-akka`)
+  lazy val `hyperbus-root` = project.in(file(".")) aggregate(
+    `hyperbus-transport`,
+    `hyperbus-model`,
+    `hyperbus-standard-model`,
+    hyperbus,
+    `hyperbus-akka`,
+    `hyperbus-t-inproc`,
+    `hyperbus-t-distributed-akka`,
+    `hyperbus-t-kafka`,
+    `hyperbus-cli`
+    )
+  lazy val `hyperbus-transport` = project.in(file("hyperbus-transport"))
+  lazy val `hyperbus-model` = project.in(file("hyperbus-model")) dependsOn `hyperbus-transport`
+  lazy val `hyperbus-standard-model` = project.in(file("hyperbus-standard-model")) dependsOn(`hyperbus-transport`, `hyperbus-model`)
+  lazy val `hyperbus` = project.in(file("hyperbus")) dependsOn(`hyperbus-standard-model`, `hyperbus-t-inproc`)
+  lazy val `hyperbus-akka` = project.in(file("hyperbus-akka")) dependsOn `hyperbus`
+  lazy val `hyperbus-t-inproc` = project.in(file("hyperbus-t-inproc")) dependsOn `hyperbus-transport`
+  lazy val `hyperbus-t-distributed-akka` = project.in(file("hyperbus-t-distributed-akka")) dependsOn `hyperbus-transport`
+  lazy val `hyperbus-t-kafka` = project.in(file("hyperbus-t-kafka")) dependsOn `hyperbus-transport`
+  lazy val `hyperbus-cli` = project.in(file("hyperbus-cli")) dependsOn(`hyperbus`, `hyperbus-t-distributed-akka`)
 }

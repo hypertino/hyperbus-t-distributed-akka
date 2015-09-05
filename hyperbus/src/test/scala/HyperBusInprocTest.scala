@@ -1,52 +1,52 @@
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.Text
 import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.rest.{Link, _}
-import eu.inn.hyperbus.rest.annotations.{contentType, url}
-import eu.inn.hyperbus.rest.standard._
-import eu.inn.servicebus.{TransportRoute, ServiceBus}
-import eu.inn.servicebus.transport.{ServerTransport, AnyArg, ClientTransport, InprocTransport}
+import eu.inn.hyperbus.model.annotations.{body, request}
+import eu.inn.hyperbus.model.standard._
+import eu.inn.hyperbus.model.{Link, _}
+import eu.inn.hyperbus.transport._
+import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-@contentType("application/vnd+test-1.json")
+@body("application/vnd+test-1.json")
 case class TestBody1(resourceData: String) extends Body
 
-@contentType("application/vnd+test-2.json")
+@body("application/vnd+test-2.json")
 case class TestBody2(resourceData: Long) extends Body
 
-@contentType("application/vnd+created-body.json")
+@body("application/vnd+created-body.json")
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Body.LinksMap = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
-  extends CreatedBody with NoContentType
+  extends CreatedBody
 
-@url("/resources")
+// with NoContentType
+
+@request("/resources")
 case class TestPost1(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
-@url("/resources")
+@request("/resources")
 case class TestPost2(body: TestBody2) extends StaticPost(body)
 with DefinedResponse[Created[TestCreatedBody]]
 
-@url("/resources")
+@request("/resources")
 case class TestPost3(body: TestBody2) extends StaticPost(body)
-with DefinedResponse[
-  |[Ok[DynamicBody], |[Created[TestCreatedBody], !]]
-  ]
+with DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
 
-@url("/empty")
+@request("/empty")
 case class TestPostWithNoContent(body: TestBody1) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
-@url("/empty")
+@request("/empty")
 case class StaticPostWithDynamicBody(body: DynamicBody) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
-@url("/empty")
+@request("/empty")
 case class StaticPostWithEmptyBody(body: EmptyBody) extends StaticPost(body)
 with DefinedResponse[NoContent[EmptyBody]]
 
@@ -56,15 +56,18 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
       val hyperBus = newHyperBus()
 
-      hyperBus ~> { post: TestPost1 =>
+      hyperBus ~> { implicit post: TestPost1 =>
         Future {
-          new Created(TestCreatedBody("100500"))
+          Created(TestCreatedBody("100500"))
         }
       }
 
-      val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"),
+        messageId = "abc",
+        correlationId = "xyz")
 
       whenReady(f) { r =>
+        r.correlationId should equal("xyz")
         r.body should equal(TestCreatedBody("100500"))
       }
     }
@@ -90,13 +93,13 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost3(TestBody2(1))
 
       whenReady(f) { r =>
-        r should equal(Created(TestCreatedBody("100500")))
+        r should equal(Created(TestCreatedBody("100500"), messageId = r.messageId, correlationId = r.correlationId))
       }
 
       val f2 = hyperBus <~ TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result"))))
+        r should equal(Ok(DynamicBody(Text("another result")), messageId = r.messageId, correlationId = r.correlationId))
       }
 
       val f3 = hyperBus <~ TestPost3(TestBody2(-1))
@@ -115,9 +118,9 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
   def newHyperBus() = {
     val tr = new InprocTransport
-    val cr = List(TransportRoute[ClientTransport](tr, AnyArg))
-    val sr = List(TransportRoute[ServerTransport](tr, AnyArg))
-    val serviceBus = new ServiceBus(cr, sr)
-    new HyperBus(serviceBus)
+    val cr = List(TransportRoute[ClientTransport](tr, Topic(AnyValue)))
+    val sr = List(TransportRoute[ServerTransport](tr, Topic(AnyValue)))
+    val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
+    new HyperBus(transportManager)
   }
 }

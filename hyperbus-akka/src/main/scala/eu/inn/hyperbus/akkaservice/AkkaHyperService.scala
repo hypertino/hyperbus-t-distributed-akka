@@ -4,7 +4,7 @@ import akka.actor.Actor.Receive
 import akka.actor.ActorRef
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.akkaservice.annotations.group
-import eu.inn.hyperbus.rest.{DynamicBody, Body, Response}
+import eu.inn.hyperbus.model.{Body, Response}
 
 import scala.concurrent.Future
 import scala.language.experimental.macros
@@ -143,7 +143,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       (member.name.decodedName.toString.startsWith("process") ||
         member.name.decodedName.toString.startsWith("subscribe") ||
         member.name.decodedName.toString.startsWith("~>") || // ~>
-        member.name.decodedName.toString.startsWith("|>")) &&  // |>
+        member.name.decodedName.toString.startsWith("|>")) && // |>
       member.isPublic && {
       val m = member.asInstanceOf[MethodSymbol]
       //println("method: " + member.name.decoded + " params: " + m.paramss)

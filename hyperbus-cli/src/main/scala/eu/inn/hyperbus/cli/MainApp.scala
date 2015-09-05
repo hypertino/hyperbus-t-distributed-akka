@@ -7,26 +7,29 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders.dynamic.Text
 import eu.inn.binders.naming.PlainConverter
-import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.annotations.{contentType, url}
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.{HyperBus, IdGenerator}
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.annotations.{body, request}
+import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
-import eu.inn.servicebus.transport.ActorSystemRegistry
-import eu.inn.servicebus.{ServiceBus, ServiceBusConfigurationLoader}
-import scala.concurrent.duration._
+import eu.inn.hyperbus.transport.ActorSystemRegistry
+import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportManager}
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.control.Breaks._
 
 trait Commands
+
 case class InitCommand(hyperBus: HyperBus) extends Commands
+
 case class InputCommand(message: String) extends Commands
 
-@contentType("application/vnd+test-body.json")
+@body("application/vnd+test-body.json")
 case class TestBody(content: Option[String]) extends Body
 
-@url("/test")
+@request("/test")
 case class TestRequest(body: TestBody) extends StaticGet(body)
 with DefinedResponse[Ok[TestBody]]
 
@@ -35,13 +38,13 @@ object MainApp {
   //console.getTerminal.setEchoEnabled(false)
   //console.setPrompt(">")
 
-  def main(args : Array[String]): Unit = {
+  def main(args: Array[String]): Unit = {
 
     println("Starting hyperbus-cli...")
     val config = ConfigFactory.load()
-    val serviceBusConfig = ServiceBusConfigurationLoader.fromConfig(config)
-    val serviceBus = new ServiceBus(serviceBusConfig)
-    val hyperBus = new HyperBus(serviceBus)
+    val transportConfiguration = TransportConfigurationLoader.fromConfig(config)
+    val transportManager = new TransportManager(transportConfiguration)
+    val hyperBus = new HyperBus(transportManager)
 
     val actorSystem = ActorSystemRegistry.get("eu-inn").get
 
@@ -68,38 +71,40 @@ object MainApp {
     val downMember = """^down (.+)://(.+)@(.+):(\d+)$""".r
     val leaveMember = """^leave (.+)://(.+)@(.+):(\d+)$""".r
 
-    breakable{ while(true) {
-      console.readLine(">") match {
-        case "quit" ⇒ break()
+    breakable {
+      while (true) {
+        console.readLine(">") match {
+          case "quit" ⇒ break()
 
-        case askCommand(method, url, contentType, body) ⇒
-          val r = createDynamicRequest(method, url, Some(contentType), body)
-          out(s"<~$r")
-          val f = hyperBus <~ r
-          printResponse(f)
+          case askCommand(method, url, contentType, body) ⇒
+            val r = createDynamicRequest(method, url, Some(contentType), body)
+            out(s"<~$r")
+            val f = hyperBus <~ r
+            printResponse(f)
 
-        case publishCommand(method, url, contentType, body) ⇒
-          val r = createDynamicRequest(method, url, Some(contentType), body)
-          out(s"<!$r")
-          val f = hyperBus <| r
+          case publishCommand(method, url, contentType, body) ⇒
+            val r = createDynamicRequest(method, url, Some(contentType), body)
+            out(s"<!$r")
+            val f = hyperBus <| r
 
-        case downMember(protocol,system,host,port) ⇒
-          val cluster = Cluster(actorSystem)
-          val address = Address(protocol,system,host,port.toInt)
-          out("Downing: " + address)
-          cluster.down(address)
+          case downMember(protocol, system, host, port) ⇒
+            val cluster = Cluster(actorSystem)
+            val address = Address(protocol, system, host, port.toInt)
+            out("Downing: " + address)
+            cluster.down(address)
 
-        case leaveMember(protocol,system,host,port) ⇒
-          val cluster = Cluster(actorSystem)
-          val address = Address(protocol,system,host,port.toInt)
-          out("Leaving: " + address)
-          cluster.leave(address)
+          case leaveMember(protocol, system, host, port) ⇒
+            val cluster = Cluster(actorSystem)
+            val address = Address(protocol, system, host, port.toInt)
+            out("Leaving: " + address)
+            cluster.leave(address)
 
-        case cmd ⇒
-          out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
+          case cmd ⇒
+            out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
             |Example: ~> get /test application/vnd+test-body.json {"someValue":"abc"}""".stripMargin('|'))
+        }
       }
-    }}
+    }
 
     quit()
   }
@@ -108,14 +113,14 @@ object MainApp {
     val jf = new JsonFactory()
     val jp = jf.createParser(body)
     try {
-      eu.inn.hyperbus.impl.Helpers.decodeDynamicRequest(RequestHeader(url, method, contentType), jp)
+      DynamicRequest(RequestHeader(url, method, contentType, IdGenerator.create(), None), jp)
     } finally {
       jp.close()
     }
   }
 
   def printResponse(response: Future[Response[Body]]) = {
-    response map out recover{
+    response map out recover {
       case x ⇒ out(x)
     }
   }

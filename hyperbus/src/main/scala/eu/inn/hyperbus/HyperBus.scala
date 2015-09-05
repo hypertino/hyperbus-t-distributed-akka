@@ -2,15 +2,12 @@ package eu.inn.hyperbus
 
 import java.io.InputStream
 
-import eu.inn.hyperbus.impl.{Helpers, MacroApi}
-import eu.inn.hyperbus.rest._
-import eu.inn.hyperbus.rest.standard._
+import eu.inn.hyperbus.impl.MacroApi
+import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.serialization.impl.InnerHelpers
-import eu.inn.servicebus.ServiceBus
-import eu.inn.servicebus.serialization._
-import eu.inn.servicebus.transport.{PartitionArgs, SubscriptionHandlerResult, Topic}
-import eu.inn.servicebus.util.Subscriptions
+import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -20,87 +17,64 @@ import scala.language.experimental.macros
 import scala.util.Try
 import scala.util.control.NonFatal
 
-/*
-todo:
-+ decide group result type
-+ correlationId, sequenceId, replyTo
-+ other headers?
-+ exception when duplicate subscription
-+ encode -> serialize
-+ test serialize/deserialize exceptions
-
-low priority:
-  + lostResponse response log details
-*/
-
 trait HyperBusApi {
   def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
-                                                        requestEncoder: Encoder[REQ],
-                                                        partitionArgsExtractor: PartitionArgsExtractor[REQ],
-                                                        responseDecoder: ResponseDecoder[RESP]): Future[RESP]
+                                                        responseDeserializer: ResponseDeserializer[RESP]): Future[RESP]
 
-  def publish[REQ <: Request[Body]](request: REQ,
-                                    requestEncoder: Encoder[REQ],
-                                    partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit]
+  def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult]
 
   def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
-                                                       method: String,
-                                                       contentType: Option[String],
-                                                       requestDecoder: RequestDecoder[REQ],
-                                                       partitionArgsExtractor: PartitionArgsExtractor[REQ])
-                                                      (handler: (REQ) => SubscriptionHandlerResult[RESP]): String
+                                                            method: String,
+                                                            contentType: Option[String],
+                                                            requestDeserializer: RequestDeserializer[REQ])
+                                                           (handler: (REQ) => Future[RESP]): String
 
   def subscribe[REQ <: Request[Body]](topic: Topic,
                                       method: String,
                                       contentType: Option[String],
                                       groupName: String,
-                                      requestDecoder: RequestDecoder[REQ],
-                                      partitionArgsExtractor: PartitionArgsExtractor[REQ])
-                                     (handler: (REQ) => SubscriptionHandlerResult[Unit]): String
+                                      requestDeserializer: RequestDeserializer[REQ])
+                                     (handler: (REQ) => Future[Unit]): String
 
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
-class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+class HyperBus(val transportManager: TransportManager)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+
   protected trait Subscription[REQ <: Request[Body]] {
-    def requestDecoder: RequestDecoder[REQ]
+    def requestDeserializer: RequestDeserializer[REQ]
   }
+
   protected val subscriptions = new Subscriptions[SubKey, Subscription[_]]
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
   def <~[REQ <: Request[Body]](request: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
 
-  def <|[REQ <: Request[Body]](request: REQ): Future[Unit] = macro HyperBusMacro.publish[REQ]
+  def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
 
   def |>[IN <: Request[Body]](groupName: String)
-                                    (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
+                             (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
-  def ~>[REQ <: Request[Body]](handler: (REQ) => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
+  def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
-    import eu.inn.hyperbus.impl.Helpers._
-    import eu.inn.hyperbus.{serialization ⇒ hbs}
-    ask(request, encodeDynamicRequest,
-      extractDynamicPartitionArgs, macroApiImpl.responseDecoder(_,_,PartialFunction.empty)
+    ask(request,
+      macroApiImpl.responseDeserializer(_, _, PartialFunction.empty)
     ).asInstanceOf[Future[Response[DynamicBody]]]
   }
 
-  def <|(request: DynamicRequest): Future[Unit] = {
-    import eu.inn.hyperbus.impl.Helpers._
-    publish(request, encodeDynamicRequest, extractDynamicPartitionArgs)
+  def <|(request: DynamicRequest): Future[PublishResult] = {
+    publish(request)
   }
 
-
   protected case class RequestReplySubscription[REQ <: Request[Body]](
-                                                                       handler: (REQ) => SubscriptionHandlerResult[Response[Body]],
-                                                                       requestDecoder: RequestDecoder[REQ],
-                                                                       partitionArgsExtractor: PartitionArgsExtractor[REQ]) extends Subscription[REQ]
+                                                                       handler: (REQ) => Future[Response[Body]],
+                                                                       requestDeserializer: RequestDeserializer[REQ]) extends Subscription[REQ]
 
   protected case class PubSubSubscription[REQ <: Request[Body]](
-                                                                 handler: (REQ) => SubscriptionHandlerResult[Unit],
-                                                                 requestDecoder: RequestDecoder[REQ],
-                                                                 partitionArgsExtractor: PartitionArgsExtractor[REQ]) extends Subscription[REQ]
+                                                                 handler: (REQ) => Future[Unit],
+                                                                 requestDeserializer: RequestDeserializer[REQ]) extends Subscription[REQ]
 
   protected case class SubKey(method: String, contentType: Option[String])
 
@@ -116,13 +90,13 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
       }
     }
 
-    def decoder(inputStream: InputStream): REQ = {
+    def deserializer(inputStream: InputStream): REQ = {
       try {
-        InnerHelpers.decodeRequestWith[REQ](inputStream) { (requestHeader, requestBodyJson) =>
+        MessageDeserializer.deserializeRequestWith[REQ](inputStream) { (requestHeader, requestBodyJson) =>
           getSubscription(requestHeader.method, requestHeader.contentType) map { subscription =>
-            subscription.requestDecoder(requestHeader, requestBodyJson)
+            subscription.requestDeserializer(requestHeader, requestBodyJson)
           } getOrElse {
-            Helpers.decodeDynamicRequest(requestHeader, requestBodyJson).asInstanceOf[REQ] // todo: why? remove and throw
+            DynamicRequest(requestHeader, requestBodyJson).asInstanceOf[REQ] // todo: why? remove and throw
           }
         }
       }
@@ -138,91 +112,64 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
 
   protected class UnderlyingRequestReplyHandler[REQ <: Request[Body]](routeKey: String)
     extends UnderlyingHandler[REQ](routeKey) {
-    def handler(in: REQ): SubscriptionHandlerResult[Response[Body]] = {
+    def handler(in: REQ): Future[Response[Body]] = {
       getSubscription(in) map {
         case y: RequestReplySubscription[REQ] ⇒
-          val r = y.handler(in)
-          val f = r.futureResult.recoverWith {
+          val futureResult = y.handler(in)
+          futureResult.recoverWith {
             case z: Response[_] ⇒ Future.successful(z)
             case t: Throwable ⇒ Future.successful(unhandledException(routeKey, in, t))
           }
-          SubscriptionHandlerResult[Response[Body]](f, r.resultEncoder)
       } getOrElse {
-        SubscriptionHandlerResult(Future.successful(unhandledRequest(routeKey, in)), defaultResponseEncoder)
-      }
-    }
-
-    def partitionArgsExtractor(t: REQ): PartitionArgs = {
-      getSubscription(t) map {
-        case y: RequestReplySubscription[REQ] ⇒ y.partitionArgsExtractor(t)
-      } getOrElse {
-        PartitionArgs(Map.empty) // todo: is this ok?
+        Future.successful(unhandledRequest(routeKey, in))
       }
     }
   }
 
   protected class UnderlyingPubSubHandler[REQ <: Request[Body]](routeKey: String)
     extends UnderlyingHandler[REQ](routeKey) {
-    def handler(in: REQ): SubscriptionHandlerResult[Unit] = {
+    def handler(in: REQ): Future[Unit] = {
       getSubscription(in).map {
         case s: PubSubSubscription[REQ] ⇒
           s.handler(in)
       } getOrElse {
-        SubscriptionHandlerResult(Future.successful(unhandledPublication(routeKey, in)), null)
-      }
-    }
-
-    def partitionArgsExtractor(t: REQ): PartitionArgs = {
-      getSubscription(t) map {
-        case y: PubSubSubscription[REQ] ⇒ y.partitionArgsExtractor(t)
-      } getOrElse {
-        PartitionArgs(Map.empty) // todo: is this ok?
+        Future.successful(unhandledPublication(routeKey, in))
       }
     }
   }
 
   def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
-                                                        requestEncoder: Encoder[REQ],
-                                                        partitionArgsExtractor: PartitionArgsExtractor[REQ],
-                                                        responseDecoder: ResponseDecoder[RESP]): Future[RESP] = {
+                                                        responseDeserializer: ResponseDeserializer[RESP]): Future[RESP] = {
 
-    val outputDecoder = InnerHelpers.decodeResponseWith(_: InputStream)(responseDecoder)
-    val args = partitionArgsExtractor(request)
-    val topic = Topic(request.url, args)
-    serviceBus.ask[RESP, REQ](topic, request, requestEncoder, outputDecoder) map {
+    val outputDeserializer = MessageDeserializer.deserializeResponseWith(_: InputStream)(responseDeserializer)
+    transportManager.ask[RESP](request, outputDeserializer) map {
       case throwable: Throwable ⇒ throw throwable
       case other ⇒ other
     }
   }
 
-  def publish[REQ <: Request[Body]](request: REQ,
-                                    requestEncoder: Encoder[REQ],
-                                    partitionArgsExtractor: PartitionArgsExtractor[REQ]): Future[Unit] = {
-    val args = partitionArgsExtractor(request)
-    val topic = Topic(request.url, args)
-    serviceBus.publish[REQ](topic, request, requestEncoder)
+  def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult] = {
+    transportManager.publish(request)
   }
 
   def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
-                                                       method: String,
-                                                       contentType: Option[String],
-                                                       requestDecoder: RequestDecoder[REQ],
-                                                       partitionArgsExtractor: PartitionArgsExtractor[REQ])
-                                                      (handler: (REQ) => SubscriptionHandlerResult[RESP]): String = {
+                                                            method: String,
+                                                            contentType: Option[String],
+                                                            requestDeserializer: RequestDeserializer[REQ])
+                                                           (handler: (REQ) => Future[RESP]): String = {
     val routeKey = getRouteKey(topic.url, None)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
         routeKey,
         SubKey(method, contentType),
-        RequestReplySubscription(handler.asInstanceOf[(REQ) => SubscriptionHandlerResult[Response[Body]]], requestDecoder, partitionArgsExtractor)
+        RequestReplySubscription(handler.asInstanceOf[(REQ) => Future[Response[Body]]], requestDeserializer)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
-        val d: Decoder[REQ] = uh.decoder
-        val pe: PartitionArgsExtractor[REQ] = uh.partitionArgsExtractor
-        val uid = serviceBus.process[Response[Body], REQ](topic, d, pe, exceptionEncoder)(uh.handler)
+        val d: Deserializer[REQ] = uh.deserializer
+        val uid = transportManager.process[REQ](topic, d, exceptionSerializer)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -233,23 +180,21 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
                                       method: String,
                                       contentType: Option[String],
                                       groupName: String,
-                                      requestDecoder: RequestDecoder[REQ],
-                                      partitionArgsExtractor: PartitionArgsExtractor[REQ])
-                                     (handler: (REQ) => SubscriptionHandlerResult[Unit]): String = {
+                                      requestDeserializer: RequestDeserializer[REQ])
+                                     (handler: (REQ) => Future[Unit]): String = {
     val routeKey = getRouteKey(topic.url, Some(groupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
         routeKey,
         SubKey(method, contentType),
-        PubSubSubscription(handler, requestDecoder, partitionArgsExtractor)
+        PubSubSubscription(handler, requestDeserializer)
       )
 
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler[REQ](routeKey)
-        val d: Decoder[REQ] = uh.decoder
-        val pe: PartitionArgsExtractor[REQ] = uh.partitionArgsExtractor
-        val uid = serviceBus.subscribe[REQ](topic, groupName, d, pe)(uh.handler)
+        val d: Deserializer[REQ] = uh.deserializer
+        val uid = transportManager.subscribe[REQ](topic, groupName, d)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -259,11 +204,11 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
   def off(subscriptionId: String): Unit = {
     underlyingSubscriptions.synchronized {
       subscriptions.getRouteKeyById(subscriptionId) foreach { routeKey =>
-        val cnt = subscriptions.get(routeKey).subRoutes.foldLeft(0){ (c, x) =>
+        val cnt = subscriptions.get(routeKey).subRoutes.foldLeft(0) { (c, x) =>
           c + x._2.size
         }
         if (cnt <= 1) {
-          underlyingSubscriptions.get(routeKey).foreach(k => serviceBus.off(k._1))
+          underlyingSubscriptions.get(routeKey).foreach(k => transportManager.off(k._1))
         }
       }
       subscriptions.remove(subscriptionId)
@@ -271,57 +216,29 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    serviceBus.shutdown(duration)
+    transportManager.shutdown(duration)
   }
 
-  protected def defaultResponseEncoder(response: Response[Body], outputStream: java.io.OutputStream): Unit = {
-    import eu.inn.hyperbus.serialization._
-    response.body match {
-      case _: ErrorBody => createEncoder[Response[ErrorBody]](response.asInstanceOf[Response[ErrorBody]], outputStream)
-      case _: DynamicCreatedBody => createEncoder[Response[DynamicCreatedBody]](response.asInstanceOf[Response[DynamicCreatedBody]], outputStream)
-      case _: DynamicBody => createEncoder[Response[DynamicBody]](response.asInstanceOf[Response[DynamicBody]], outputStream)
-      case _ => responseEncoderNotFound(response)
-    }
-  }
-
-  protected def exceptionEncoder(exception: Throwable, outputStream: java.io.OutputStream): Unit = {
+  protected def exceptionSerializer(exception: Throwable, outputStream: java.io.OutputStream): Unit = {
     exception match {
-      case r: ErrorResponse ⇒ defaultResponseEncoder(r, outputStream)
+      case r: ErrorResponse ⇒ r.serialize(outputStream)
       case t ⇒
         val error = InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(t.getMessage)))
         logError("Unhandled exception", error)
-        defaultResponseEncoder(error, outputStream)
+        error.serialize(outputStream)
     }
-  }
-
-  protected def defaultResponseBodyDecoder(responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser): Body = {
-    val decoder =
-      if (responseHeader.status >= 400 && responseHeader.status <= 599)
-        eu.inn.hyperbus.serialization.createResponseBodyDecoder[ErrorBody]
-      else
-        eu.inn.hyperbus.serialization.createResponseBodyDecoder[DynamicBody]
-    decoder(responseHeader, responseBodyJson)
   }
 
   val macroApiImpl = new MacroApi {
-    def responseDecoder(responseHeader: ResponseHeader,
-                        responseBodyJson: com.fasterxml.jackson.core.JsonParser,
-                        bodyDecoder: PartialFunction[ResponseHeader, ResponseBodyDecoder]): Response[Body] = {
+    def responseDeserializer(responseHeader: ResponseHeader,
+                             responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                             bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body] = {
       val body =
-        if (bodyDecoder.isDefinedAt(responseHeader))
-          bodyDecoder(responseHeader)(responseHeader, responseBodyJson)
+        if (bodyDeserializer.isDefinedAt(responseHeader))
+          bodyDeserializer(responseHeader)(responseHeader.contentType, responseBodyJson)
         else
-          defaultResponseBodyDecoder(responseHeader, responseBodyJson)
-      Helpers.createResponse(responseHeader, body)
-    }
-
-    def responseEncoder(response: Response[Body],
-                        outputStream: java.io.OutputStream,
-                        bodyEncoder: PartialFunction[Response[Body], Encoder[Response[Body]]]): Unit = {
-      if (bodyEncoder.isDefinedAt(response))
-        bodyEncoder(response)(response, outputStream)
-      else
-        defaultResponseEncoder(response, outputStream)
+          StandardResponseBody(responseHeader, responseBodyJson)
+      StandardResponse(responseHeader, body)
     }
   }
 
@@ -344,19 +261,22 @@ class HyperBus(val serviceBus: ServiceBus)(implicit val executionContext: Execut
   }
 
   protected def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Response[Body] = {
-    InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(
-        safeErrorMessage(s"Unhandled exception: ${exception.getMessage}", request, routeKey)
-      )),
-      exception
-    )
+    val errorBody = ErrorBody(DefError.INTERNAL_ERROR, Some(
+      safeErrorMessage(s"Unhandled exception: ${exception.getMessage}", request, routeKey)
+    ))
+    log.error(errorBody.message + ". #" + errorBody.errorId, exception)
+    InternalServerError(errorBody)
   }
 
-  protected def responseEncoderNotFound(response: Response[Body]) = log.error("Can't encode response: {}", response)
+  protected def responseSerializerNotFound(response: Response[Body]) = log.error("Can't serialize response: {}", response)
 
-  protected def getRouteKey(url: String, groupName: Option[String]) =
+  protected def getRouteKey(url: Filter, groupName: Option[String]) = {
+    val urlSpecific = url.specific // todo: implement other filters?
+
     groupName.map {
-      url + "#" + _
-    } getOrElse url
+      urlSpecific + "#" + _
+    } getOrElse urlSpecific
+  }
 
   protected def safe(t: () => String): String = Try(t()).getOrElse("???")
 }
