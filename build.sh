@@ -19,8 +19,8 @@ if [ -n "$publish" ] ; then
 		hyperbus-standard-model/publish \
 		hyperbus/publish \
 		hyperbus-t-inproc/publish \
-		hyperbus-akka/publish \
 		hyperbus-t-distributed-akka/publish \
 		hyperbus-t-kafka/publish \		
+		hyperbus-akka/publish \
 		hyperbus-cli/publish
 fi

@@ -19,7 +19,7 @@ private[annotations] object ResponseMacro {
   }
 }
 
-// todo: status annotation?
+// todo: add status annotation, for the future
 private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroImplBase {
 
   import c.universe._

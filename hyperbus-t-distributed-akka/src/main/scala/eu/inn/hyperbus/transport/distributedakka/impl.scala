@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
-// todo: REMOVE OUT/IN in this file
 private[transport] trait Command
 
 private[transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl: String,
