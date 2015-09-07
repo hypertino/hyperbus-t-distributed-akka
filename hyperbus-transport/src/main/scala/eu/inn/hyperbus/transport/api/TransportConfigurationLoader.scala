@@ -12,7 +12,7 @@ object TransportConfigurationLoader {
   import scala.collection.JavaConversions._
 
   def fromConfig(config: Config): TransportConfiguration = {
-    val sc = config.getConfig("service-bus")
+    val sc = config.getConfig("hyperbus")
 
     val st = sc.getObject("transports")
     val transportMap = st.entrySet().map { entry ⇒

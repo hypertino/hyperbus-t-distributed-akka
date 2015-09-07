@@ -55,11 +55,13 @@ object Filter {
   def apply(value: Option[String], matchType: Option[String]): Filter = matchType match {
     case Some("Any") ⇒ AnyValue
     case Some("Regex") ⇒ RegexFilter(value.getOrElse(
-      throw new TransportConfigurationError("Please provide value for Regex partition argument"))
+      throw new TransportConfigurationError("Please provide value for Regex filter"))
     )
-    case _ ⇒ SpecificValue(value.getOrElse(
-      throw new TransportConfigurationError("Please provide value for Exact partition argument"))
+    case Some("Specific") ⇒ SpecificValue(value.getOrElse(
+      throw new TransportConfigurationError("Please provide value for Specific filter"))
     )
+    case other ⇒
+      throw new TransportConfigurationError(s"Unsupport filter type: $other")
   }
 
   private [api] def apply(pojo: FilterPojo): Filter = apply(pojo.value, pojo.matchType)

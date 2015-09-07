@@ -30,21 +30,21 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
   "Transport Manager" - {
     "Configuration Test " in {
       val config = ConfigFactory.parseString("""
-        service-bus: {
+        hyperbus: {
           transports: {
             mock-client.class-name: eu.inn.hyperbus.transport.MockClientTransport,
             mock-server.class-name: eu.inn.hyperbus.transport.MockServerTransport,
           },
           client-routes: [
             {
-              topic.url: { value: "/topic/{userId}", match-type: Exact }
+              topic.url: { value: "/topic/{userId}", match-type: Specific }
               topic.extra: { userId: { match-type: Any } }
               transport: mock-client
             }
           ],
           server-routes: [
             {
-              topic.url: { value: "/topic/{userId}", match-type: Exact }
+              topic.url: { value: "/topic/{userId}", match-type: Specific }
               topic.extra: { userId: { value: ".*", match-type: Regex } }
               transport: mock-server
             }

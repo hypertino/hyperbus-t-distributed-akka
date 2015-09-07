@@ -1,4 +1,5 @@
 TODO:
+    + print routes on launch
     apply метод в request/response object принимающий содержимое body
     create configurable executors for service/bus & transports
     common transport code: logging, ?    
@@ -12,3 +13,4 @@ TODO:
       + lost response response log details
     - distrib-akka Topic parition aware server and client ?    
     - custom http methods/verbs?
+    + tests for different route/filters

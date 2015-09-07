@@ -64,7 +64,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     if (requestType.companion == null) {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
-    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName
+    val requestDeserializer = requestType.companion.declaration(TermName("deserializer"))
     val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
@@ -72,7 +72,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       val thiz = $thiz
       val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      thiz.process[Response[Body],$requestType](topic, $method, $contentType, $requestCompanionName.deserializer _) {
+      thiz.process[Response[Body],$requestType](topic, $method, $contentType, $requestDeserializer _) {
         response: $requestType => $handler(response)
       }
     }"""
@@ -89,7 +89,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     if (requestType.companion == null) {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
-    val requestCompanionName = requestType.companion.typeSymbol.name.toTermName
+    val requestDeserializer = requestType.companion.declaration(TermName("deserializer"))
     val url = getUrlAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
@@ -97,7 +97,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       val thiz = $thiz
       val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, $requestCompanionName.deserializer _) {
+      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, $requestDeserializer _) {
         response: $requestType => $handler(response)
       }
     }"""
@@ -123,10 +123,10 @@ private[hyperbus] trait HyperBusMacroImplementation {
       t.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
-      val bodyCompanionName = body.companion.typeSymbol.name.toTermName
+      val deserializer = body.companion.declaration(TermName("deserializer"))
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
-      cq"""$ta => $bodyCompanionName.deserializer _"""
+      cq"""$ta => $deserializer _"""
     }
 
     val responses = getResponses(in)
