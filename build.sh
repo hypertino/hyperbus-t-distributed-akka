@@ -18,15 +18,11 @@ KAFKA_PEERS=localhost:9092
 
 wget http://www.us.apache.org/dist/kafka/0.8.2.1/kafka_2.10-0.8.2.1.tgz -O kafka.tgz
 mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-cd kafka
-bin/zookeeper-server-start.sh config/zookeeper.properties &
+kafka/bin/zookeeper-server-start.sh config/zookeeper.properties &
 ZOOKEEPER_PID=$!
-echo ZOOKEEPER_PID=$ZOOKEEPER_PID
 
-bin/kafka-server-start.sh config/server.properties &
+kafka/bin/kafka-server-start.sh config/server.properties &
 KAFKA_PID=$!
-echo KAFKA_PID=$KAFKA_PID
-cd ..
 
 sleep 5
 kafka/bin/kafka-topics.sh --create --partitions 1 --replication-factor 1 --topic hyperbus-test --zookeeper localhost:2181
