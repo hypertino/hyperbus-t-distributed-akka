@@ -80,14 +80,14 @@ object DynamicCreatedBody {
 
   def apply(content: Value): DynamicBody with CreatedBody = apply(None, content)
 
-  def decode(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = {
+  def deserialize(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(contentType, deserializer.unbind[Value])
     }
   }
 
-  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = decode(contentType, jsonParser)
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody with CreatedBody = deserialize(contentType, jsonParser)
 
   def unapply(dynamicBody: DynamicBody with CreatedBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }

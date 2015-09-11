@@ -28,14 +28,14 @@ object DynamicBody {
 
   def apply(content: Value): DynamicBody = DynamicBodyContainer(None, content)
 
-  def decode(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = {
+  def deserialize(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(contentType, deserializer.unbind[Value])
     }
   }
 
-  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = decode(contentType, jsonParser)
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = deserialize(contentType, jsonParser)
 
   def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
@@ -52,21 +52,21 @@ trait DynamicRequest extends Request[DynamicBody] {
 
 object DynamicRequest {
   def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
-    val body = DynamicBody(requestHeader.contentType, jsonParser)
-    val messageId = requestHeader.messageId
-    val correlationId = requestHeader.correlationId.getOrElse(messageId)
+    val b = DynamicBody(requestHeader.contentType, jsonParser)
+    val msgId = requestHeader.messageId
+    val cId = requestHeader.correlationId.getOrElse(msgId)
     requestHeader.method match {
-      case Method.GET => DynamicGet(requestHeader.url, body, messageId, correlationId)
-      case Method.POST => DynamicPost(requestHeader.url, body, messageId, correlationId)
-      case Method.PUT => DynamicPut(requestHeader.url, body, messageId, correlationId)
-      case Method.DELETE => DynamicDelete(requestHeader.url, body, messageId, correlationId)
-      case Method.PATCH => DynamicPatch(requestHeader.url, body, messageId, correlationId)
+      case Method.GET => DynamicGet(requestHeader.url, b, msgId, cId)
+      case Method.POST => DynamicPost(requestHeader.url, b, msgId, cId)
+      case Method.PUT => DynamicPut(requestHeader.url, b, msgId, cId)
+      case Method.DELETE => DynamicDelete(requestHeader.url, b, msgId, cId)
+      case Method.PATCH => DynamicPatch(requestHeader.url, b, msgId, cId)
       case other ⇒ new DynamicRequest {
         override def url: String = requestHeader.url
         override def method: String = requestHeader.method
-        override def correlationId: String = correlationId
-        override def messageId: String = messageId
-        override def body: DynamicBody = body
+        override def correlationId: String = cId
+        override def messageId: String = msgId
+        override def body: DynamicBody = b
       }
       //case _ => throw new DecodeException(s"Unknown method: '${requestHeader.method}'") //todo: save more details (messageId) or introduce DynamicMethodRequest
     }

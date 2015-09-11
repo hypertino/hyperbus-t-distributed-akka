@@ -2,7 +2,9 @@ package eu.inn.hyperbus.model
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
+import eu.inn.binders.dynamic.{Text, Obj}
 import eu.inn.hyperbus.model.annotations.request
+import eu.inn.hyperbus.model.standard.DynamicGet
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 import org.scalatest.{FreeSpec, Matchers}
@@ -45,17 +47,30 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       ))))
     }
 
-    /*
-todo: fix test
-    "Decode DynamicRequest" in {
-      val s = """{"request":{"method":"get","url":"/test"},"body":{"resourceId":"100500"}}"""
-      val is = new ByteArrayInputStream(s.getBytes("UTF8"))
-      val d = Helpers.decodeRequestWith(is) { (rh, is2) =>
-        Helpers.decodeDynamicRequest(rh, is2)
+    "Decode DynamicGet" in {
+      val str = """{"request":{"method":"get","url":"/test","messageId":"123"},"body":{"resourceId":"100500"}}"""
+      val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
+      val request = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
+        DynamicRequest(requestHeader, jsonParser)
       }
+      request should equal(new DynamicGet("/test",DynamicBody(Obj(Map("resourceId" -> Text("100500")))),
+        messageId = "123",
+        correlationId = "123"
+      ))
+    }
 
-      d should equal(new DynamicGet("/test",DynamicBody(Obj(Map("resourceId" -> Text("100500"))))))
-    }*/
-
+    "Decode DynamicRequest" in {
+      val str = """{"request":{"method":"custom-method","url":"/test","messageId":"123"},"body":{"resourceId":"100500"}}"""
+      val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
+      val request = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
+        DynamicRequest(requestHeader, jsonParser)
+      }
+      request shouldBe a [Request[_]]
+      request.method should equal("custom-method")
+      request.url should equal("/test")
+      request.messageId should equal("123")
+      request.correlationId should equal("123")
+      request.body should equal(DynamicBody(Obj(Map("resourceId" -> Text("100500")))))
+    }
   }
 }

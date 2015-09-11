@@ -104,7 +104,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
         case re: ErrorResponse ⇒ throw re
         case NonFatal(e) =>
           val error = BadRequest(ErrorBody(DefError.REQUEST_PARSE_ERROR, Some(e.toString)))
-          logError("Can't decode request", error)
+          logError("Can't deserialize request", error)
           throw error
       }
     }
