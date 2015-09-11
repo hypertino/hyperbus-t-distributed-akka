@@ -62,9 +62,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     "Decode DynamicRequest" in {
       val str = """{"request":{"method":"custom-method","url":"/test","messageId":"123"},"body":{"resourceId":"100500"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
-      val request = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
-        DynamicRequest(requestHeader, jsonParser)
-      }
+      val request = DynamicRequest(str)
       request shouldBe a [Request[_]]
       request.method should equal("custom-method")
       request.url should equal("/test")

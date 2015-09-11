@@ -1,11 +1,11 @@
 package eu.inn.hyperbus.model
 
-import java.io.OutputStream
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.model.standard._
-import eu.inn.hyperbus.serialization.{DecodeException, RequestHeader}
+import eu.inn.hyperbus.serialization.{MessageDeserializer, DecodeException, RequestHeader}
 import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 
 
@@ -51,7 +51,19 @@ trait DynamicRequest extends Request[DynamicBody] {
 }
 
 object DynamicRequest {
-  def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
+  def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = deserialize(requestHeader, jsonParser)
+
+  def apply(message: String): DynamicRequest = {
+    apply(new ByteArrayInputStream(message.getBytes("UTF-8")))
+  }
+
+  def apply(inputStream: InputStream): DynamicRequest = {
+    MessageDeserializer.deserializeRequestWith(inputStream) { (requestHeader, jsonParser) ⇒
+      DynamicRequest(requestHeader, jsonParser)
+    }
+  }
+
+  def deserialize(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
     val b = DynamicBody(requestHeader.contentType, jsonParser)
     val msgId = requestHeader.messageId
     val cId = requestHeader.correlationId.getOrElse(msgId)
