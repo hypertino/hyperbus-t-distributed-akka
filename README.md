@@ -14,3 +14,5 @@ TODO:
     - distrib-akka Topic parition aware server and client ?    
     - custom http methods/verbs?
     + tests for different route/filters
+
+    + criteria body (special content-type)?

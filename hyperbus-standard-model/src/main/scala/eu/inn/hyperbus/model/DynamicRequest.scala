@@ -61,7 +61,14 @@ object DynamicRequest {
       case Method.PUT => DynamicPut(requestHeader.url, body, messageId, correlationId)
       case Method.DELETE => DynamicDelete(requestHeader.url, body, messageId, correlationId)
       case Method.PATCH => DynamicPatch(requestHeader.url, body, messageId, correlationId)
-      case _ => throw new DecodeException(s"Unknown method: '${requestHeader.method}'") //todo: save more details (messageId) or introduce DynamicMethodRequest
+      case other ⇒ new DynamicRequest {
+        override def url: String = requestHeader.url
+        override def method: String = requestHeader.method
+        override def correlationId: String = correlationId
+        override def messageId: String = messageId
+        override def body: DynamicBody = body
+      }
+      //case _ => throw new DecodeException(s"Unknown method: '${requestHeader.method}'") //todo: save more details (messageId) or introduce DynamicMethodRequest
     }
   }
 }
