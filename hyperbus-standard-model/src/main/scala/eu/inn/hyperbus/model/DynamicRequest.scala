@@ -48,6 +48,8 @@ trait DynamicRequest extends Request[DynamicBody] {
       body.content.asMap.get(arg).map(_.asString).getOrElse("") // todo: inner fields like abc.userId
     )
   }.toMap))
+
+  override def toString = s"DynamicRequest(RequestHeader($url,$method,${body.contentType},$messageId,$correlationId),$body)"
 }
 
 object DynamicRequest {
@@ -62,6 +64,12 @@ object DynamicRequest {
       DynamicRequest(requestHeader, jsonParser)
     }
   }
+
+  def unapply(request: DynamicRequest): Option[(RequestHeader, DynamicBody)] = Some((
+    RequestHeader(request.url, request.method, request.body.contentType, request.messageId,
+      if (request.messageId == request.correlationId) None else Some(request.correlationId)),
+    request.body
+    ))
 
   def deserialize(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
     val b = DynamicBody(requestHeader.contentType, jsonParser)
