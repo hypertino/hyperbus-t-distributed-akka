@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Await, Promise}
+import scala.util.Try
 
 object ActorSystemRegistry {
   private val registry = new TrieMap[String, (ActorSystem, AtomicInteger)]
@@ -59,7 +60,14 @@ object ActorSystemRegistry {
     log.info(s"Leaving cluster $me...")
     cluster.leave(me.address)
 
-    val result = Await.result(exitPromise.future, timeout / 2)
+    val result = try {
+      Await.result(exitPromise.future, timeout / 2)
+    } catch {
+      case x: Throwable ⇒
+        log.error(s"Timeout while waiting cluster leave for $me", x)
+        false
+    }
+
     if (!result)
       log.warn(s"Didn't get confirmation that node left: $me")
 

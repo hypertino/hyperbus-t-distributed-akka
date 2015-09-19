@@ -57,7 +57,12 @@ object MainApp {
     def quit(): Unit = {
       out("Exiting...")
       val timeout = 30.seconds
-      Await.result(hyperBus.shutdown(timeout), timeout)
+      try {
+        Await.result(hyperBus.shutdown(timeout), timeout)
+      } catch {
+        case t: Throwable ⇒
+          out(t)
+      }
     }
 
     Runtime.getRuntime.addShutdownHook(new Thread() {
