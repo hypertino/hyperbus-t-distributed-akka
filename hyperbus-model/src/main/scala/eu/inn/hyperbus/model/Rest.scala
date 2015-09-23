@@ -47,18 +47,6 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeRequest(this, outputStream)
 }
 
-/*trait StaticRequestObject {
-  def method: String
-  def contentType: Option[String]
-
-  def checkRequestHeader(requestHeader: RequestHeader): Unit = {
-    if (requestHeader.method != method)
-      throw new DecodeException(s"Expected method $method but got ${requestHeader.method}")
-    if (requestHeader.contentType != contentType)
-      throw new DecodeException(s"Expected method $method but got ${requestHeader.method}")
-  }
-}*/
-
 trait Response[+B <: Body] extends Message[B] with TransportResponse {
   def status: Int
 
@@ -75,4 +63,4 @@ trait |[L <: Response[Body], R <: Response[Body]] extends Response[Body]
 
 trait ! extends Response[Body]
 
-
+trait EmbeddedBody extends Body
