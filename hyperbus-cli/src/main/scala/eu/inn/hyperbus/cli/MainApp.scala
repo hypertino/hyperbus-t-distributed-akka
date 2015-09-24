@@ -19,6 +19,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.control.Breaks._
+import scala.util.control.NonFatal
 
 trait Commands
 
@@ -73,39 +74,43 @@ object MainApp {
 
     breakable {
       while (true) {
-        console.readLine(">") match {
-          case "quit" ⇒ break()
+        try {
+          console.readLine(">") match {
+            case "quit" ⇒ break()
 
-          case askCommand(method, url, contentType, body) ⇒
-            val r = createDynamicRequest(method, url, Some(contentType), body)
-            out(s"<~$r")
-            val f = hyperBus <~ r
-            printResponse(f)
+            case askCommand(method, url, contentType, body) ⇒
+              val r = createDynamicRequest(method, url, Some(contentType), body)
+              out(s"<~$r")
+              val f = hyperBus <~ r
+              printResponse(f)
 
-          case publishCommand(method, url, contentType, body) ⇒
-            val r = createDynamicRequest(method, url, Some(contentType), body)
-            out(s"<!$r")
-            val f = hyperBus <| r
+            case publishCommand(method, url, contentType, body) ⇒
+              val r = createDynamicRequest(method, url, Some(contentType), body)
+              out(s"<!$r")
+              val f = hyperBus <| r
 
-          case downMember(protocol, system, host, port) ⇒
-            val cluster = Cluster(actorSystem)
-            val address = Address(protocol, system, host, port.toInt)
-            out("Downing: " + address)
-            cluster.down(address)
+            case downMember(protocol, system, host, port) ⇒
+              val cluster = Cluster(actorSystem)
+              val address = Address(protocol, system, host, port.toInt)
+              out("Downing: " + address)
+              cluster.down(address)
 
-          case leaveMember(protocol, system, host, port) ⇒
-            val cluster = Cluster(actorSystem)
-            val address = Address(protocol, system, host, port.toInt)
-            out("Leaving: " + address)
-            cluster.leave(address)
+            case leaveMember(protocol, system, host, port) ⇒
+              val cluster = Cluster(actorSystem)
+              val address = Address(protocol, system, host, port.toInt)
+              out("Leaving: " + address)
+              cluster.leave(address)
 
-          case cmd ⇒
-            out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
+            case cmd ⇒
+              out(s"""|Invalid command received: '$cmd', available: ~>, |>, quit
             |Example: ~> get /test application/vnd+test-body.json {"someValue":"abc"}""".stripMargin('|'))
+          }
+        }
+        catch {
+          case NonFatal(e) ⇒ out(e.toString)
         }
       }
     }
-
     quit()
   }
 

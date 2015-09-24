@@ -10,6 +10,8 @@ import scala.concurrent.Future
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
+// todo: hyperbus macros hygiene!!!
+// todo: fix routeTo requires import of Response and Body
 
 object AkkaHyperService {
   def route[A](hyperBus: HyperBus, actorRef: ActorRef): List[String] = macro AkkaHyperServiceMacro.route[A]
