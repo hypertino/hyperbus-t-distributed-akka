@@ -32,4 +32,14 @@ object MessagingContextFactory {
       override def toString = s"NewMessagingContext(messageId=$messageId)"
     }
   }
+
+  def withCorrelationId(aCorrelationId: String) = new MessagingContextFactory {
+    def newContext() = new MessagingContext {
+      val messageId = IdGenerator.create()
+
+      def correlationId = aCorrelationId
+
+      override def toString = s"MessagingContextWithCorrelation(messageId=$messageId,correlationId=$correlationId)"
+    }
+  }
 }
