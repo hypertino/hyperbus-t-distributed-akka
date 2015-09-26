@@ -4,6 +4,8 @@ import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
+// todo: JsonHalSerializerFactory and bindOptions as implicit arguments!
+
 @compileTimeOnly("enable macro paradise to expand macro annotations")
 class body(v: String) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro BodyMacroImpl.body
@@ -32,6 +34,7 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
           def contentType = Some($annotationArgument)
           override def serialize(outputStream: java.io.OutputStream) = {
             import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
+            implicit val f = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
             eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer=>
               serializer.bind[$className](this)
             }
@@ -43,6 +46,7 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
     val companionExtra = q"""
         def contentType = Some($annotationArgument)
         def deserializer(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
+          implicit val f = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
           eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
             deserializer.unbind[$className]
           }

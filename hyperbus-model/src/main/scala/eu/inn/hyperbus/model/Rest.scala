@@ -19,11 +19,14 @@ trait NoContentType {
 }
 
 trait Links {
-  def links: Body.LinksMap
+  def links: LinksMap.LinksMapType
 }
 
-object Body {
-  type LinksMap = Map[String, Either[Link, Seq[Link]]]
+object LinksMap {
+  type LinksMapType = Map[String, Either[Link, Seq[Link]]]
+  def apply(self: String): LinksMapType = Map("self" → Left(Link("/test-inner-resource", templated = Some(true))))
+  def apply(link: Link): LinksMapType = Map("self" → Left(link))
+  def apply(links: Map[String, Either[Link, Seq[Link]]]): LinksMapType = links
 }
 
 trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory {
@@ -47,18 +50,6 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeRequest(this, outputStream)
 }
 
-/*trait StaticRequestObject {
-  def method: String
-  def contentType: Option[String]
-
-  def checkRequestHeader(requestHeader: RequestHeader): Unit = {
-    if (requestHeader.method != method)
-      throw new DecodeException(s"Expected method $method but got ${requestHeader.method}")
-    if (requestHeader.contentType != contentType)
-      throw new DecodeException(s"Expected method $method but got ${requestHeader.method}")
-  }
-}*/
-
 trait Response[+B <: Body] extends Message[B] with TransportResponse {
   def status: Int
 
@@ -74,5 +65,3 @@ trait DefinedResponse[R]
 trait |[L <: Response[Body], R <: Response[Body]] extends Response[Body]
 
 trait ! extends Response[Body]
-
-

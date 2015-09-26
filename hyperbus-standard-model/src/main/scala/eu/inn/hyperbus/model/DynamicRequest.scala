@@ -12,7 +12,7 @@ import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 trait DynamicBody extends Body with Links {
   def content: Value
 
-  lazy val links: Body.LinksMap = content.__links[Option[Body.LinksMap]].getOrElse(Map.empty)
+  lazy val links: LinksMap.LinksMapType = content.__links[Option[LinksMap.LinksMapType]].getOrElse(Map.empty)
 
   def serialize(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
