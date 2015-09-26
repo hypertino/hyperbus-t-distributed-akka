@@ -9,7 +9,7 @@ import org.scalatest.{FreeSpec, Matchers}
 
 @body("test-created-body")
 case class TestCreatedBody(resourceId: String,
-                           @fieldName("_links") links: Body.LinksMap = Map(
+                           @fieldName("_links") links: LinksMap.LinksMapType = Map(
                              DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
   extends CreatedBody
 

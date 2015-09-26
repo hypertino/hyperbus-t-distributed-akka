@@ -2,9 +2,10 @@ package eu.inn.hyperbus.model
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
+import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Text, Obj}
 import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.standard.DynamicGet
+import eu.inn.hyperbus.model.standard.{DefLink, StaticGet, DynamicGet}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
 import org.scalatest.{FreeSpec, Matchers}
@@ -18,16 +19,27 @@ object TestPost1 {
   def apply(x: String): TestPost1 = TestPost1(TestBody1(x))
 }
 
-@body("test-outer-body")
-case class TestOuterBody(outerData: String, inner: TestInnerBody) extends Body
+@body("test-inner-body")
+case class TestInnerBody(innerData: String) extends Body {
+
+  def toEmbedded(links: LinksMap.LinksMapType = LinksMap("/test-inner-resource")) = TestInnerBodyEmbedded(innerData, links)
+}
 
 @body("test-inner-body")
-case class TestInnerBody(innerData: String) extends Body // test _links
+case class TestInnerBodyEmbedded(innerData: String,
+                                 @fieldName("_links") links: LinksMap.LinksMapType = LinksMap("/test-inner-resource")) extends Body with Links {
 
-@request("/test-outer-post")
-case class TestOuterPost(body:TestOuterBody) extends Request[TestOuterBody] {
-  override def method: String = "test-method"
+  def toOuter: TestInnerBody = TestInnerBody(innerData)
 }
+
+case class TestOuterBodyEmbedded(simple: TestInnerBodyEmbedded, collection: List[TestInnerBodyEmbedded])
+
+@body("test-outer-body")
+case class TestOuterBody(outerData: String,
+                         @fieldName("_embedded") embedded: TestOuterBodyEmbedded) extends Body
+
+@request("/test-outer-resource")
+case class TestOuterResource(body:TestOuterBody) extends StaticGet(body)
 
 class TestRequestAnnotation extends FreeSpec with Matchers {
   "Request Annotation " - {
@@ -60,29 +72,39 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
 
     "TestOuterPost should serialize" in {
       val ba = new ByteArrayOutputStream()
-      val postO = TestOuterPost(TestOuterBody("abcde", TestInnerBody("eklmn")), messageId = "123", correlationId = "123")
+      val inner1 = TestInnerBodyEmbedded("eklmn")
+      val inner2 = TestInnerBodyEmbedded("xyz")
+      val inner3 = TestInnerBodyEmbedded("yey")
+      val postO = TestOuterResource(TestOuterBody("abcde",
+        TestOuterBodyEmbedded(inner1, List(inner2,inner3))
+      ), messageId = "123", correlationId = "123")
       postO.serialize(ba)
       val str = ba.toString("UTF-8")
-      str should equal("""{"request":{"url":"/test-outer-post","method":"test-method","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"inner":{"innerData":"eklmn"}}}}""")
+      str should equal("""{"request":{"url":"/test-outer-resource","method":"get","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}""")
     }
 
-    /*"TestOuterPost should deserialize" in {
-      val str = """{"request":{"url":"/test-post-1/{id}","method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"id":"155","data":"abcde"}}"""
+    "TestOuterPost should deserialize" in {
+      val str = """{"request":{"url":"/test-outer-resource","method":"get","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
-      val post1 = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
-        requestHeader.url should equal("/test-post-1/{id}")
-        requestHeader.contentType should equal(Some("test-body-1"))
-        requestHeader.method should equal("test-method")
+      val outer = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
+        requestHeader.url should equal("/test-outer-resource")
+        requestHeader.contentType should equal(Some("test-outer-body"))
+        requestHeader.method should equal("get")
         requestHeader.messageId should equal("123")
         requestHeader.correlationId should equal(None)
-        TestPost1(TestBody1(requestHeader.contentType, jsonParser))
+        TestOuterResource(TestOuterBody(requestHeader.contentType, jsonParser))
       }
 
-      post1.body should equal(TestBody1("155", "abcde"))
-      post1.topic should equal(Topic("/test-post-1/{id}", Filters(Map(
-        "id" → SpecificValue("155")
-      ))))
-    }*/
+      val inner1 = TestInnerBodyEmbedded("eklmn")
+      val inner2 = TestInnerBodyEmbedded("xyz")
+      val inner3 = TestInnerBodyEmbedded("yey")
+      val outerBody = TestOuterBody("abcde",
+        TestOuterBodyEmbedded(inner1, List(inner2,inner3))
+      )
+
+      outer.body should equal(outerBody)
+      outer.topic should equal(Topic("/test-outer-resource"))
+    }
 
     "Decode DynamicGet" in {
       val str = """{"request":{"method":"get","url":"/test","messageId":"123"},"body":{"resourceId":"100500"}}"""
