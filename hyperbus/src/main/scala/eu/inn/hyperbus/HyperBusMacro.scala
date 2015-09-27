@@ -4,13 +4,13 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{contentType, method, url}
 
 import scala.concurrent.Future
-import scala.reflect.macros.blackbox.Context
+import scala.reflect.macros._
 import scala.util.matching.Regex
 
 private[hyperbus] object HyperBusMacro {
 
   def process[IN <: Request[Body] : c.WeakTypeTag]
-  (c: Context)
+  (c: blackbox.Context)
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
@@ -20,7 +20,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def subscribe[IN <: Request[Body] : c.WeakTypeTag]
-  (c: Context)
+  (c: blackbox.Context)
   (groupName: c.Expr[String])
   (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val c0: c.type = c
@@ -31,8 +31,8 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def ask[IN <: Request[Body] : c.WeakTypeTag]
-  (c: Context)
-  (request: c.Expr[IN]): c.Tree = {
+  (c: whitebox.Context)
+  (request: c.Expr[IN]): c.Expr[Any] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
@@ -41,7 +41,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def publish[IN <: Request[Body] : c.WeakTypeTag]
-  (c: Context)
+  (c: blackbox.Context)
   (request: c.Expr[IN]): c.Tree = {
     val c0: c.type = c
     val bundle = new {
@@ -52,7 +52,7 @@ private[hyperbus] object HyperBusMacro {
 }
 
 private[hyperbus] trait HyperBusMacroImplementation {
-  val c: Context
+  val c: blackbox.Context
 
   import c.universe._
 
@@ -105,7 +105,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     c.Expr[String](obj)
   }
 
-  def ask[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
+  def ask[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Expr[Any] = {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
@@ -148,7 +148,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       $send
     }"""
     //println(obj)
-    obj
+    c.Expr(obj)
   }
 
   def publish[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {

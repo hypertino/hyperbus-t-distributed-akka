@@ -49,7 +49,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def <~[REQ <: Request[Body]](request: REQ): Future[Response[Body]] = macro HyperBusMacro.ask[REQ]
+  def <~[REQ <: Request[Body]](request: REQ) = macro HyperBusMacro.ask[REQ]
 
   def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
 
