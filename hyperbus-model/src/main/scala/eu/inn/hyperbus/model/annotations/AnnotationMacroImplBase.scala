@@ -39,4 +39,6 @@ private[annotations] trait AnnotationMacroImplBase {
       }
     }.headOption
   }
+
+  protected def fresh(prefix: String): TermName = newTermName(c.fresh(prefix))
 }

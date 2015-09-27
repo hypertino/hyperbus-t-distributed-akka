@@ -68,6 +68,16 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
     publish(request)
   }
 
+  def subscribe(topic: Topic, method: String, contentType: Option[String], groupName: String)
+        (handler: (DynamicRequest) => Future[Unit]): String = {
+    subscribe[DynamicRequest](topic, method, contentType, groupName, DynamicRequest.deserialize)(handler)
+  }
+
+  def process(topic: Topic, method: String, contentType: Option[String])
+        (handler: DynamicRequest => Future[_ <: Response[Body]]): String = {
+    process[Response[Body], DynamicRequest](topic, method, contentType, DynamicRequest.deserialize)(handler)
+  }
+
   protected case class RequestReplySubscription[REQ <: Request[Body]](
                                                                        handler: (REQ) => Future[Response[Body]],
                                                                        requestDeserializer: RequestDeserializer[REQ]) extends Subscription[REQ]

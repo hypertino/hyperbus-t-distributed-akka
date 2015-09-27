@@ -65,15 +65,17 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
         }
       """
 
+    val ctxVal = fresh("ctx")
+    val bodyVal = fresh("body")
     val companionExtra = q"""
         def apply(..$fieldsExcept)(implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className = {
-          val ctx = contextFactory.newContext()
-          ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
+          val $ctxVal = contextFactory.newContext()
+          ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = $ctxVal.messageId, correlationId = $ctxVal.correlationId)
         }
 
         def deserializer(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser: com.fasterxml.jackson.core.JsonParser): $className = {
-          val body = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
-          ${className.toTermName}($bodyFieldName = body,
+          val $bodyVal = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
+          ${className.toTermName}($bodyFieldName = $bodyVal,
             messageId = requestHeader.messageId,
             correlationId = requestHeader.correlationId.getOrElse(requestHeader.messageId)
           )

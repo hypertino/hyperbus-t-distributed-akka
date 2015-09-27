@@ -4,6 +4,7 @@ import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.standard._
+import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -262,6 +263,56 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         )
       }
     }
+
+    "~> dynamic request (server)" in {
+      val st = new ServerTransportTest()
+      val hyperBus = newHyperBus(null, st)
+      hyperBus.process(Topic("/test"), Method.GET, None) { request =>
+        Future {
+          NoContent(EmptyBody, messageId = "123", correlationId = "123")
+        }
+      }
+
+      val req = """{"request":{"url":"/test","method":"get","contentType":"some-content","messageId":"123"},"body":"haha"}"""
+      val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
+      val msg = st.sInputDeserializer(ba)
+      msg should equal(DynamicRequest(RequestHeader("/test",Method.GET,Some("some-content"),"123",Some("123")),
+        DynamicBody(Some("some-content"), Text("haha")))
+      )
+
+      val futureResult = st.sHandler(msg)
+      whenReady(futureResult) { r =>
+        r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
+        val ba = new ByteArrayOutputStream()
+        r.serialize(ba)
+        val s = ba.toString("UTF-8")
+        s should equal(
+          """{"response":{"status":204,"contentType":"no-content","messageId":"123"},"body":null}"""
+        )
+      }
+    }
+
+    /*
+    todo: cover subscription tests
+    "|> dynamic subscription (server)" in {
+      val st = new ServerTransportTest()
+      val hyperBus = newHyperBus(null, st)
+      hyperBus.subscribe(Topic("/test"), Method.PUT, None, "group1") { request =>
+        Future {}
+      }
+
+      val req = """{"request":{"url":"/test","method":"put","contentType":"some-content","messageId":"123"},"body":"haha"}"""
+      val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
+      val msg = st.sInputDeserializer(ba)
+      msg should equal(DynamicRequest(RequestHeader("/test",Method.PUT,Some("some-content"),"123",Some("123")),
+        DynamicBody(Some("some-content"), Text("haha")))
+      )
+
+      val futureResult = st.sHandler(msg)
+      whenReady(futureResult) { r =>
+        r should equal(Unit)
+      }
+    }*/
 
     "~> (server throw exception)" in {
       val st = new ServerTransportTest()

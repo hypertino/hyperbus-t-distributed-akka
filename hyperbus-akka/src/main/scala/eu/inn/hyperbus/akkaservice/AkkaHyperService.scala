@@ -66,16 +66,20 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       c.abort(c.enclosingPosition, s"No suitable 'process' / '~>' or 'subscribe' / '|>' method is defined in ${weakTypeOf[A]}")
     }
 
+    val hyperBusVal = fresh("hyperBus")
+    val actorVal = fresh("actorVal")
     val typ = weakTypeOf[A]
     //val defaultGroup = groupName map { s ⇒ q"Some($s)" } getOrElse q"None"
 
     val subscriptions = onMethods map { m ⇒
       val arg = m.paramLists.head.head
       val argType = arg.typeSignatureIn(typ)
+      val messageVal = fresh("message")
+
       getGroupAnnotation(m).map { groupName ⇒
         q"""
-          h.|>[$argType]($groupName){ message =>
-            _root_.akka.pattern.ask(a, message).mapTo[Unit]
+          $hyperBusVal.|>[$argType]($groupName){ case $messageVal =>
+            _root_.akka.pattern.ask($actorVal, $messageVal).mapTo[Unit]
           }
         """
       } getOrElse {
@@ -89,16 +93,16 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
         }
 
         q"""
-          h.~>[$argType]{ message =>
-            _root_.akka.pattern.ask(a, message).mapTo[$innerResultType]
+          $hyperBusVal.~>[$argType]{ case $messageVal =>
+            _root_.akka.pattern.ask($actorVal, $messageVal).mapTo[$innerResultType]
           }
         """
       }
     }
 
     val obj = q"""{
-      val h = $hyperBus
-      val a = $actorRef
+      val $hyperBusVal = $hyperBus
+      val $actorVal = $actorRef
       List(
         ..$subscriptions
       )
@@ -117,6 +121,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     val typ = weakTypeOf[A]
 
     val cases = onMethods map { m ⇒
+      val messageVal = fresh("message")
       val methodName = m.asMethod.name
       val arg = m.paramLists.head.head
       val argType = arg.typeSignatureIn(typ)
@@ -125,7 +130,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       val innerResultType = resultType.typeArgs.head
 
       cq"""
-        message: $argType => $methodName(message) pipeTo sender
+        $messageVal: $argType => $methodName($messageVal) pipeTo sender
       """
     }
 
@@ -171,4 +176,6 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       }
     }
   }
+
+  private def fresh(prefix: String): TermName = newTermName(c.fresh(prefix))
 }

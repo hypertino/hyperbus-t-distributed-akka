@@ -69,10 +69,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
+    val thizVal = fresh("thiz")
+    val topicVal = fresh("topic")
+
     val obj = q"""{
-      val thiz = $thiz
-      val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      thiz.process[Response[Body],$requestType](topic, $method, $contentType, $requestDeserializer _) {
+      val $thizVal = $thiz
+      val $topicVal = $thizVal.macroApiImpl.topicWithAnyValue($url)
+      $thizVal.process[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($topicVal, $method, $contentType, $requestDeserializer _) {
         response: $requestType => $handler(response)
       }
     }"""
@@ -94,11 +97,15 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
+    val thizVal = fresh("thiz")
+    val topicVal = fresh("topic")
+    val responseVal = fresh("response")
+
     val obj = q"""{
-      val thiz = $thiz
-      val topic = thiz.macroApiImpl.topicWithAnyValue($url)
-      thiz.subscribe[$requestType](topic, $method, $contentType, $groupName, $requestDeserializer _) {
-        response: $requestType => $handler(response)
+      val $thizVal = $thiz
+      val $topicVal = $thizVal.macroApiImpl.topicWithAnyValue($url)
+      $thizVal.subscribe[$requestType]($topicVal, $method, $contentType, $groupName, $requestDeserializer _) {
+        case $responseVal: $requestType => $handler($responseVal)
       }
     }"""
     //println(obj)
@@ -129,16 +136,19 @@ private[hyperbus] trait HyperBusMacroImplementation {
       cq"""$ta => $deserializer _"""
     }
 
+    val thizVal = fresh("thiz")
+    val responseDeserializerVal = fresh("responseDeserializer")
+
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"thiz.ask($r, responseDeserializer).asInstanceOf[Future[${responses.head}]]"
+        q"$thizVal.ask($r, $responseDeserializerVal).asInstanceOf[Future[${responses.head}]]"
       else
-        q"thiz.ask($r, responseDeserializer)"
+        q"$thizVal.ask($r, $responseDeserializerVal)"
 
     val obj = q"""{
-      val thiz = $thiz
-      val responseDeserializer = thiz.macroApiImpl.responseDeserializer(
+      val $thizVal = $thiz
+      val $responseDeserializerVal = $thizVal.macroApiImpl.responseDeserializer(
         _: eu.inn.hyperbus.serialization.ResponseHeader,
         _: com.fasterxml.jackson.core.JsonParser,
         _.contentType match {
@@ -156,9 +166,11 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val url = getUrlAnnotation(in)
     val thiz = c.prefix.tree
 
+    val thizVal = fresh("thiz")
+
     val obj = q"""{
-      val thiz = $thiz
-      thiz.publish($r)
+      val $thizVal = $thiz
+      $thizVal.publish($r)
     }"""
     //println(obj)
     obj
@@ -245,4 +257,6 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }
   }
+
+  private def fresh(prefix: String): TermName = newTermName(c.fresh(prefix))
 }

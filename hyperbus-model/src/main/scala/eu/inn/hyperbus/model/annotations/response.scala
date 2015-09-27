@@ -47,11 +47,12 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
         }
       """
 
+    val ctxVal = fresh("ctx")
     val companionExtra = q"""
         def apply[..$methodTypeArgs](..$fieldsExcept)
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames] = {
-          val ctx = contextFactory.newContext()
-          ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},messageId = ctx.messageId, correlationId = ctx.correlationId)
+          val $ctxVal = contextFactory.newContext()
+          ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},messageId = $ctxVal.messageId, correlationId = $ctxVal.correlationId)
         }
         def status: Int = $annotationArgument
     """

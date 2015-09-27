@@ -28,15 +28,18 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
   def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
     val q"case class $className(..$fields) extends ..$bases { ..$body }" = existingClass
 
+    val fVal = fresh("f")
+    val serializerVal = fresh("serializer")
+    val deserializerVal = fresh("deserializer")
     val newClass = q"""
         @eu.inn.hyperbus.model.annotations.contentType($annotationArgument) case class $className(..$fields) extends ..$bases {
           ..$body
           def contentType = Some($annotationArgument)
           override def serialize(outputStream: java.io.OutputStream) = {
             import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
-            implicit val f = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
-            eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer=>
-              serializer.bind[$className](this)
+            implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
+            eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { case $serializerVal =>
+              $serializerVal.bind[$className](this)
             }
           }
         }
@@ -46,9 +49,9 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
     val companionExtra = q"""
         def contentType = Some($annotationArgument)
         def deserializer(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
-          implicit val f = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
-          eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
-            deserializer.unbind[$className]
+          implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
+          eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { case $deserializerVal =>
+            $deserializerVal.unbind[$className]
           }
         }
         def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className =

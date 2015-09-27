@@ -65,16 +65,10 @@ object DynamicRequest {
     }
   }
 
-  def unapply(request: DynamicRequest): Option[(RequestHeader, DynamicBody)] = Some((
-    RequestHeader(request.url, request.method, request.body.contentType, request.messageId,
-      if (request.messageId == request.correlationId) None else Some(request.correlationId)),
-    request.body
-    ))
-
-  def deserialize(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
-    val b = DynamicBody(requestHeader.contentType, jsonParser)
+  def apply(requestHeader: RequestHeader, body: DynamicBody): DynamicRequest = {
     val msgId = requestHeader.messageId
     val cId = requestHeader.correlationId.getOrElse(msgId)
+    val b = body
     requestHeader.method match {
       case Method.GET => DynamicGet(requestHeader.url, b, msgId, cId)
       case Method.POST => DynamicPost(requestHeader.url, b, msgId, cId)
@@ -90,5 +84,16 @@ object DynamicRequest {
       }
       //case _ => throw new DecodeException(s"Unknown method: '${requestHeader.method}'") //todo: save more details (messageId) or introduce DynamicMethodRequest
     }
+  }
+
+  def unapply(request: DynamicRequest): Option[(RequestHeader, DynamicBody)] = Some((
+    RequestHeader(request.url, request.method, request.body.contentType, request.messageId,
+      if (request.messageId == request.correlationId) None else Some(request.correlationId)),
+    request.body
+    ))
+
+  def deserialize(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
+    val b = DynamicBody(requestHeader.contentType, jsonParser)
+    apply(requestHeader, b)
   }
 }
