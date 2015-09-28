@@ -1,4 +1,5 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.HyperBus
@@ -48,6 +49,8 @@ class ServerTransportTest extends ServerTransport {
   var sInputDeserializer: Deserializer[TransportRequest] = null
   var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
   var sExceptionSerializer: Serializer[Throwable] = null
+  var sSubscriptionId: String = null
+  val idCounter = new AtomicLong(0)
 
   override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                               (handler: (IN) => Future[TransportResponse]): String = {
@@ -55,14 +58,19 @@ class ServerTransportTest extends ServerTransport {
     sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
     sExceptionSerializer = exceptionSerializer
-    ""
+    idCounter.incrementAndGet().toHexString
   }
 
   //todo: test this
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[Unit]): String = ???
 
-  override def off(subscriptionId: String) = ???
+  override def off(subscriptionId: String) = {
+    sSubscriptionId = subscriptionId
+    sInputDeserializer = null
+    sHandler = null
+    sExceptionSerializer = null
+  }
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = {
     Future.successful(true)
@@ -338,6 +346,32 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
           """{"response":{"status":409,"messageId":"123"},"body":{"code":"failed","errorId":"abcde12345"}}"""
         )
       }
+    }
+
+    "off test ~> (server)" in {
+      val st = new ServerTransportTest()
+      val hyperBus = newHyperBus(null, st)
+      val id1 = hyperBus ~> { post: TestPostWithNoContent =>
+        Future {
+          NoContent(EmptyBody)
+        }
+      }
+
+      st.sHandler shouldNot equal(null)
+      hyperBus.off(id1)
+      st.sHandler should equal(null)
+      st.sSubscriptionId should equal(id1)
+
+      val id2 = hyperBus ~> { post: TestPostWithNoContent =>
+        Future {
+          NoContent(EmptyBody)
+        }
+      }
+
+      st.sHandler shouldNot equal(null)
+      hyperBus.off(id2)
+      st.sHandler should equal(null)
+      st.sSubscriptionId should equal(id2)
     }
   }
 

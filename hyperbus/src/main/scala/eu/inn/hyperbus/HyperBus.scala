@@ -219,6 +219,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
         }
         if (cnt <= 1) {
           underlyingSubscriptions.get(routeKey).foreach(k => transportManager.off(k._1))
+          underlyingSubscriptions.remove(routeKey)
         }
       }
       subscriptions.remove(subscriptionId)
