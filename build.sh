@@ -25,20 +25,13 @@ kafka/bin/kafka-server-start.sh kafka/config/server.properties &
 KAFKA_PID=$!
 
 sleep 5
+
 kafka/bin/kafka-topics.sh --create --partitions 1 --replication-factor 1 --topic hyperbus-test --zookeeper localhost:2181
 
 if [ -n "$publish" ] ; then
-	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test \
-		hyperbus-transport/publish \
-		hyperbus-model/publish \
-		hyperbus-standard-model/publish \
-		hyperbus/publish \
-		hyperbus-t-inproc/publish \
-		hyperbus-t-distributed-akka/publish \
-		hyperbus-t-kafka/publish \
-		hyperbus-akka/publish \
-		hyperbus-cli/publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test publish
 fi
 
-kill -s kill $KAFKA_PID
-kill -s kill $ZOOKEEPER_PID
+kill $KAFKA_PID
+sleep 5
+kill $ZOOKEEPER_PID
