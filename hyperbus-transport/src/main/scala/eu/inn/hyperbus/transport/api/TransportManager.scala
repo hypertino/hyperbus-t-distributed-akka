@@ -85,8 +85,8 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
-    val client = Future.sequence(serverRoutes.map(_.transport.shutdown(duration)))
-    val server = Future.sequence(clientRoutes.map(_.transport.shutdown(duration)))
+    val client = Future.sequence(clientRoutes.map(_.transport.shutdown(duration)))
+    val server = Future.sequence(serverRoutes.map(_.transport.shutdown(duration)))
     client flatMap { c ⇒
       server map { s ⇒
         s.forall(_ == true) && c.forall(_ == true)
