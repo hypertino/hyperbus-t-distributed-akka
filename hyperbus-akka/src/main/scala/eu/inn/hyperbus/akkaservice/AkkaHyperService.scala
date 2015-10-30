@@ -78,7 +78,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
       getGroupAnnotation(m).map { groupName ⇒
         q"""
-          $hyperBusVal.|>[$argType]($groupName, { case $messageVal =>
+          $hyperBusVal.subscribeWithGroup[$argType]($groupName, { case $messageVal =>
             _root_.akka.pattern.ask($actorVal, $messageVal).mapTo[Unit]
           })
         """

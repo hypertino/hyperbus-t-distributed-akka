@@ -363,7 +363,10 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
       val hyperBus = newHyperBus(null, serverTransport)
 
-      hyperBus.|>("group1", { request: TestPost1 => Future {} })
+      hyperBus |> { request: TestPost2 =>
+        Future {}
+      }
+
       receivedEvents should equal(1)
     }
 
@@ -377,7 +380,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
       val hyperBus = newHyperBus(null, serverTransport)
 
-      hyperBus.subscribe(Topic("/test"), Method.GET, None, "group1") { request: DynamicRequest => Future {} }
+      hyperBus.subscribe(Topic("/test"), Method.GET, None, Some("group1")) { request: DynamicRequest => Future {} }
       receivedEvents should equal(1)
     }
 
@@ -437,14 +440,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   "off test |> (server)" in {
     val st = new ServerTransportTest()
     val hyperBus = newHyperBus(null, st)
-    val id1 = hyperBus.|>("group1", { request: TestPost1 => Future {} })
+    val id1 = hyperBus |> { request: TestPost1 => Future {} }
 
     st.sSubscriptionHandler shouldNot equal(null)
     hyperBus.off(id1)
     st.sSubscriptionHandler should equal(null)
     st.sSubscriptionId should equal(id1)
 
-    val id2 = hyperBus.|>("group1", { request: TestPost1 => Future {} })
+    val id2 = hyperBus |> { request: TestPost1 => Future {} }
 
     st.sSubscriptionHandler shouldNot equal(null)
     hyperBus.off(id2)
@@ -456,6 +459,6 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     val cr = List(TransportRoute(ct, Topic(AnyValue)))
     val sr = List(TransportRoute(st, Topic(AnyValue)))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
-    new HyperBus(transportManager)
+    new HyperBus(transportManager, Some("group1"))
   }
 }
