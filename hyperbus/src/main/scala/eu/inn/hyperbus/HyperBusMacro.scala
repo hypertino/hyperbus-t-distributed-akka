@@ -21,13 +21,12 @@ private[hyperbus] object HyperBusMacro {
 
   def subscribe[IN <: Request[Body] : c.WeakTypeTag]
   (c: blackbox.Context)
-  (groupName: c.Expr[String])
-  (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+  (groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.subscribe[IN](groupName)(handler)
+    bundle.subscribe[IN](groupName, handler)
   }
 
   def ask[IN <: Request[Body] : c.WeakTypeTag]
@@ -84,8 +83,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   def subscribe[IN <: Request[Body] : c.WeakTypeTag]
-  (groupName: c.Expr[String])
-  (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+  (groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]

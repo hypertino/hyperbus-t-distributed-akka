@@ -48,6 +48,7 @@ class ServerTransportTest extends ServerTransport {
   var sTopicFilter: Topic = null
   var sInputDeserializer: Deserializer[TransportRequest] = null
   var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
+  var sSubscriptionHandler: (TransportRequest) ⇒ Future[Unit] = null
   var sExceptionSerializer: Serializer[Throwable] = null
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
@@ -61,13 +62,17 @@ class ServerTransportTest extends ServerTransport {
     idCounter.incrementAndGet().toHexString
   }
 
-  //todo: test this
   override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) => Future[Unit]): String = ???
+                                                (handler: (IN) => Future[Unit]): String = {
+    sInputDeserializer = inputDeserializer
+    sSubscriptionHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[Unit]]
+    idCounter.incrementAndGet().toHexString;
+  }
 
   override def off(subscriptionId: String) = {
     sSubscriptionId = subscriptionId
     sInputDeserializer = null
+    sSubscriptionHandler = null
     sHandler = null
     sExceptionSerializer = null
   }
@@ -300,27 +305,81 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
-    /*
-    todo: cover subscription tests
-    "|> dynamic subscription (server)" in {
-      val st = new ServerTransportTest()
-      val hyperBus = newHyperBus(null, st)
-      hyperBus.subscribe(Topic("/test"), Method.PUT, None, "group1") { request =>
-        Future {}
+    "<| static request publishing (client)" in {
+      val rsp = """{"response":{"status":409,"messageId":"123"},"body":{"code":"failed","errorId":"abcde12345"}}"""
+      var sentEvents = List[TransportRequest]()
+      val clientTransport = new ClientTransportTest(rsp) {
+        override def publish(message: TransportRequest): Future[PublishResult] = {
+          Future {
+            sentEvents = sentEvents :+ message
+            new PublishResult {
+              def sent = None
+              def offset = None
+            }
+          }
+        }
       }
 
-      val req = """{"request":{"url":"/test","method":"put","contentType":"some-content","messageId":"123"},"body":"haha"}"""
-      val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDeserializer(ba)
-      msg should equal(DynamicRequest(RequestHeader("/test",Method.PUT,Some("some-content"),"123",Some("123")),
-        DynamicBody(Some("some-content"), Text("haha")))
-      )
-
-      val futureResult = st.sHandler(msg)
+      val hyperBus = newHyperBus(clientTransport, null)
+      val futureResult = hyperBus <| TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
       whenReady(futureResult) { r =>
-        r should equal(Unit)
+        sentEvents.size should equal(1)
       }
-    }*/
+    }
+
+    "<| dynamic request publishing (client)" in {
+      val rsp = """{"response":{"status":409,"messageId":"123"},"body":{"code":"failed","errorId":"abcde12345"}}"""
+      var sentEvents = List[TransportRequest]()
+      val clientTransport = new ClientTransportTest(rsp) {
+        override def publish(message: TransportRequest): Future[PublishResult] = {
+          Future {
+            sentEvents = sentEvents :+ message
+            new PublishResult {
+              def sent = None
+              def offset = None
+            }
+          }
+        }
+      }
+
+      val hyperBus = newHyperBus(clientTransport, null)
+      val futureResult = hyperBus <| DynamicPost("/resources",
+        DynamicBody(Some("application/vnd+test-1.json"), Obj(Map("resourceData" → Text("ha ha")))),
+        messageId = "123",
+        correlationId = "123"
+      )
+      whenReady(futureResult) { r =>
+        sentEvents.size should equal(1)
+      }
+    }
+
+    "|> static request subscription (server)" in {
+      var receivedEvents = 0
+      val serverTransport = new ServerTransportTest() {
+        override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
+          receivedEvents += 1
+          super.subscribe(topicFilter, groupName, inputDeserializer)(handler)
+        }
+      }
+      val hyperBus = newHyperBus(null, serverTransport)
+
+      hyperBus.|>("group1", { request: TestPost1 => Future {} })
+      receivedEvents should equal(1)
+    }
+
+    "|> dynamic request subscription (server)" in {
+      var receivedEvents = 0
+      val serverTransport = new ServerTransportTest() {
+        override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
+          receivedEvents += 1
+          super.subscribe(topicFilter, groupName, inputDeserializer)(handler)
+        }
+      }
+      val hyperBus = newHyperBus(null, serverTransport)
+
+      hyperBus.subscribe(Topic("/test"), Method.GET, None, "group1") { request: DynamicRequest => Future {} }
+      receivedEvents should equal(1)
+    }
 
     "~> (server throw exception)" in {
       val st = new ServerTransportTest()
@@ -373,6 +432,24 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       st.sHandler should equal(null)
       st.sSubscriptionId should equal(id2)
     }
+  }
+
+  "off test |> (server)" in {
+    val st = new ServerTransportTest()
+    val hyperBus = newHyperBus(null, st)
+    val id1 = hyperBus.|>("group1", { request: TestPost1 => Future {} })
+
+    st.sSubscriptionHandler shouldNot equal(null)
+    hyperBus.off(id1)
+    st.sSubscriptionHandler should equal(null)
+    st.sSubscriptionId should equal(id1)
+
+    val id2 = hyperBus.|>("group1", { request: TestPost1 => Future {} })
+
+    st.sSubscriptionHandler shouldNot equal(null)
+    hyperBus.off(id2)
+    st.sSubscriptionHandler should equal(null)
+    st.sSubscriptionId should equal(id2)
   }
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {

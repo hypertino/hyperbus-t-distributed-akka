@@ -36,6 +36,8 @@ trait HyperBusApi {
                                       requestDeserializer: RequestDeserializer[REQ])
                                      (handler: (REQ) => Future[Unit]): String
 
+  def off(subscriptionId: String): Unit
+
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
@@ -53,8 +55,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
 
   def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
 
-  def |>[IN <: Request[Body]](groupName: String)
-                             (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
+  def |>[IN <: Request[Body]](groupName: String, handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
 
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
 
