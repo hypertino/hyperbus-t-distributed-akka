@@ -289,7 +289,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val req = """{"request":{"url":"/test","method":"get","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
-      msg should equal(DynamicRequest(RequestHeader("/test",Method.GET,Some("some-content"),"123",Some("123")),
+      msg should equal(DynamicRequest(RequestHeader("/test", Method.GET, Some("some-content"), "123", Some("123")),
         DynamicBody(Some("some-content"), Text("haha")))
       )
 
