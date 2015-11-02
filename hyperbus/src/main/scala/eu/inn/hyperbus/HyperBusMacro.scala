@@ -19,15 +19,22 @@ private[hyperbus] object HyperBusMacro {
     bundle.process[IN](handler)
   }
 
-  def subscribe[IN <: Request[Body] : c.WeakTypeTag]
-  (c: blackbox.Context)
-  (groupName: c.Expr[String])
-  (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+  def subscribe[IN : c.WeakTypeTag]
+  (c: blackbox.Context)(handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.subscribe[IN](groupName)(handler)
+    bundle.subscribe[IN](None, handler)
+  }
+
+  def subscribeWithGroup[IN : c.WeakTypeTag]
+  (c: blackbox.Context)(groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+    val c0: c.type = c
+    val bundle = new {
+      val c: c0.type = c0
+    } with HyperBusMacroImplementation
+    bundle.subscribe[IN](Some(groupName), handler)
   }
 
   def ask[IN <: Request[Body] : c.WeakTypeTag]
@@ -83,10 +90,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     c.Expr[String](obj)
   }
 
-  def subscribe[IN <: Request[Body] : c.WeakTypeTag]
-  (groupName: c.Expr[String])
-  (handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
-
+  def subscribe[IN : c.WeakTypeTag]
+  (groupName: Option[c.Expr[String]], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
     if (requestType.companion == null) {

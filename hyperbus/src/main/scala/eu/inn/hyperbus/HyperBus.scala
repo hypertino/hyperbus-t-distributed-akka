@@ -32,14 +32,17 @@ trait HyperBusApi {
   def subscribe[REQ <: Request[Body]](topic: Topic,
                                       method: String,
                                       contentType: Option[String],
-                                      groupName: String,
+                                      groupName: Option[String],
                                       requestDeserializer: RequestDeserializer[REQ])
                                      (handler: (REQ) => Future[Unit]): String
+
+  def off(subscriptionId: String): Unit
 
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
-class HyperBus(val transportManager: TransportManager)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+class HyperBus(val transportManager: TransportManager,
+               val defaultGroupName: Option[String] = None)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
 
   protected trait Subscription[REQ <: Request[Body]] {
     def requestDeserializer: RequestDeserializer[REQ]
@@ -53,8 +56,9 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
 
   def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
 
-  def |>[IN <: Request[Body]](groupName: String)
-                             (handler: (IN) => Future[Unit]): String = macro HyperBusMacro.subscribe[IN]
+  def |>[REQ <: Request[Body]](handler: (REQ) => Future[Unit]): String = macro HyperBusMacro.subscribe[REQ]
+
+  def subscribeWithGroup[REQ <: Request[Body]](groupName: String, handler: (REQ) => Future[Unit]): String = macro HyperBusMacro.subscribeWithGroup[REQ]
 
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
 
@@ -68,7 +72,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
     publish(request)
   }
 
-  def subscribe(topic: Topic, method: String, contentType: Option[String], groupName: String)
+  def subscribe(topic: Topic, method: String, contentType: Option[String], groupName: Option[String])
         (handler: (DynamicRequest) => Future[Unit]): String = {
     subscribe[DynamicRequest](topic, method, contentType, groupName, DynamicRequest.deserialize)(handler)
   }
@@ -189,10 +193,16 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
   def subscribe[REQ <: Request[Body]](topic: Topic,
                                       method: String,
                                       contentType: Option[String],
-                                      groupName: String,
+                                      groupName: Option[String],
                                       requestDeserializer: RequestDeserializer[REQ])
                                      (handler: (REQ) => Future[Unit]): String = {
-    val routeKey = getRouteKey(topic.url, Some(groupName))
+
+    val finalGroupName = groupName.getOrElse {
+      defaultGroupName.getOrElse {
+        throw new UnsupportedOperationException(s"Can't subscribe: group name is not defined")
+      }
+    }
+    val routeKey = getRouteKey(topic.url, Some(finalGroupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -204,7 +214,7 @@ class HyperBus(val transportManager: TransportManager)(implicit val executionCon
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler[REQ](routeKey)
         val d: Deserializer[REQ] = uh.deserializer
-        val uid = transportManager.subscribe[REQ](topic, groupName, d)(uh.handler)
+        val uid = transportManager.subscribe[REQ](topic, finalGroupName, d)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
