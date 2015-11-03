@@ -9,32 +9,32 @@ import scala.util.matching.Regex
 
 private[hyperbus] object HyperBusMacro {
 
-  def process[IN <: Request[Body] : c.WeakTypeTag]
+  def onCommand[IN <: Request[Body] : c.WeakTypeTag]
   (c: blackbox.Context)
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.process[IN](handler)
+    bundle.onCommand[IN](handler)
   }
 
-  def subscribe[IN : c.WeakTypeTag]
+  def onEvent[IN : c.WeakTypeTag]
   (c: blackbox.Context)(handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.subscribe[IN](None, handler)
+    bundle.onEvent[IN](None, handler)
   }
 
-  def subscribeWithGroup[IN : c.WeakTypeTag]
+  def onEventForGroup[IN : c.WeakTypeTag]
   (c: blackbox.Context)(groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperBusMacroImplementation
-    bundle.subscribe[IN](Some(groupName), handler)
+    bundle.onEvent[IN](Some(groupName), handler)
   }
 
   def ask[IN <: Request[Body] : c.WeakTypeTag]
@@ -63,7 +63,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
   import c.universe._
 
-  def process[IN <: Request[Body] : c.WeakTypeTag]
+  def onCommand[IN <: Request[Body] : c.WeakTypeTag]
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
 
     val thiz = c.prefix.tree
@@ -82,7 +82,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       val $thizVal = $thiz
       val $topicVal = $thizVal.macroApiImpl.topicWithAnyValue($url)
-      $thizVal.process[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($topicVal, $method, $contentType, $requestDeserializer _) {
+      $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($topicVal, $method, $contentType, $requestDeserializer _) {
         response: $requestType => $handler(response)
       }
     }"""
@@ -90,7 +90,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     c.Expr[String](obj)
   }
 
-  def subscribe[IN : c.WeakTypeTag]
+  def onEvent[IN : c.WeakTypeTag]
   (groupName: Option[c.Expr[String]], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
@@ -109,7 +109,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val obj = q"""{
       val $thizVal = $thiz
       val $topicVal = $thizVal.macroApiImpl.topicWithAnyValue($url)
-      $thizVal.subscribe[$requestType]($topicVal, $method, $contentType, $groupName, $requestDeserializer _) {
+      $thizVal.onEvent[$requestType]($topicVal, $method, $contentType, $groupName, $requestDeserializer _) {
         case $responseVal: $requestType => $handler($responseVal)
       }
     }"""

@@ -280,7 +280,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "~> dynamic request (server)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null, st)
-      hyperBus.process(Topic("/test"), Method.GET, None) { request =>
+      hyperBus.onCommand(Topic("/test"), Method.GET, None) { request =>
         Future {
           NoContent(EmptyBody, messageId = "123", correlationId = "123")
         }
@@ -380,7 +380,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
       val hyperBus = newHyperBus(null, serverTransport)
 
-      hyperBus.subscribe(Topic("/test"), Method.GET, None, Some("group1")) { request: DynamicRequest => Future {} }
+      hyperBus.onEvent(Topic("/test"), Method.GET, None, Some("group1")) { request: DynamicRequest => Future {} }
       receivedEvents should equal(1)
     }
 
