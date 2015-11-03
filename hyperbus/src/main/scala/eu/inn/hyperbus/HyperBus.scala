@@ -17,32 +17,9 @@ import scala.language.experimental.macros
 import scala.util.Try
 import scala.util.control.NonFatal
 
-trait HyperBusApi {
-  def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
-                                                        responseDeserializer: ResponseDeserializer[RESP]): Future[RESP]
-
-  def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult]
-
-  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
-                                                            method: String,
-                                                            contentType: Option[String],
-                                                            requestDeserializer: RequestDeserializer[REQ])
-                                                           (handler: (REQ) => Future[RESP]): String
-
-  def subscribe[REQ <: Request[Body]](topic: Topic,
-                                      method: String,
-                                      contentType: Option[String],
-                                      groupName: Option[String],
-                                      requestDeserializer: RequestDeserializer[REQ])
-                                     (handler: (REQ) => Future[Unit]): String
-
-  def off(subscriptionId: String): Unit
-
-  def shutdown(duration: FiniteDuration): Future[Boolean]
-}
-
 class HyperBus(val transportManager: TransportManager,
-               val defaultGroupName: Option[String] = None)(implicit val executionContext: ExecutionContext) extends HyperBusApi {
+               val defaultGroupName: Option[String] = None)(implicit val executionContext: ExecutionContext)
+  extends HyperBusApi {
 
   protected trait Subscription[REQ <: Request[Body]] {
     def requestDeserializer: RequestDeserializer[REQ]
@@ -52,34 +29,14 @@ class HyperBus(val transportManager: TransportManager,
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def <~[REQ <: Request[Body]](request: REQ) = macro HyperBusMacro.ask[REQ]
-
-  def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
-
-  def |>[REQ <: Request[Body]](handler: (REQ) => Future[Unit]): String = macro HyperBusMacro.subscribe[REQ]
-
-  def subscribeWithGroup[REQ <: Request[Body]](groupName: String, handler: (REQ) => Future[Unit]): String = macro HyperBusMacro.subscribeWithGroup[REQ]
-
-  def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): String = macro HyperBusMacro.process[REQ]
-
-  def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
-    ask(request,
-      macroApiImpl.responseDeserializer(_, _, PartialFunction.empty)
-    ).asInstanceOf[Future[Response[DynamicBody]]]
+  def onEvent(topic: Topic, method: String, contentType: Option[String], groupName: Option[String])
+             (handler: (DynamicRequest) => Future[Unit]): String = {
+    onEvent[DynamicRequest](topic, method, contentType, groupName, DynamicRequest.deserialize)(handler)
   }
 
-  def <|(request: DynamicRequest): Future[PublishResult] = {
-    publish(request)
-  }
-
-  def subscribe(topic: Topic, method: String, contentType: Option[String], groupName: Option[String])
-        (handler: (DynamicRequest) => Future[Unit]): String = {
-    subscribe[DynamicRequest](topic, method, contentType, groupName, DynamicRequest.deserialize)(handler)
-  }
-
-  def process(topic: Topic, method: String, contentType: Option[String])
-        (handler: DynamicRequest => Future[_ <: Response[Body]]): String = {
-    process[Response[Body], DynamicRequest](topic, method, contentType, DynamicRequest.deserialize)(handler)
+  def onCommand(topic: Topic, method: String, contentType: Option[String])
+               (handler: DynamicRequest => Future[_ <: Response[Body]]): String = {
+    onCommand[Response[Body], DynamicRequest](topic, method, contentType, DynamicRequest.deserialize)(handler)
   }
 
   protected case class RequestReplySubscription[REQ <: Request[Body]](
@@ -166,11 +123,11 @@ class HyperBus(val transportManager: TransportManager,
     transportManager.publish(request)
   }
 
-  def process[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
-                                                            method: String,
-                                                            contentType: Option[String],
-                                                            requestDeserializer: RequestDeserializer[REQ])
-                                                           (handler: (REQ) => Future[RESP]): String = {
+  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
+                                                              method: String,
+                                                              contentType: Option[String],
+                                                              requestDeserializer: RequestDeserializer[REQ])
+                                                             (handler: (REQ) => Future[RESP]): String = {
     val routeKey = getRouteKey(topic.url, None)
 
     underlyingSubscriptions.synchronized {
@@ -190,12 +147,12 @@ class HyperBus(val transportManager: TransportManager,
     }
   }
 
-  def subscribe[REQ <: Request[Body]](topic: Topic,
-                                      method: String,
-                                      contentType: Option[String],
-                                      groupName: Option[String],
-                                      requestDeserializer: RequestDeserializer[REQ])
-                                     (handler: (REQ) => Future[Unit]): String = {
+  def onEvent[REQ <: Request[Body]](topic: Topic,
+                                    method: String,
+                                    contentType: Option[String],
+                                    groupName: Option[String],
+                                    requestDeserializer: RequestDeserializer[REQ])
+                                   (handler: (REQ) => Future[Unit]): String = {
 
     val finalGroupName = groupName.getOrElse {
       defaultGroupName.getOrElse {
