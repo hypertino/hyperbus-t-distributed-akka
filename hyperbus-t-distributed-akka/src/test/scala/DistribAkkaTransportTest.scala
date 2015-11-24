@@ -13,6 +13,7 @@ import eu.inn.hyperbus.IdGenerator
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.duration._
@@ -102,19 +103,19 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         }
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
+      val id3 = transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
+      val id4 = transportManager.subscribe(Topic("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub2", MockRequestDeserializer) { msg: MockRequest =>
+      val id5 = transportManager.subscribe(Topic("/topic/{abc}"), "sub2", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
@@ -132,22 +133,25 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
         transportManager.off(id)
         transportManager.off(id2)
+        transportManager.off(id3)
+        transportManager.off(id4)
+        transportManager.off(id5)
 
-        /*
-        Thread.sleep(500) // todo: find a way to know if the subscription is complete? future?
+
+        Thread.sleep(1500) // todo: find a way to know if the subscription is complete? future?
         // todo: NoTransportRouteException doesn't work for DistribPubSub
 
-        val f2: Future[String] = serviceBus.ask[String, String](Topic("/topic/{abc}", PartitionArgs(Map.empty)), "12345",
-          mockEncoder, mockDecoder)
+        val f2: Future[MockResponse] = transportManager.ask(MockRequest("/topic/{abc}", "12345"), MockResponseDeserializer)
+
         whenReady(f2.failed, timeout(Span(1, Seconds))) { e =>
           e shouldBe a[NoTransportRouteException]
         }
 
-        val f3: Future[String] = serviceBus.ask[String, String](Topic("not-existing-topic", PartitionArgs(Map.empty)), "12345",
-          mockEncoder, mockDecoder)
+        val f3: Future[MockResponse] = transportManager.ask(MockRequest("not-existing-topic", "12345"), MockResponseDeserializer)
+
         whenReady(f3.failed, timeout(Span(1, Seconds))) { e =>
           e shouldBe a[NoTransportRouteException]
-        }*/
+        }
       }
     }
 

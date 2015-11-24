@@ -2,7 +2,7 @@ package eu.inn.hyperbus.transport.distributedakka
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import akka.actor.Actor
+import akka.actor.{DeadLetter, Actor}
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe}
 import akka.pattern.pipe
@@ -24,7 +24,7 @@ private[transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl
 private[transport] case class Start[OUT, IN <: TransportRequest](id: String, subscription: Subscription[OUT, IN], logMessages: Boolean) extends Command
 
 private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] extends Actor {
-  protected[this] val mediator = DistributedPubSubExtension(context.system).mediator
+  protected[this] val mediator = DistributedPubSubExtensionEx(context.system).mediator
   protected[this] var subscription: Subscription[OUT, IN] = null
   protected[this] var logMessages = false
   protected[this] var log = LoggerFactory.getLogger(getClass)
@@ -135,8 +135,7 @@ private[transport] class SubscribeServerActor[IN <: TransportRequest] extends Se
   }
 }
 
-/*
-private [transport] class NoRouteWatcher extends Actor with ActorLogging {
+private [transport] class NoRouteWatcher extends Actor {
   import context._
   system.eventStream.subscribe(self, classOf[DeadLetter])
 
@@ -145,4 +144,3 @@ private [transport] class NoRouteWatcher extends Actor with ActorLogging {
       Future.failed(new NoTransportRouteException(deadMessage.recipient.toString())) pipeTo deadMessage.sender
   }
 }
-*/
