@@ -7,6 +7,10 @@ import akka.routing._
 
 import scala.concurrent.duration._
 
+/*
+* TODO: remove this class if akka accepts and implements this:
+* https://github.com/akka/akka/issues/19009
+* */
 class DistributedPubSubMediatorEx(
                                    role: Option[String],
                                    routingLogic: RoutingLogic,
@@ -16,38 +20,16 @@ class DistributedPubSubMediatorEx(
   override def publishToEachGroup(path: String, msg: Any): Unit = {
     val prefix = path + '/'
     val lastKey = path + '0' // '0' is the next char of '/'
-    val groups = (for {
-        (_, bucket) ← registry.toSeq
-        key ← bucket.content.range(prefix, lastKey).keys
-        valueHolder ← bucket.content.get(key)
-        ref ← valueHolder.routee
-      } yield (key, ref)).groupBy(_._1).values
-
-    var hasPath = false
-    groups foreach {
-      group ⇒
-        val routees = group.map(_._2).toVector
-        if (routees.nonEmpty) {
-          println(routees)
-          hasPath = true
-        }
-    }
-
-    if (hasPath) {
+    val hasAtLeastOneReceiver = registry.exists(_._2.content.range(prefix, lastKey).nonEmpty)
+    if (hasAtLeastOneReceiver) {
       super.publishToEachGroup(path, msg)
-      println("~~~~!!!!~~~~")
     } else {
       context.system.deadLetters ! DeadLetter(msg, sender(), context.self)
-      println("~~~~XXXX~~~~")
     }
   }
 }
 
 object DistributedPubSubMediatorEx {
-
-  /**
-    * Scala API: Factory method for `DistributedPubSubMediator` [[akka.actor.Props]].
-    */
   def props(
              role: Option[String],
              routingLogic: RoutingLogic = RandomRoutingLogic(),

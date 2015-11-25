@@ -2,9 +2,9 @@ package eu.inn.hyperbus.transport.distributedakka
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import akka.actor.{DeadLetter, Actor}
+import akka.actor.{ActorLogging, PoisonPill, DeadLetter, Actor}
 import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe}
+import akka.contrib.pattern.DistributedPubSubMediator.{UnsubscribeAck, Subscribe, SubscribeAck, Unsubscribe}
 import akka.pattern.pipe
 import eu.inn.hyperbus.transport.api._
 import org.slf4j.LoggerFactory
@@ -23,24 +23,36 @@ private[transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl
 
 private[transport] case class Start[OUT, IN <: TransportRequest](id: String, subscription: Subscription[OUT, IN], logMessages: Boolean) extends Command
 
+private [transport] object Stop
+
 private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] extends Actor {
   protected[this] val mediator = DistributedPubSubExtensionEx(context.system).mediator
   protected[this] var subscription: Subscription[OUT, IN] = null
   protected[this] var logMessages = false
   protected[this] var log = LoggerFactory.getLogger(getClass)
 
-  override def receive: Receive = {
+  override def receive: Receive = handleStart orElse handleStop
+
+  def handleStart: Receive = {
     case start: Start[OUT, IN] ⇒
       subscription = start.subscription
       logMessages = start.logMessages
+      log.debug(s"$self is subscribing to topic ${subscription.topicUrl}/${subscription.groupName}")
       mediator ! Subscribe(subscription.topicUrl, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
 
     case ack: SubscribeAck ⇒
-      context become start
+      log.debug(s"$self is subscribed to topic ${subscription.topicUrl}/${subscription.groupName}")
+      context become (start orElse handleStop)
   }
 
-  override def postStop() {
-    mediator ! Unsubscribe(subscription.topicUrl, self)
+  def handleStop: Receive = {
+    case Stop ⇒
+      log.debug(s"$self is unsubscribing from topic ${subscription.topicUrl}/${subscription.groupName}")
+      mediator ! Unsubscribe(subscription.topicUrl, self)
+
+    case UnsubscribeAck(unsubscribe) ⇒
+      log.debug(s"$self is stopping...")
+      context.stop(self)
   }
 
   def start: Receive
@@ -67,7 +79,6 @@ private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] exten
   }
 
   protected def decodeMessage(input: String, sendReply: Boolean) = {
-
     try {
       val inputBytes = new ByteArrayInputStream(input.getBytes(Util.defaultEncoding))
       Some(subscription.inputDeserializer(inputBytes))
