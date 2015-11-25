@@ -58,7 +58,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
 
   override def off(subscriptionId: String): Unit = {
     subscriptions.get(subscriptionId).foreach { s ⇒
-      actorSystem.stop(s)
+      s ! eu.inn.hyperbus.transport.distributedakka.Stop
       subscriptions.remove(subscriptionId)
     }
   }

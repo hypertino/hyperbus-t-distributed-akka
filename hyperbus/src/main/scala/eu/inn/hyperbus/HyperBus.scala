@@ -235,7 +235,7 @@ class HyperBus(val transportManager: TransportManager,
   }
 
   protected def unhandledPublication(routeKey: String, request: Request[Body]): Unit = {
-    log.error(safeErrorMessage("Unhandled publication", request, routeKey))
+    log.warn(safeErrorMessage("Unhandled publication", request, routeKey))
   }
 
   protected def unhandledException(routeKey: String, request: Request[Body], exception: Throwable): Response[Body] = {
