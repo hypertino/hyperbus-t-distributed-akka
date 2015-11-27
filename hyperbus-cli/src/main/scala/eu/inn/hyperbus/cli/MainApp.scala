@@ -99,7 +99,6 @@ class CliService(console: Console, config: Config) extends Service {
       case r: Response[Body] ⇒ outx(r)
       case _ ⇒
         console.writeln(s.toString)
-        console.accept()
     }
   }
 
@@ -107,14 +106,12 @@ class CliService(console: Console, config: Config) extends Service {
     console.writeln(s"-> ${r.getClass.getName}:{ ${r.method} ${r.url} @ ${r.body.contentType}\n----------")
     outx(r.body)
     console.writeln("----------")
-    console.accept()
   }
 
   private def outx(r: Response[Body]): Unit = {
     console.writeln(s"<- ${r.getClass.getName}:{ ${r.status} @ ${r.body.contentType}\n----------")
     outx(r.body)
     console.writeln("----------")
-    console.accept()
   }
 
   private def outx(r: Body): Unit = {
@@ -130,7 +127,6 @@ class CliService(console: Console, config: Config) extends Service {
 
   override def stopService(controlBreak: Boolean): Unit = {
     console.writeln("Exiting...")
-    console.accept()
     val timeout = 30.seconds
     try {
       Await.result(hyperBus.shutdown(timeout), timeout)
@@ -175,6 +171,7 @@ class JLineConsole extends Console {
     var eof = false
     override def hasNext: Boolean = !eof
     override def next(): Option[String] = {
+      consoleReader.accept()
       val s = consoleReader.readLine(">")
       if (s == null) {
         eof = true
