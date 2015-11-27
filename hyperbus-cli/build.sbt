@@ -4,8 +4,14 @@ name := "hyperbus-cli"
 
 val akkaV = "2.3.11"
 
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("public")
+)
+
 libraryDependencies ++= Seq(
   "jline" % "jline" % "2.12.1",
+  "eu.inn" %% "service-control" % "0.1.16",
+  "eu.inn" %% "service-config" % "0.1.3",
   "eu.inn" %% "hyperbus" % version.value,
   "eu.inn" %% "hyperbus-t-distributed-akka" % version.value,
   "org.slf4j" % "slf4j-api" % "1.7.12",
