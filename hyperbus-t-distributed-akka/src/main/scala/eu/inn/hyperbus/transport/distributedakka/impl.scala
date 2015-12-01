@@ -2,9 +2,8 @@ package eu.inn.hyperbus.transport.distributedakka
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
-import akka.actor.{ActorLogging, PoisonPill, DeadLetter, Actor}
-import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.{UnsubscribeAck, Subscribe, SubscribeAck, Unsubscribe}
+import akka.actor.{Actor, DeadLetter}
+import akka.contrib.pattern.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe, UnsubscribeAck}
 import akka.pattern.pipe
 import eu.inn.hyperbus.transport.api._
 import org.slf4j.LoggerFactory
@@ -152,6 +151,9 @@ private [transport] class NoRouteWatcher extends Actor {
 
   override def receive: Receive = {
     case deadMessage: DeadLetter ⇒
-      Future.failed(new NoTransportRouteException(deadMessage.recipient.toString())) pipeTo deadMessage.sender
+      // hyperbus messages are strings, this is dirty hack, todo: fix
+      if (deadMessage.message.isInstanceOf[String]) {
+        Future.failed(new NoTransportRouteException(deadMessage.recipient.toString())) pipeTo deadMessage.sender
+      }
   }
 }

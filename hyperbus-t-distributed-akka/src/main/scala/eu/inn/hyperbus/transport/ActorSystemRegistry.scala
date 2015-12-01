@@ -4,14 +4,14 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.cluster.ClusterEvent._
-import akka.cluster.{Cluster, UniqueAddress}
+import akka.cluster.{Cluster, MemberStatus, UniqueAddress}
 import com.typesafe.config.Config
 import org.slf4j.LoggerFactory
 
+import scala.collection.JavaConversions
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Await, Promise}
-import scala.util.Try
 
 object ActorSystemRegistry {
   private val registry = new TrieMap[String, (ActorSystem, AtomicInteger)]
@@ -56,20 +56,26 @@ object ActorSystemRegistry {
     val exitPromise = Promise[Boolean]()
     val cluster = Cluster(actorSystem)
     val me = cluster.selfUniqueAddress
+
     val exitEventListener = actorSystem.actorOf(Props(new ExitEventListener(exitPromise, me)))
-    log.info(s"Leaving cluster $me...")
+    import JavaConversions._
+    val clusterMembers = cluster.state.getMembers.toSeq
+    log.info(s"$me leaving cluster [" + clusterMembers.mkString(",") + "]")
     cluster.leave(me.address)
 
-    val result = try {
-      Await.result(exitPromise.future, timeout / 2)
-    } catch {
-      case x: Throwable ⇒
-        log.error(s"Timeout while waiting cluster leave for $me", x)
-        false
+    if (clusterMembers.exists(_.status == MemberStatus.up)) {
+      val result = try {
+        Await.result(exitPromise.future, timeout / 2)
+      } catch {
+        case x: Throwable ⇒
+          log.error(s"Timeout while waiting cluster leave for $me", x)
+          false
+      }
+      if (!result)
+        log.warn(s"Didn't get confirmation that node left: $me")
+    } else {
+      log.warn(s"No member with status 'up' - don't wait for the confirmation")
     }
-
-    if (!result)
-      log.warn(s"Didn't get confirmation that node left: $me")
 
     log.info(s"Shutting down $actorSystem...")
     actorSystem.shutdown()
@@ -98,5 +104,4 @@ object ActorSystemRegistry {
       case _ ⇒ //ignore
     }
   }
-
 }
