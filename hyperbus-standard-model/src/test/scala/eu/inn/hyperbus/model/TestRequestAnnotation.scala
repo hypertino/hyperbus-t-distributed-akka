@@ -119,7 +119,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     }
 
     "Decode DynamicRequest" in {
-      val str = """{"request":{"method":"custom-method","url":"/test","messageId":"123"},"body":{"resourceId":"100500"}}"""
+      val str = """{"request":{"method":"custom-method","url":"/test","contentType":"test-body-1","messageId":"123"},"body":{"resourceId":"100500"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val request = DynamicRequest(str)
       request shouldBe a [Request[_]]
@@ -127,7 +127,8 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       request.url should equal("/test")
       request.messageId should equal("123")
       request.correlationId should equal("123")
-      request.body should equal(DynamicBody(Obj(Map("resourceId" -> Text("100500")))))
+      //request.body.contentType should equal(Some())
+      request.body should equal(DynamicBody(Some("test-body-1"), Obj(Map("resourceId" -> Text("100500")))))
     }
   }
 }
