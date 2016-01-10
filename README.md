@@ -16,3 +16,9 @@ TODO:
     + tests for different route/filters
 
     + criteria body (special content-type)?
+    
+    
+    
+    *-- remove url from request
+    *-- typed topic (instead of extracting from body!) 
+    *-- Topic -> URI, Filter -> ?
