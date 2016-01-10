@@ -12,7 +12,7 @@ import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.hyperbus.transport.ActorSystemRegistry
-import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportManager}
+import eu.inn.hyperbus.transport.api.{Uri, TransportConfigurationLoader, TransportManager}
 import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import eu.inn.servicecontrol.api.{Console, Service, ServiceController, ShutdownMonitor}
 import eu.inn.servicecontrol.{ConsoleModule, ConsoleServiceController}
@@ -76,11 +76,11 @@ class CliService(console: Console, config: Config) extends Service {
     cluster.down(address)
   }
 
-  private def createDynamicRequest(method: String, url: String, contentType: Option[String], body: String): DynamicRequest = {
+  private def createDynamicRequest(method: String, uriPattern: String, contentType: Option[String], body: String): DynamicRequest = {
     val jf = new JsonFactory()
     val jp = jf.createParser(body)
     try {
-      DynamicRequest(RequestHeader(url, method, contentType, IdGenerator.create(), None), jp)
+      DynamicRequest(RequestHeader(Uri(uriPattern), method, contentType, IdGenerator.create(), None), jp)
     } finally {
       jp.close()
     }
@@ -103,7 +103,7 @@ class CliService(console: Console, config: Config) extends Service {
   }
 
   private def outx(r: Request[Body]): Unit = {
-    console.writeln(s"-> ${r.getClass.getName}:{ ${r.method} ${r.url} @ ${r.body.contentType}\n----------")
+    console.writeln(s"-> ${r.getClass.getName}:{ ${r.method} ${r.uri} @ ${r.body.contentType}\n----------")
     outx(r.body)
     console.writeln("----------")
   }

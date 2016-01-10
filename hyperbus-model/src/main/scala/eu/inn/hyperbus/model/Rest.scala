@@ -43,8 +43,6 @@ trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory 
 trait Request[+B <: Body] extends Message[B] with TransportRequest {
   type bodyType = Body
 
-  def url: String
-
   def method: String
 
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeRequest(this, outputStream)

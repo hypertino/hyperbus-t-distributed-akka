@@ -1,7 +1,7 @@
 package eu.inn.hyperbus
 
 import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.model.annotations.{contentType, method, url}
+import eu.inn.hyperbus.model.annotations.{contentType, method, uri}
 
 import scala.concurrent.Future
 import scala.reflect.macros._
@@ -242,7 +242,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   }
 
   private def getUrlAnnotation(t: c.Type): String =
-    getStringAnnotation(t.typeSymbol, c.typeOf[url]).getOrElse {
+    getStringAnnotation(t.typeSymbol, c.typeOf[uri]).getOrElse {
       c.abort(c.enclosingPosition, s"@url annotation is not defined for $t.}")
     }
 

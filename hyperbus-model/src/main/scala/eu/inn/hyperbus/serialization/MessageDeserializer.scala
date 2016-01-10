@@ -5,12 +5,13 @@ import java.io.InputStream
 import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import eu.inn.binders.core.BindOptions
 import eu.inn.hyperbus.model.{Body, Request, Response}
+import eu.inn.hyperbus.transport.api.UriJsonDeserializer
 
 object MessageDeserializer {
 
   import eu.inn.binders.json._
-
   implicit val bindOptions = new BindOptions(true)
+  implicit val uriJsonDeserializer = new UriJsonDeserializer
 
   def deserializeRequestWith[REQ <: Request[Body]](inputStream: InputStream)(deserializer: (RequestHeader, JsonParser) => REQ): REQ = {
     val jf = new JsonFactory()

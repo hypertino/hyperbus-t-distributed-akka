@@ -107,7 +107,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ DynamicPost("/resources",
+      val f = hyperBus <~ DynamicPost(Uri("/resources"),
         DynamicBody(
           Some("application/vnd+test-1.json"),
           Obj(Map("resourceData" → Text("ha ha")))
@@ -289,7 +289,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val req = """{"request":{"url":"/test","method":"get","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
-      msg should equal(DynamicRequest(RequestHeader("/test", Method.GET, Some("some-content"), "123", Some("123")),
+      msg should equal(DynamicRequest(RequestHeader(Uri("/test"), Method.GET, Some("some-content"), "123", Some("123")),
         DynamicBody(Some("some-content"), Text("haha")))
       )
 
@@ -343,7 +343,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
 
       val hyperBus = newHyperBus(clientTransport, null)
-      val futureResult = hyperBus <| DynamicPost("/resources",
+      val futureResult = hyperBus <| DynamicPost(Uri("/resources"),
         DynamicBody(Some("application/vnd+test-1.json"), Obj(Map("resourceData" → Text("ha ha")))),
         messageId = "123",
         correlationId = "123"

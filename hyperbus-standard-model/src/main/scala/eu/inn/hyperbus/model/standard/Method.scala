@@ -2,6 +2,7 @@ package eu.inn.hyperbus.model.standard
 
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.method
+import eu.inn.hyperbus.transport.api.Uri
 
 object Method {
   val GET = "get"
@@ -19,15 +20,15 @@ trait Get[+B <: Body] extends Request[B] {
 abstract class StaticGet[+B <: Body](initBody: B) extends Get[B]
 
 case class DynamicGet(
-                       url: String,
+                       uri: Uri,
                        body: DynamicBody,
                        messageId: String,
                        correlationId: String) extends Get[DynamicBody] with DynamicRequest
 
 object DynamicGet {
-  def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicGet = {
+  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicGet = {
     val ctx = contextFactory.newContext()
-    DynamicGet(url, body, ctx.messageId, ctx.correlationId)
+    DynamicGet(uri, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -39,15 +40,15 @@ trait Delete[+B <: Body] extends Request[B] {
 abstract class StaticDelete[+B <: Body](initBody: B) extends Delete[B]
 
 case class DynamicDelete(
-                          url: String,
+                          uri: Uri,
                           body: DynamicBody,
                           messageId: String,
                           correlationId: String) extends Delete[DynamicBody] with DynamicRequest
 
 object DynamicDelete {
-  def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicDelete = {
+  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicDelete = {
     val ctx = contextFactory.newContext()
-    DynamicDelete(url, body, ctx.messageId, ctx.correlationId)
+    DynamicDelete(uri, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -58,15 +59,15 @@ trait Post[+B <: Body] extends Request[B] {
 
 abstract class StaticPost[+B <: Body](initBody: B) extends Post[B]
 
-case class DynamicPost(url: String,
+case class DynamicPost(uri: Uri,
                        body: DynamicBody,
                        messageId: String,
                        correlationId: String) extends Post[DynamicBody] with DynamicRequest
 
 object DynamicPost {
-  def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPost = {
+  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPost = {
     val ctx = contextFactory.newContext()
-    DynamicPost(url, body, ctx.messageId, ctx.correlationId)
+    DynamicPost(uri, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -78,15 +79,15 @@ trait Put[+B <: Body] extends Request[B] {
 abstract class StaticPut[+B <: Body](initBody: B) extends Put[B]
 
 case class DynamicPut(
-                       url: String,
+                       uri: Uri,
                        body: DynamicBody,
                        messageId: String,
                        correlationId: String) extends Put[DynamicBody] with DynamicRequest
 
 object DynamicPut {
-  def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPut = {
+  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPut = {
     val ctx = contextFactory.newContext()
-    DynamicPut(url, body, ctx.messageId, ctx.correlationId)
+    DynamicPut(uri, body, ctx.messageId, ctx.correlationId)
   }
 }
 
@@ -98,14 +99,14 @@ trait Patch[+B <: Body] extends Request[B] {
 abstract class StaticPatch[+B <: Body](initBody: B) extends Patch[B]
 
 case class DynamicPatch(
-                         url: String,
+                         uri: Uri,
                          body: DynamicBody,
                          messageId: String,
                          correlationId: String) extends Patch[DynamicBody] with DynamicRequest
 
 object DynamicPatch {
-  def apply(url: String, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPatch = {
+  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPatch = {
     val ctx = contextFactory.newContext()
-    DynamicPatch(url, body, ctx.messageId, ctx.correlationId)
+    DynamicPatch(uri, body, ctx.messageId, ctx.correlationId)
   }
 }

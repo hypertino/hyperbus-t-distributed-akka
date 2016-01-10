@@ -2,17 +2,19 @@ package eu.inn.hyperbus.serialization
 
 import java.io.OutputStream
 
-import eu.inn.binders.core.BindOptions
+import eu.inn.binders.core.{ImplicitSerializer, ImplicitDeserializer, BindOptions}
+import eu.inn.binders.json.{JsonSerializer, JsonDeserializer}
 import eu.inn.hyperbus.model.{Body, Request, Response}
+import eu.inn.hyperbus.transport.api.{UriJsonSerializer, Uri}
 
 object MessageSerializer {
 
   import eu.inn.binders.json._
-
   implicit val bindOptions = new BindOptions(true)
+  implicit val uriJsonSerializer = new UriJsonSerializer
 
   def serializeRequest[B <: Body](request: Request[B], outputStream: OutputStream) = {
-    val req = RequestHeader(request.url, request.method, request.body.contentType, request.messageId,
+    val req = RequestHeader(request.uri, request.method, request.body.contentType, request.messageId,
       if (request.messageId == request.correlationId) None else Some(request.correlationId)
     )
     writeUtf8("""{"request":""", outputStream)

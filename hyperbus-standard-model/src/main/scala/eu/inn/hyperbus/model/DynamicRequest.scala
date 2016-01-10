@@ -43,13 +43,7 @@ object DynamicBody {
 private[model] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
 
 trait DynamicRequest extends Request[DynamicBody] {
-  lazy val uri = Uri(url, UriParts(UrlParser.extractParameters(url).map { arg ⇒
-    arg → SpecificValue(
-      body.content.asMap.get(arg).map(_.asString).getOrElse("") // todo: inner fields like abc.userId
-    )
-  }.toMap))
-
-  override def toString = s"DynamicRequest(RequestHeader($url,$method,${body.contentType},$messageId,$correlationId),$body)"
+  override def toString = s"DynamicRequest(RequestHeader($uri,$method,${body.contentType},$messageId,$correlationId),$body)"
 }
 
 object DynamicRequest {
@@ -70,13 +64,13 @@ object DynamicRequest {
     val cId = requestHeader.correlationId.getOrElse(msgId)
     val b = body
     requestHeader.method match {
-      case Method.GET => DynamicGet(requestHeader.url, b, msgId, cId)
-      case Method.POST => DynamicPost(requestHeader.url, b, msgId, cId)
-      case Method.PUT => DynamicPut(requestHeader.url, b, msgId, cId)
-      case Method.DELETE => DynamicDelete(requestHeader.url, b, msgId, cId)
-      case Method.PATCH => DynamicPatch(requestHeader.url, b, msgId, cId)
+      case Method.GET => DynamicGet(requestHeader.uri, b, msgId, cId)
+      case Method.POST => DynamicPost(requestHeader.uri, b, msgId, cId)
+      case Method.PUT => DynamicPut(requestHeader.uri, b, msgId, cId)
+      case Method.DELETE => DynamicDelete(requestHeader.uri, b, msgId, cId)
+      case Method.PATCH => DynamicPatch(requestHeader.uri, b, msgId, cId)
       case other ⇒ new DynamicRequest {
-        override def url: String = requestHeader.url
+        override def uri: Uri = requestHeader.uri
         override def method: String = requestHeader.method
         override def correlationId: String = cId
         override def messageId: String = msgId
@@ -87,7 +81,7 @@ object DynamicRequest {
   }
 
   def unapply(request: DynamicRequest): Option[(RequestHeader, DynamicBody)] = Some((
-    RequestHeader(request.url, request.method, request.body.contentType, request.messageId,
+    RequestHeader(request.uri, request.method, request.body.contentType, request.messageId,
       if (request.messageId == request.correlationId) None else Some(request.correlationId)),
     request.body
     ))

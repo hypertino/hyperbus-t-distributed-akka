@@ -1,3 +1,5 @@
 package eu.inn.hyperbus.serialization
 
-case class RequestHeader(url: String, method: String, contentType: Option[String], messageId: String, correlationId: Option[String])
+import eu.inn.hyperbus.transport.api.Uri
+
+case class RequestHeader(uri: Uri, method: String, contentType: Option[String], messageId: String, correlationId: Option[String])

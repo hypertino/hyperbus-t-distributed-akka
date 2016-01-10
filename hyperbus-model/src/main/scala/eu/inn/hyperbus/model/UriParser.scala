@@ -2,7 +2,7 @@ package eu.inn.hyperbus.model
 
 import scala.collection.mutable
 
-object UrlParser {
+object UriParser {
   def extractParameters(url: String): Seq[String] = {
     val DEFAULT = 0
     val ARG = 1
