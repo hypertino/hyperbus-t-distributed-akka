@@ -31,13 +31,13 @@ trait HyperBusApi {
 
   def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult]
 
-  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
+  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](uri: Uri,
                                                               method: String,
                                                               contentType: Option[String],
                                                               requestDeserializer: RequestDeserializer[REQ])
                                                              (handler: (REQ) => Future[RESP]): String
 
-  def onEvent[REQ <: Request[Body]](topic: Topic,
+  def onEvent[REQ <: Request[Body]](uri: Uri,
                                     method: String,
                                     contentType: Option[String],
                                     groupName: Option[String],

@@ -61,7 +61,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
 
           import eu.inn.hyperbus.transport.api._
           override def url = ${className.toTermName}.url
-          lazy val topic = Topic(url, Filters(Map(..$urlFilterFields)))
+          lazy val uri = Uri(url, UriParts(Map(..$urlFilterFields)))
         }
       """
 

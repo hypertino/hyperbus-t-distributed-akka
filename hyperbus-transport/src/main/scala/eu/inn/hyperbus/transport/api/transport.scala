@@ -17,7 +17,7 @@ trait TransportMessage {
 }
 
 trait TransportRequest extends TransportMessage {
-  def topic: Topic
+  def uri: Uri
 }
 
 trait TransportResponse extends TransportMessage
@@ -37,10 +37,10 @@ trait ClientTransport {
 }
 
 trait ServerTransport {
-  def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
+  def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                      (handler: (IN) => Future[TransportResponse]): String
 
-  def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
+  def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])
                                        (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)

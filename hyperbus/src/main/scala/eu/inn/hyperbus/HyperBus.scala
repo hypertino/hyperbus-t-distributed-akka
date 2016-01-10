@@ -29,14 +29,14 @@ class HyperBus(val transportManager: TransportManager,
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def onEvent(topic: Topic, method: String, contentType: Option[String], groupName: Option[String])
+  def onEvent(uri: Uri, method: String, contentType: Option[String], groupName: Option[String])
              (handler: (DynamicRequest) => Future[Unit]): String = {
-    onEvent[DynamicRequest](topic, method, contentType, groupName, DynamicRequest.deserialize)(handler)
+    onEvent[DynamicRequest](uri, method, contentType, groupName, DynamicRequest.deserialize)(handler)
   }
 
-  def onCommand(topic: Topic, method: String, contentType: Option[String])
+  def onCommand(uri: Uri, method: String, contentType: Option[String])
                (handler: DynamicRequest => Future[_ <: Response[Body]]): String = {
-    onCommand[Response[Body], DynamicRequest](topic, method, contentType, DynamicRequest.deserialize)(handler)
+    onCommand[Response[Body], DynamicRequest](uri, method, contentType, DynamicRequest.deserialize)(handler)
   }
 
   protected case class RequestReplySubscription[REQ <: Request[Body]](
@@ -123,12 +123,12 @@ class HyperBus(val transportManager: TransportManager,
     transportManager.publish(request)
   }
 
-  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](topic: Topic,
+  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](uri: Uri,
                                                               method: String,
                                                               contentType: Option[String],
                                                               requestDeserializer: RequestDeserializer[REQ])
                                                              (handler: (REQ) => Future[RESP]): String = {
-    val routeKey = getRouteKey(topic.url, None)
+    val routeKey = getRouteKey(uri.pattern, None)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -140,14 +140,14 @@ class HyperBus(val transportManager: TransportManager,
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
         val d: Deserializer[REQ] = uh.deserializer
-        val uid = transportManager.process[REQ](topic, d, exceptionSerializer)(uh.handler)
+        val uid = transportManager.process[REQ](uri, d, exceptionSerializer)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
     }
   }
 
-  def onEvent[REQ <: Request[Body]](topic: Topic,
+  def onEvent[REQ <: Request[Body]](uri: Uri,
                                     method: String,
                                     contentType: Option[String],
                                     groupName: Option[String],
@@ -159,7 +159,7 @@ class HyperBus(val transportManager: TransportManager,
         throw new UnsupportedOperationException(s"Can't subscribe: group name is not defined")
       }
     }
-    val routeKey = getRouteKey(topic.url, Some(finalGroupName))
+    val routeKey = getRouteKey(uri.pattern, Some(finalGroupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -171,7 +171,7 @@ class HyperBus(val transportManager: TransportManager,
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler[REQ](routeKey)
         val d: Deserializer[REQ] = uh.deserializer
-        val uid = transportManager.subscribe[REQ](topic, finalGroupName, d)(uh.handler)
+        val uid = transportManager.subscribe[REQ](uri, finalGroupName, d)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -248,7 +248,7 @@ class HyperBus(val transportManager: TransportManager,
 
   protected def responseSerializerNotFound(response: Response[Body]) = log.error("Can't serialize response: {}", response)
 
-  protected def getRouteKey(url: Filter, groupName: Option[String]) = {
+  protected def getRouteKey(url: UriPart, groupName: Option[String]) = {
     val urlSpecific = url.specific // todo: implement other filters?
 
     groupName.map {

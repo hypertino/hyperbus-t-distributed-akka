@@ -7,7 +7,7 @@ import eu.inn.binders.dynamic.{Text, Obj}
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.standard.{DefLink, StaticGet, DynamicGet}
 import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
+import eu.inn.hyperbus.transport.api._
 import org.scalatest.{FreeSpec, Matchers}
 
 @request("/test-post-1/{id}")
@@ -65,7 +65,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       }
 
       post1.body should equal(TestBody1("155", "abcde"))
-      post1.topic should equal(Topic("/test-post-1/{id}", Filters(Map(
+      post1.uri should equal(Uri("/test-post-1/{id}", UriParts(Map(
         "id" → SpecificValue("155")
       ))))
     }
@@ -103,7 +103,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       )
 
       outer.body should equal(outerBody)
-      outer.topic should equal(Topic("/test-outer-resource"))
+      outer.uri should equal(Uri("/test-outer-resource"))
     }
 
     "Decode DynamicGet" in {

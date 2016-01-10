@@ -4,7 +4,7 @@ import java.util.Properties
 
 import com.typesafe.config.{Config, ConfigValue}
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.{Topic, AnyValue}
+import eu.inn.hyperbus.transport.api.{Uri, Uri$, AnyValue}
 
 object ConfigLoader {
 
@@ -15,11 +15,11 @@ object ConfigLoader {
 
     routesConfigList.map { config ⇒
       val kafkaTopic = config.read[KafkaTopicPojo]("kafka")
-      val topic = if (config.hasPath("topic"))
-        Topic(config.getValue("topic"))
+      val uri = if (config.hasPath("uri"))
+        Uri(config.getValue("uri"))
       else
-        Topic(AnyValue)
-      KafkaRoute(topic, kafkaTopic.topic, kafkaTopic.partitionKeys.getOrElse(List.empty))
+        Uri(AnyValue)
+      KafkaRoute(uri, kafkaTopic.topic, kafkaTopic.partitionKeys.getOrElse(List.empty))
     }.toList
   }
 

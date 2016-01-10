@@ -41,11 +41,11 @@ object TransportConfigurationLoader {
       throw new TransportConfigurationError(s"Couldn't find transport '$transportName'")
     ).asInstanceOf[T]
 
-    val topic = if (config.hasPath("topic"))
-      Topic(config.getValue("topic"))
+    val uriPattern = if (config.hasPath("uri-filter"))
+      Uri(config.getValue("uri-filter"))
     else
-      Topic(AnyValue)
-    TransportRoute[T](transport, topic)
+      Uri(AnyValue)
+    TransportRoute[T](transport, uriPattern)
   }
 
   private def createTransport(config: Config): Any = {

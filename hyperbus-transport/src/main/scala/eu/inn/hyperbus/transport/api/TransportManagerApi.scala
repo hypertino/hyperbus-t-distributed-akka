@@ -13,12 +13,12 @@ trait TransportManagerApi {
 
   def publish(message: TransportRequest): Future[PublishResult]
 
-  def process[IN <: TransportRequest](topicFilter: Topic,
+  def process[IN <: TransportRequest](uriFilter: Uri,
                                       inputDeserializer: Deserializer[IN],
                                       exceptionSerializer: Serializer[Throwable])
                                      (handler: (IN) => Future[TransportResponse]): String
 
-  def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String,
+  def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String,
                                         inputDeserializer: Deserializer[IN])
                                        (handler: (IN) => Future[Unit]): String
 

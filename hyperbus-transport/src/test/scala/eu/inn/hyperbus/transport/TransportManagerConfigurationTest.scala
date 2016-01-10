@@ -17,11 +17,11 @@ class MockClientTransport(config: Config) extends ClientTransport {
 }
 
 class MockServerTransport(config: Config) extends ServerTransport {
-  override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])(handler: (IN) ⇒ Future[TransportResponse]): String = ???
+  override def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])(handler: (IN) ⇒ Future[TransportResponse]): String = ???
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
 
-  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) ⇒ Future[Unit]): String = ???
+  override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) ⇒ Future[Unit]): String = ???
 
   override def off(subscriptionId: String): Unit = ???
 }
@@ -37,15 +37,19 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
           },
           client-routes: [
             {
-              topic.url: { value: "/topic/{userId}", match-type: Specific }
-              topic.extra: { userId: { match-type: Any } }
+              uri-filter: {
+                pattern: { value: "/topic/{userId}", match-type: Specific }
+                parts: { userId: { match-type: Any } }
+              }
               transport: mock-client
             }
           ],
           server-routes: [
             {
-              topic.url: { value: "/topic/{userId}", match-type: Specific }
-              topic.extra: { userId: { value: ".*", match-type: Regex } }
+              uri-filter: {
+                pattern: { value: "/topic/{userId}", match-type: Specific }
+                parts: { userId: { value: ".*", match-type: Regex } }
+              }
               transport: mock-server
             }
           ]
@@ -55,16 +59,16 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
       val sbc = TransportConfigurationLoader.fromConfig(config)
 
       assert(sbc.clientRoutes.nonEmpty)
-      sbc.clientRoutes.head.topic.url should equal(SpecificValue("/topic/{userId}"))
-      sbc.clientRoutes.head.topic.extra should equal(Filters(Map(
+      sbc.clientRoutes.head.uri.pattern should equal(SpecificValue("/topic/{userId}"))
+      sbc.clientRoutes.head.uri.parts should equal(UriParts(Map(
         "userId" → AnyValue
       )))
       sbc.clientRoutes.head.transport shouldBe a[MockClientTransport]
 
       assert(sbc.serverRoutes.nonEmpty)
-      sbc.serverRoutes.head.topic.url should equal(SpecificValue("/topic/{userId}"))
-      sbc.serverRoutes.head.topic.extra should equal(Filters(Map(
-        "userId" → RegexFilter(".*")
+      sbc.serverRoutes.head.uri.pattern should equal(SpecificValue("/topic/{userId}"))
+      sbc.serverRoutes.head.uri.parts should equal(UriParts(Map(
+        "userId" → RegexUriPart(".*")
       )))
       sbc.serverRoutes.head.transport shouldBe a[MockServerTransport]
     }

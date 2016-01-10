@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-case class KafkaRoute(topic: Topic,
+case class KafkaRoute(uri: Uri,
                       kafkaTopic: String,
                       kafkaPartitionKeys: List[String])
 
@@ -38,8 +38,8 @@ class KafkaClientTransport(producerProperties: Properties,
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
-    routes.find(r ⇒ r.topic.matchTopic(message.topic)) map (publishToRoute(_, message)) getOrElse {
-      throw new NoTransportRouteException(s"Kafka producer (client). Topic: ${message.topic}")
+    routes.find(r ⇒ r.uri.matchUri(message.uri)) map (publishToRoute(_, message)) getOrElse {
+      throw new NoTransportRouteException(s"Kafka producer (client). Uri: ${message.uri}")
     }
   }
 
@@ -66,8 +66,8 @@ class KafkaClientTransport(producerProperties: Properties,
       }
       else {
         val recordKey = route.kafkaPartitionKeys.map { key: String ⇒ // todo: check partition key logic
-          message.topic.extra.filterMap.getOrElse(key,
-            throw new KafkaPartitionKeyIsNotDefined(s"Filter key $key is not defined for ${message.topic}")
+          message.uri.parts.uriPartsMap.getOrElse(key,
+            throw new KafkaPartitionKeyIsNotDefined(s"Filter key $key is not defined for ${message.uri}")
           ).specific
         }.foldLeft("")(_ + "," + _.replace("\\","\\\\").replace(",", "\\,"))
 

@@ -77,12 +77,12 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val thizVal = fresh("thiz")
-    val topicVal = fresh("topic")
+    val uriVal = fresh("uri")
 
     val obj = q"""{
       val $thizVal = $thiz
-      val $topicVal = $thizVal.macroApiImpl.topicWithAnyValue($url)
-      $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($topicVal, $method, $contentType, $requestDeserializer _) {
+      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($url)
+      $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($uriVal, $method, $contentType, $requestDeserializer _) {
         response: $requestType => $handler(response)
       }
     }"""
@@ -103,13 +103,13 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val thizVal = fresh("thiz")
-    val topicVal = fresh("topic")
+    val uriVal = fresh("uri")
     val responseVal = fresh("response")
 
     val obj = q"""{
       val $thizVal = $thiz
-      val $topicVal = $thizVal.macroApiImpl.topicWithAnyValue($url)
-      $thizVal.onEvent[$requestType]($topicVal, $method, $contentType, $groupName, $requestDeserializer _) {
+      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($url)
+      $thizVal.onEvent[$requestType]($uriVal, $method, $contentType, $groupName, $requestDeserializer _) {
         case $responseVal: $requestType => $handler($responseVal)
       }
     }"""

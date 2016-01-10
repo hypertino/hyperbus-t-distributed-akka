@@ -45,7 +45,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
 }
 
 class ServerTransportTest extends ServerTransport {
-  var sTopicFilter: Topic = null
+  var sUriFilter: Uri = null
   var sInputDeserializer: Deserializer[TransportRequest] = null
   var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
   var sSubscriptionHandler: (TransportRequest) ⇒ Future[Unit] = null
@@ -53,7 +53,7 @@ class ServerTransportTest extends ServerTransport {
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
 
-  override def process[IN <: TransportRequest](topicFilter: Topic, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
+  override def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
                                               (handler: (IN) => Future[TransportResponse]): String = {
 
     sInputDeserializer = inputDeserializer
@@ -62,7 +62,7 @@ class ServerTransportTest extends ServerTransport {
     idCounter.incrementAndGet().toHexString
   }
 
-  override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])
+  override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[Unit]): String = {
     sInputDeserializer = inputDeserializer
     sSubscriptionHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[Unit]]
@@ -280,7 +280,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "~> dynamic request (server)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null, st)
-      hyperBus.onCommand(Topic("/test"), Method.GET, None) { request =>
+      hyperBus.onCommand(Uri("/test"), Method.GET, None) { request =>
         Future {
           NoContent(EmptyBody, messageId = "123", correlationId = "123")
         }
@@ -356,9 +356,9 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "|> static request subscription (server)" in {
       var receivedEvents = 0
       val serverTransport = new ServerTransportTest() {
-        override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
+        override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
           receivedEvents += 1
-          super.subscribe(topicFilter, groupName, inputDeserializer)(handler)
+          super.subscribe(uriFilter, groupName, inputDeserializer)(handler)
         }
       }
       val hyperBus = newHyperBus(null, serverTransport)
@@ -373,14 +373,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "|> dynamic request subscription (server)" in {
       var receivedEvents = 0
       val serverTransport = new ServerTransportTest() {
-        override def subscribe[IN <: TransportRequest](topicFilter: Topic, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
+        override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
           receivedEvents += 1
-          super.subscribe(topicFilter, groupName, inputDeserializer)(handler)
+          super.subscribe(uriFilter, groupName, inputDeserializer)(handler)
         }
       }
       val hyperBus = newHyperBus(null, serverTransport)
 
-      hyperBus.onEvent(Topic("/test"), Method.GET, None, Some("group1")) { request: DynamicRequest => Future {} }
+      hyperBus.onEvent(Uri("/test"), Method.GET, None, Some("group1")) { request: DynamicRequest => Future {} }
       receivedEvents should equal(1)
     }
 
@@ -456,8 +456,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   }
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, Topic(AnyValue)))
-    val sr = List(TransportRoute(st, Topic(AnyValue)))
+    val cr = List(TransportRoute(ct, Uri(AnyValue)))
+    val sr = List(TransportRoute(st, Uri(AnyValue)))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(transportManager, Some("group1"))
   }

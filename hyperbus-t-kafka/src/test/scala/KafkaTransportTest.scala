@@ -31,7 +31,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub1",
+      transportManager.subscribe(Uri("/topic/{abc}"), "sub1",
         MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
@@ -39,7 +39,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
         }
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub1",
+      transportManager.subscribe(Uri("/topic/{abc}"), "sub1",
         MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
@@ -47,7 +47,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
         }
       }
 
-      transportManager.subscribe(Topic("/topic/{abc}"), "sub2",
+      transportManager.subscribe(Uri("/topic/{abc}"), "sub2",
         MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
@@ -76,12 +76,12 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 }
 
 // move mocks to separate assembly
-case class MockRequest(specificTopic: String,
+case class MockRequest(uriPattern: String,
                        partitionId: String,
                        message: String,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
-  def topic: Topic = Topic(specificTopic, Filters(Map("partitionId" → SpecificValue(partitionId))))
+  def uri: Uri = Uri(uriPattern, UriParts(Map("partitionId" → SpecificValue(partitionId))))
 
   override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))

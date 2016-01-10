@@ -21,4 +21,3 @@ TODO:
     
     *-- remove url from request
     *-- typed topic (instead of extracting from body!) 
-    *-- Topic -> URI, Filter -> ?

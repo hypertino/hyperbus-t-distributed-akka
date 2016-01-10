@@ -63,8 +63,8 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
   // todo: add partition tests for Dynamic
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, Topic(AnyValue)))
-    val sr = List(TransportRoute(st, Topic(AnyValue)))
+    val cr = List(TransportRoute(ct, Uri(AnyValue)))
+    val sr = List(TransportRoute(st, Uri(AnyValue)))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(transportManager)
   }

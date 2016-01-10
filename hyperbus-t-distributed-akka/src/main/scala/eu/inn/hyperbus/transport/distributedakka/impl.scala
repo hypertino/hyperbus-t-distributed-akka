@@ -13,12 +13,13 @@ import scala.util.control.NonFatal
 
 private[transport] trait Command
 
-private[transport] case class Subscription[OUT, IN <: TransportRequest](topicUrl: String,
-                                                                        topic: Topic,
+private[transport] case class Subscription[OUT, IN <: TransportRequest](uri: Uri,
                                                                         groupName: Option[String],
                                                                         inputDeserializer: Deserializer[IN],
                                                                         exceptionSerializer: Serializer[Throwable],
-                                                                        handler: (IN) => Future[OUT])
+                                                                        handler: (IN) => Future[OUT]) {
+  def topic = uri.pattern.specific // currently only Specific url's are supported, todo: add Regex, Any, etc...
+}
 
 private[transport] case class Start[OUT, IN <: TransportRequest](id: String, subscription: Subscription[OUT, IN], logMessages: Boolean) extends Command
 
@@ -36,18 +37,18 @@ private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] exten
     case start: Start[OUT, IN] ⇒
       subscription = start.subscription
       logMessages = start.logMessages
-      log.debug(s"$self is subscribing to topic ${subscription.topicUrl}/${subscription.groupName}")
-      mediator ! Subscribe(subscription.topicUrl, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
+      log.debug(s"$self is subscribing to topic ${subscription.topic}/${subscription.groupName}")
+      mediator ! Subscribe(subscription.uri.pattern.specific, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
 
     case ack: SubscribeAck ⇒
-      log.debug(s"$self is subscribed to topic ${subscription.topicUrl}/${subscription.groupName}")
+      log.debug(s"$self is subscribed to topic ${subscription.topic}/${subscription.groupName}")
       context become (start orElse handleStop)
   }
 
   def handleStop: Receive = {
     case Stop ⇒
-      log.debug(s"$self is unsubscribing from topic ${subscription.topicUrl}/${subscription.groupName}")
-      mediator ! Unsubscribe(subscription.topicUrl, self)
+      log.debug(s"$self is unsubscribing from topic ${subscription.topic}/${subscription.groupName}")
+      mediator ! Unsubscribe(subscription.topic, self)
 
     case UnsubscribeAck(unsubscribe) ⇒
       log.debug(s"$self is stopping...")

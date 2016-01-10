@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.{MessageDeserializer, DecodeException, RequestHeader}
-import eu.inn.hyperbus.transport.api.{Filters, SpecificValue, Topic}
+import eu.inn.hyperbus.transport.api._
 
 
 trait DynamicBody extends Body with Links {
@@ -43,7 +43,7 @@ object DynamicBody {
 private[model] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
 
 trait DynamicRequest extends Request[DynamicBody] {
-  lazy val topic = Topic(url, Filters(UrlParser.extractParameters(url).map { arg ⇒
+  lazy val uri = Uri(url, UriParts(UrlParser.extractParameters(url).map { arg ⇒
     arg → SpecificValue(
       body.content.asMap.get(arg).map(_.asString).getOrElse("") // todo: inner fields like abc.userId
     )
