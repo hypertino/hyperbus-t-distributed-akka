@@ -42,7 +42,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
 
-    val specificUrl = message.uri.pattern.specific
+    val specificUri = message.uri.pattern.specific
     val inputBytes = new ByteArrayOutputStream()
     message.serialize(inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
@@ -53,7 +53,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     }
 
     import actorSystem.dispatcher
-    akka.pattern.ask(mediator, Publish(specificUrl, messageString, sendOneMessageToEachGroup = true)) map {
+    akka.pattern.ask(mediator, Publish(specificUri, messageString, sendOneMessageToEachGroup = true)) map {
       case result: String ⇒
         if (logMessages && log.isTraceEnabled) {
           log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus ~(R)~> $result")
@@ -65,7 +65,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   }
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
-    val specificUrl = message.uri.pattern.specific
+    val specificUri = message.uri.pattern.specific
     val inputBytes = new ByteArrayOutputStream()
     message.serialize(inputBytes)
     val messageString = inputBytes.toString(Util.defaultEncoding)
@@ -74,7 +74,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
       log.trace(s"hyperBus <| $messageString")
     }
 
-    mediator ! Publish(specificUrl, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?
+    mediator ! Publish(specificUri, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?
     Future.successful {
       new PublishResult {
         def sent = None

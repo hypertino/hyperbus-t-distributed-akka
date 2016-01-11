@@ -49,15 +49,15 @@ class CliService(console: Console, config: Config) extends Service {
     }
   }
 
-  def ask(method: String, url: String, contentType: String, body: String): Unit = {
-    val r = createDynamicRequest(method, url, Some(contentType), body)
+  def ask(method: String, uriPattern: String, contentType: String, body: String): Unit = {
+    val r = createDynamicRequest(method, uriPattern, Some(contentType), body)
     out(s"<~$r")
     val f = hyperBus <~ r
     printResponse(f)
   }
 
-  def publish(method: String, url: String, contentType: String, body: String): Unit = {
-    val r = createDynamicRequest(method, url, Some(contentType), body)
+  def publish(method: String, uriPattern: String, contentType: String, body: String): Unit = {
+    val r = createDynamicRequest(method, uriPattern, Some(contentType), body)
     out(s"<!$r")
     val f = hyperBus <| r
   }
@@ -146,11 +146,11 @@ class CliServiceController(service: CliService, console: Console, shutdownMonito
   val leaveMember = """^leave (.+)://(.+)@(.+):(\d+)$""".r
 
   override def customCommand = {
-    case askCommand(method, url, contentType, body) ⇒
-      service.ask(method, url, contentType, body)
+    case askCommand(method, uriPattern, contentType, body) ⇒
+      service.ask(method, uriPattern, contentType, body)
 
-    case publishCommand(method, url, contentType, body) ⇒
-      service.publish(method, url, contentType, body)
+    case publishCommand(method, uriPattern, contentType, body) ⇒
+      service.publish(method, uriPattern, contentType, body)
 
     case downMember(protocol, system, host, port) ⇒
       service.down(protocol, system, host, port)

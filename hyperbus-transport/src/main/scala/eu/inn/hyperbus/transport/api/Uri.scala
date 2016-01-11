@@ -1,9 +1,9 @@
 package eu.inn.hyperbus.transport.api
 
 import com.typesafe.config.ConfigValue
-import eu.inn.binders.core.{ImplicitSerializer, ImplicitDeserializer}
+import eu.inn.binders.core.{BindOptions, ImplicitSerializer, ImplicitDeserializer}
 import eu.inn.binders.json.{JsonSerializer, JsonDeserializer}
-import eu.inn.binders.naming.{PlainConverter, Converter}
+import eu.inn.binders.naming.{PlainConverter}
 
 case class Uri(pattern: UriPart, parts: UriParts = UriParts.empty) {
   def matchUri(other: Uri): Boolean = pattern.matchUriPart(other.pattern) &&
@@ -61,12 +61,10 @@ private[api] case class UriPojo(pattern: UriPartPojo, parts: Option[Map[String, 
 private[api] case class UriPojoJson(pattern: String, parts: Option[Map[String, String]])
 
 // todo: use generic type instead PlainConverter
-class UriJsonDeserializer extends ImplicitDeserializer[Uri, JsonDeserializer[PlainConverter]] {
-  import eu.inn.binders._
+class UriJsonDeserializer(implicit val bindOptions: BindOptions) extends ImplicitDeserializer[Uri, JsonDeserializer[PlainConverter]] {
   override def read(deserializer: JsonDeserializer[PlainConverter]): Uri = Uri(deserializer.unbind[UriPojoJson])
 }
 
-class UriJsonSerializer extends ImplicitSerializer[Uri, JsonSerializer[PlainConverter]] {
-  import eu.inn.binders._
+class UriJsonSerializer(implicit val bindOptions: BindOptions) extends ImplicitSerializer[Uri, JsonSerializer[PlainConverter]] {
   override def write(serializer: JsonSerializer[PlainConverter], value: Uri) = serializer.bind(value.toPojoJson)
 }

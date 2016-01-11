@@ -93,7 +93,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f) { r =>
@@ -117,7 +117,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       ct.input should equal(
-        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f) { r =>
@@ -136,7 +136,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPostWithNoContent(TestBody1("empty"), messageId = "123", correlationId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/empty","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"empty"}}"""
+        """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"empty"}}"""
       )
 
       whenReady(f) { r =>
@@ -154,7 +154,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ StaticPostWithDynamicBody(DynamicBody(Text("ha ha")), messageId = "123", correlationId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/empty","method":"post","messageId":"123"},"body":"ha ha"}"""
+        """{"request":{"uri":{"pattern":"/empty"},"method":"post","messageId":"123"},"body":"ha ha"}"""
       )
 
       whenReady(f) { r =>
@@ -172,7 +172,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody, messageId = "123", correlationId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/empty","method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
+        """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
       )
 
       whenReady(f) { r =>
@@ -190,7 +190,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
 
       ct.input should equal(
-        """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f.failed) { r =>
@@ -208,7 +208,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
+      val req = """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
       msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))
@@ -234,7 +234,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"url":"/empty","method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
+      val req = """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
       msg should equal(StaticPostWithEmptyBody(EmptyBody, messageId = "123", correlationId = "123"))
@@ -260,7 +260,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"url":"/empty","method":"post","contentType":"some-content","messageId":"123"},"body":"haha"}"""
+      val req = """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
       msg should equal(StaticPostWithDynamicBody(DynamicBody(Some("some-content"), Text("haha")), messageId = "123", correlationId = "123"))
@@ -286,7 +286,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"url":"/test","method":"get","contentType":"some-content","messageId":"123"},"body":"haha"}"""
+      val req = """{"request":{"uri":{"pattern":"/test"},"method":"get","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
       msg should equal(DynamicRequest(RequestHeader(Uri("/test"), Method.GET, Some("some-content"), "123", Some("123")),
@@ -393,7 +393,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"url":"/resources","method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
+      val req = """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
       msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))

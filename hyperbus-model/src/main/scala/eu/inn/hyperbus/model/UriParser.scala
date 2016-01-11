@@ -3,14 +3,14 @@ package eu.inn.hyperbus.model
 import scala.collection.mutable
 
 object UriParser {
-  def extractParameters(url: String): Seq[String] = {
+  def extractParameters(uri: String): Seq[String] = {
     val DEFAULT = 0
     val ARG = 1
     var state = DEFAULT
     val result = new mutable.MutableList[String]
     val buf = new mutable.StringBuilder
 
-    url.foreach { c ⇒
+    uri.foreach { c ⇒
       state match {
         case DEFAULT ⇒
           c match {

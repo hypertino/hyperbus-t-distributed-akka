@@ -81,11 +81,11 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       ), messageId = "123", correlationId = "123")
       postO.serialize(ba)
       val str = ba.toString("UTF-8")
-      str should equal("""{"request":{"url":"/test-outer-resource","method":"get","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}""")
+      str should equal("""{"request":{"uri":{"pattern":"/test-outer-resource"},"method":"get","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}""")
     }
 
     "TestOuterPost should deserialize" in {
-      val str = """{"request":{"url":"/test-outer-resource","method":"get","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}"""
+      val str = """{"request":{"uri":{"pattern":"/test-outer-resource"},"method":"get","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val outer = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         requestHeader.uri should equal(Uri("/test-outer-resource"))
@@ -108,7 +108,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     }
 
     "Decode DynamicGet" in {
-      val str = """{"request":{"method":"get","url":"/test","messageId":"123"},"body":{"resourceId":"100500"}}"""
+      val str = """{"request":{"method":"get","uri":{"pattern":"/test"},"messageId":"123"},"body":{"resourceId":"100500"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val request = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         DynamicRequest(requestHeader, jsonParser)
@@ -120,7 +120,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     }
 
     "Decode DynamicRequest" in {
-      val str = """{"request":{"method":"custom-method","url":"/test","contentType":"test-body-1","messageId":"123"},"body":{"resourceId":"100500"}}"""
+      val str = """{"request":{"method":"custom-method","uri":{"pattern":"/test"},"contentType":"test-body-1","messageId":"123"},"body":{"resourceId":"100500"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val request = DynamicRequest(str)
       request shouldBe a [Request[_]]

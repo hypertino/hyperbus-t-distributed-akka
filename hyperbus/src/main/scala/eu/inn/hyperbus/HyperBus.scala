@@ -248,12 +248,12 @@ class HyperBus(val transportManager: TransportManager,
 
   protected def responseSerializerNotFound(response: Response[Body]) = log.error("Can't serialize response: {}", response)
 
-  protected def getRouteKey(url: UriPart, groupName: Option[String]) = {
-    val urlSpecific = url.specific // todo: implement other filters?
+  protected def getRouteKey(uri: UriPart, groupName: Option[String]) = {
+    val specificUri = uri.specific // todo: implement other filters?
 
     groupName.map {
-      urlSpecific + "#" + _
-    } getOrElse urlSpecific
+      specificUri + "#" + _
+    } getOrElse specificUri
   }
 
   protected def safe(t: () => String): String = Try(t()).getOrElse("???")

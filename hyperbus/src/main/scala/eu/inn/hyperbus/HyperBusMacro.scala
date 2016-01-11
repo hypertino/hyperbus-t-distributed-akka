@@ -72,16 +72,16 @@ private[hyperbus] trait HyperBusMacroImplementation {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
     val requestDeserializer = requestType.companion.declaration(TermName("deserializer"))
-    val url = getUrlAnnotation(requestType)
+    val uriPattern = getUriAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val thizVal = fresh("thiz")
-    val uriVal = fresh("uri")
+    val uriVal = fresh("uriPattern")
 
     val obj = q"""{
       val $thizVal = $thiz
-      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($url)
+      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($uriPattern)
       $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($uriVal, $method, $contentType, $requestDeserializer _) {
         response: $requestType => $handler(response)
       }
@@ -98,7 +98,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
     val requestDeserializer = requestType.companion.declaration(TermName("deserializer"))
-    val url = getUrlAnnotation(requestType)
+    val uriPattern = getUriAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
@@ -108,7 +108,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
     val obj = q"""{
       val $thizVal = $thiz
-      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($url)
+      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($uriPattern)
       $thizVal.onEvent[$requestType]($uriVal, $method, $contentType, $groupName, $requestDeserializer _) {
         case $responseVal: $requestType => $handler($responseVal)
       }
@@ -121,7 +121,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
-    //val url = getUrlAnnotation(in)
+    //val url = getUriAnnotation(in)
     val responseBodyTypes = getUniqueResponseBodies(in)
 
     responseBodyTypes.groupBy(getContentTypeAnnotation(_) getOrElse "") foreach { kv =>
@@ -168,7 +168,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
   def publish[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
     val in = weakTypeOf[IN]
-    val url = getUrlAnnotation(in)
+    val uriPattern = getUriAnnotation(in)
     val thiz = c.prefix.tree
 
     val thizVal = fresh("thiz")
@@ -241,9 +241,9 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
   }
 
-  private def getUrlAnnotation(t: c.Type): String =
+  private def getUriAnnotation(t: c.Type): String =
     getStringAnnotation(t.typeSymbol, c.typeOf[uri]).getOrElse {
-      c.abort(c.enclosingPosition, s"@url annotation is not defined for $t.}")
+      c.abort(c.enclosingPosition, s"@uri annotation is not defined for $t.}")
     }
 
   private def getContentTypeAnnotation(t: c.Type): Option[String] =

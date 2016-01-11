@@ -91,8 +91,6 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
         def uriPattern = $uriPattern
     """
 
-    println(companionExtra)
-
     val newCompanion = clzCompanion map { existingCompanion =>
       val q"object $companion extends ..$bases { ..$body }" = existingCompanion
       q"""

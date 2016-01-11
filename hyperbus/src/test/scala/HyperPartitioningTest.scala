@@ -9,17 +9,16 @@ import org.scalatest.{FreeSpec, Matchers}
 import scala.concurrent.ExecutionContext
 
 @body("application/vnd+parition.json")
-case class TestPartition(partitionId: String, data: String) extends Body
+case class TestPartition(data: String) extends Body
 
 @request("/resources/{partitionId}")
-case class TestPostPartition1(body: TestPartition) extends StaticPost(body)
+case class TestPostPartition1(partitionId: String, body: TestPartition) extends StaticPost(body)
 with DefinedResponse[Ok[DynamicBody]]
 
 
 class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
   import scala.concurrent.ExecutionContext.Implicits.global
-
 
   //todo: real partition test (with different suscribers)
   "HyperPartitioning " - {
