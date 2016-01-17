@@ -30,7 +30,7 @@ case class Uri(pattern: UriPart, args: Map[String, UriPart]) {
   lazy val formatted: String = UriParser.tokens(pattern.specific) collect {
     case TextToken(s) ⇒ s
     case SlashToken ⇒ '/'
-    case ParameterToken(parameterName) ⇒ args(parameterName).specific
+    case ParameterToken(parameterName, _) ⇒ args(parameterName).specific
   } mkString
 }
 
