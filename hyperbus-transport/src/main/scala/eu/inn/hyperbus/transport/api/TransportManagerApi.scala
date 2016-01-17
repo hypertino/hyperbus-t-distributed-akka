@@ -1,5 +1,7 @@
 package eu.inn.hyperbus.transport.api
 
+import eu.inn.hyperbus.transport.api.uri.Uri
+
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 

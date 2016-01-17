@@ -2,6 +2,7 @@ package eu.inn.hyperbus.transport.api
 
 import java.util.concurrent.atomic.AtomicLong
 
+import eu.inn.hyperbus.transport.api.uri.Uri
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap

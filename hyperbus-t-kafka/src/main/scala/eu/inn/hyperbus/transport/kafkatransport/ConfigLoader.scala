@@ -2,9 +2,9 @@ package eu.inn.hyperbus.transport.kafkatransport
 
 import java.util.Properties
 
-import com.typesafe.config.{Config, ConfigValue}
+import com.typesafe.config.Config
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.{Uri, Uri$, AnyValue}
+import eu.inn.hyperbus.transport.api.uri.{AnyValue, Uri}
 
 object ConfigLoader {
 

@@ -2,7 +2,7 @@ package eu.inn.hyperbus.model.standard
 
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.method
-import eu.inn.hyperbus.transport.api.Uri
+import eu.inn.hyperbus.transport.api.uri.Uri
 
 object Method {
   val GET = "get"

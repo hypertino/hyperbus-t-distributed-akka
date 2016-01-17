@@ -4,6 +4,7 @@ import java.io.OutputStream
 import java.util.concurrent.atomic.AtomicInteger
 
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 

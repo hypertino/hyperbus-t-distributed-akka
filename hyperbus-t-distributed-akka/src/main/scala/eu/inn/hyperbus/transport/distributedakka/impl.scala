@@ -6,6 +6,7 @@ import akka.actor.{Actor, DeadLetter}
 import akka.contrib.pattern.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe, UnsubscribeAck}
 import akka.pattern.pipe
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.Uri
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future

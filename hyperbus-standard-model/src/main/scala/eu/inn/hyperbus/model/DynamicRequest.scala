@@ -7,6 +7,7 @@ import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.{MessageDeserializer, DecodeException, RequestHeader}
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.Uri
 
 
 trait DynamicBody extends Body with Links {

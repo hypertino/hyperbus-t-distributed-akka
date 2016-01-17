@@ -2,10 +2,9 @@ package eu.inn.hyperbus.serialization
 
 import java.io.OutputStream
 
-import eu.inn.binders.core.{ImplicitSerializer, ImplicitDeserializer, BindOptions}
-import eu.inn.binders.json.{JsonSerializer, JsonDeserializer}
+import eu.inn.binders.core.BindOptions
 import eu.inn.hyperbus.model.{Body, Request, Response}
-import eu.inn.hyperbus.transport.api.{UriJsonSerializer, Uri}
+import eu.inn.hyperbus.transport.api.uri.UriJsonSerializer
 
 object MessageSerializer {
 

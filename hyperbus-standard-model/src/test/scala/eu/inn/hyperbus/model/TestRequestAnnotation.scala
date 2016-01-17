@@ -8,6 +8,7 @@ import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.standard.{DefLink, StaticGet, DynamicGet}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.{UriParts, Uri}
 import org.scalatest.{FreeSpec, Matchers}
 
 @request("/test-post-1/{id}")
@@ -49,11 +50,11 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       val post1 = TestPost1("155", TestBody1("abcde"), messageId = "123", correlationId = "123")
       post1.serialize(ba)
       val str = ba.toString("UTF-8")
-      str should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","parts":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}""")
+      str should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should deserialize" in {
-      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","parts":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}"""
+      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val post1 = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         requestHeader.uri should equal(Uri("/test-post-1/{id}", Map("id" → "155")))
@@ -66,9 +67,9 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
 
       post1.body should equal(TestBody1("abcde"))
       post1.id should equal("155")
-      post1.uri should equal(Uri("/test-post-1/{id}", UriParts(Map(
-        "id" → SpecificValue("155")
-      ))))
+      post1.uri should equal(Uri("/test-post-1/{id}", Map(
+        "id" → "155"
+      )))
     }
 
     "TestOuterPost should serialize" in {

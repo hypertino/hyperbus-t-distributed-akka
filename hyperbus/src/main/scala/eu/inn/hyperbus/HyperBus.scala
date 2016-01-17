@@ -7,6 +7,7 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.{UriPart, Uri}
 import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
 

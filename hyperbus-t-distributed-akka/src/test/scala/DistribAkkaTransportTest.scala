@@ -12,6 +12,7 @@ import eu.inn.binders.json._
 import eu.inn.hyperbus.IdGenerator
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}

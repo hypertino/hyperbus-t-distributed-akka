@@ -1,6 +1,7 @@
-package eu.inn.hyperbus.transport.api
+package eu.inn.hyperbus.transport.api.uri
 
 import com.typesafe.config.ConfigValue
+import eu.inn.hyperbus.transport.api.TransportConfigurationError
 
 import scala.util.matching.Regex
 
@@ -34,18 +35,6 @@ case class RegexUriPart(value: String) extends UriPart {
   }
 }
 
-case class UriParts(uriPartsMap: Map[String, UriPart]) {
-  def matchUriParts(other: UriParts): Boolean = {
-    uriPartsMap.map { case (k, v) ⇒
-      other.uriPartsMap.get(k).map { av ⇒
-        v.matchUriPart(av)
-      } getOrElse {
-        v == AnyValue
-      }
-    }.forall(r => r)
-  }
-}
-
 object UriPart {
   def apply(configValue: ConfigValue): UriPart = {
     import eu.inn.binders.tconfig._
@@ -70,5 +59,13 @@ object UriPart {
 private [api] case class UriPartPojo(value: Option[String], matchType: Option[String])
 
 object UriParts {
-  val empty = UriParts(Map.empty)
+  def matchUriParts(a: Map[String, UriPart], b: Map[String, UriPart]): Boolean = {
+    a.map { case (k, v) ⇒
+      b.get(k).map { av ⇒
+        v.matchUriPart(av)
+      } getOrElse {
+        v == AnyValue
+      }
+    }.forall(r => r)
+  }
 }

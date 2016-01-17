@@ -7,6 +7,7 @@ import akka.cluster.Cluster
 import akka.pattern.gracefulStop
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.distributedakka.{ProcessServerActor, Start, SubscribeServerActor}
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory

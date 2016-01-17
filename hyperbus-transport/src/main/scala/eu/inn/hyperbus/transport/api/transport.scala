@@ -3,6 +3,7 @@ package eu.inn.hyperbus.transport.api
 import java.io.OutputStream
 
 import com.typesafe.config.ConfigValue
+import eu.inn.hyperbus.transport.api.uri.Uri
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration

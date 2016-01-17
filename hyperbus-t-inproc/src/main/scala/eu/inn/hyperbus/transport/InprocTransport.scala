@@ -4,6 +4,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.{UriParts, Uri}
 import eu.inn.hyperbus.transport.inproc.{SubKey, Subscription}
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.Subscriptions
@@ -69,7 +70,7 @@ class InprocTransport(serialize: Boolean = false)
     }
 
     // todo: filter is redundant for inproc?
-    subscriptions.get(message.uri.pattern.specific).subRoutes filter (_._1.parts.matchUriParts(message.uri.parts)) foreach {
+    subscriptions.get(message.uri.pattern.specific).subRoutes filter (_._1.matchArgs(message.uri.args)) foreach {
       case (subKey, subscriptionList) =>
 
         if (subKey.groupName.isEmpty) {
@@ -81,11 +82,11 @@ class InprocTransport(serialize: Boolean = false)
           ) foreach { messageForSubscriber ⇒
 
             tryX("Decode failed", subscriber.exceptionSerializer,
-              messageForSubscriber.uri.parts
+              messageForSubscriber.uri.args
               //subscriber. partitionArgsExtractor(messageForSubscriber)
             ) foreach { args ⇒
 
-              if (subKey.parts.matchUriParts(args)) {
+              if (subKey.matchArgs(args)) {
                 // todo: log if not matched?
                 val handlerResult = subscriber.handler(messageForSubscriber)
                 result = if (serialize) {
@@ -132,7 +133,7 @@ class InprocTransport(serialize: Boolean = false)
             }
 
           ma.foreach { messageForSubscriber ⇒
-            if (subKey.parts.matchUriParts(messageForSubscriber.uri.parts)) {
+            if (subKey.matchArgs(messageForSubscriber.uri.args)) {
               // todo: log if not matched?
               subscriber.handler(messageForSubscriber).onFailure {
                 case NonFatal(e) ⇒
@@ -177,7 +178,7 @@ class InprocTransport(serialize: Boolean = false)
 
     subscriptions.add(
       uriFilter.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(None, uriFilter.parts),
+      SubKey(None, uriFilter.args),
       Subscription(inputDeserializer, exceptionSerializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }
@@ -186,7 +187,7 @@ class InprocTransport(serialize: Boolean = false)
                                                 (handler: (IN) => Future[Unit]): String = {
     subscriptions.add(
       uriFilter.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(Some(groupName), uriFilter.parts),
+      SubKey(Some(groupName), uriFilter.args),
       Subscription(inputDeserializer, null, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }

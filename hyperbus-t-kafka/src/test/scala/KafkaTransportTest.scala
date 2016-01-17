@@ -6,6 +6,7 @@ import eu.inn.binders._
 import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.IdGenerator
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.{UriParts, Uri}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
@@ -81,7 +82,7 @@ case class MockRequest(uriPattern: String,
                        message: String,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
-  def uri: Uri = Uri(uriPattern, UriParts(Map("partitionId" → SpecificValue(partitionId))))
+  def uri: Uri = Uri(uriPattern, Map("partitionId" → partitionId))
 
   override def serialize(output: OutputStream): Unit = {
     SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))

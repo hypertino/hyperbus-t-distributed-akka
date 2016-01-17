@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
 import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}

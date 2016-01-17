@@ -5,6 +5,7 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
@@ -66,8 +67,8 @@ class KafkaClientTransport(producerProperties: Properties,
       }
       else {
         val recordKey = route.kafkaPartitionKeys.map { key: String ⇒ // todo: check partition key logic
-          message.uri.parts.uriPartsMap.getOrElse(key,
-            throw new KafkaPartitionKeyIsNotDefined(s"Filter key $key is not defined for ${message.uri}")
+          message.uri.args.getOrElse(key,
+            throw new KafkaPartitionKeyIsNotDefined(s"Argument $key is not defined for ${message.uri}")
           ).specific
         }.foldLeft("")(_ + "," + _.replace("\\","\\\\").replace(",", "\\,"))
 

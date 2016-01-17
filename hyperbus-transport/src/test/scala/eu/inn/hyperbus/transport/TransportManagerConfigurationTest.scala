@@ -2,6 +2,7 @@ package eu.inn.hyperbus.transport
 
 import com.typesafe.config.{Config, ConfigFactory}
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.uri._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -39,7 +40,7 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
             {
               uri-filter: {
                 pattern: { value: "/topic/{userId}", match-type: Specific }
-                parts: { userId: { match-type: Any } }
+                args: { userId: { match-type: Any } }
               }
               transport: mock-client
             }
@@ -48,7 +49,7 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
             {
               uri-filter: {
                 pattern: { value: "/topic/{userId}", match-type: Specific }
-                parts: { userId: { value: ".*", match-type: Regex } }
+                args: { userId: { value: ".*", match-type: Regex } }
               }
               transport: mock-server
             }
@@ -60,16 +61,16 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
 
       assert(sbc.clientRoutes.nonEmpty)
       sbc.clientRoutes.head.uri.pattern should equal(SpecificValue("/topic/{userId}"))
-      sbc.clientRoutes.head.uri.parts should equal(UriParts(Map(
+      sbc.clientRoutes.head.uri.args should equal(Map(
         "userId" → AnyValue
-      )))
+      ))
       sbc.clientRoutes.head.transport shouldBe a[MockClientTransport]
 
       assert(sbc.serverRoutes.nonEmpty)
       sbc.serverRoutes.head.uri.pattern should equal(SpecificValue("/topic/{userId}"))
-      sbc.serverRoutes.head.uri.parts should equal(UriParts(Map(
+      sbc.serverRoutes.head.uri.args should equal(Map(
         "userId" → RegexUriPart(".*")
-      )))
+      ))
       sbc.serverRoutes.head.transport shouldBe a[MockServerTransport]
     }
   }
