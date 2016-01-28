@@ -147,7 +147,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val responses = getResponses(in)
     val send =
       if (responses.size == 1)
-        q"$thizVal.ask($r, $responseDeserializerVal).asInstanceOf[Future[${responses.head}]]"
+        q"$thizVal.ask($r, $responseDeserializerVal).asInstanceOf[scala.concurrent.Future[${responses.head}]]"
       else
         q"$thizVal.ask($r, $responseDeserializerVal)"
 
