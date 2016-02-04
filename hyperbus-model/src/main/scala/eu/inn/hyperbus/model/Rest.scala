@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.model
 
-import java.io.OutputStream
+import java.io.{ByteArrayOutputStream, OutputStream}
 
 import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.serialization.MessageSerializer
@@ -12,6 +12,12 @@ trait Body {
   def contentType: Option[String]
 
   def serialize(output: OutputStream)
+
+  def serializeToString(encoding: String = "UTF-8"): String = {
+    val outputStream = new ByteArrayOutputStream()
+    serialize(outputStream)
+    outputStream.toString(encoding)
+  }
 }
 
 trait NoContentType {
