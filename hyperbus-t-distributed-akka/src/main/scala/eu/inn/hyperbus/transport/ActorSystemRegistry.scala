@@ -13,51 +13,54 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Await, Promise}
 
+case class ActorSystemWrapper(key: String, actorSystem: ActorSystem)
+
 object ActorSystemRegistry {
-  private val registry = new TrieMap[String, (ActorSystem, AtomicInteger)]
+  private val registry = new TrieMap[String, (ActorSystem, AtomicInteger, Promise[Boolean])]
   private val lock = new Object
   private val log = LoggerFactory.getLogger(this.getClass)
 
   import eu.inn.hyperbus.util.ConfigUtils._
 
-  def addRef(config: Config): ActorSystem = {
-    val actorSystemName = config.getString("actor-system", "eu-inn")
-    registry.get(actorSystemName) map { as ⇒
+  def addRef(config: Config): ActorSystemWrapper = {
+    val actorSystemName = config.getString("actor-system-name", "eu-inn")
+    val actorSystemKey = config.getString("actor-system-key", "eu-inn")
+    registry.get(actorSystemKey) map { as ⇒
       as._2.incrementAndGet()
-      as._1
+      ActorSystemWrapper(actorSystemKey, as._1)
     } getOrElse {
       // synchronize expensive operation despite the fact that we use TrieMap
       lock.synchronized {
-        val as = createActorSystem(actorSystemName, config)
-        registry.put(actorSystemName, (as, new AtomicInteger(1)))
-        as
+        val as = createActorSystem(actorSystemName, actorSystemKey, config)
+        val exitPromise = Promise[Boolean]() // todo: maybe we don't need this in akka 2.4
+        as.actorOf(Props(new ExitEventListener(exitPromise, Cluster(as).selfUniqueAddress)))
+        registry.put(actorSystemKey, (as, new AtomicInteger(1), exitPromise))
+        ActorSystemWrapper(actorSystemKey, as)
       }
     }
   }
 
-  def release(actorSystemName: String)(implicit timeout: FiniteDuration) = {
-    registry.get(actorSystemName) foreach { a ⇒
+  def release(actorSystemKey: String)(implicit timeout: FiniteDuration) = {
+    registry.get(actorSystemKey) foreach { a ⇒
       if (a._2.decrementAndGet() <= 0) {
-        registry.remove(actorSystemName)
-        shutdownClusterNode(a._1)
+        registry.remove(actorSystemKey)
+        shutdownClusterNode(a._1, a._3)
       }
     }
   }
 
-  def get(actorSystemName: String): Option[ActorSystem] = registry.get(actorSystemName).map(_._1)
+  def get(actorSystemKey: String): Option[ActorSystem] = registry.get(actorSystemKey).map(_._1)
 
-  private def createActorSystem(actorSystemName: String, akkaConfig: Config): ActorSystem = {
+  private def createActorSystem(actorSystemName: String, actorSystemKey: String, akkaConfig: Config): ActorSystem = {
     val as = ActorSystem(actorSystemName, akkaConfig)
-    as.registerOnTermination(registry.remove(actorSystemName))
+    as.registerOnTermination(registry.remove(actorSystemKey))
     as
   }
 
-  def shutdownClusterNode(actorSystem: ActorSystem)(implicit timeout: FiniteDuration): Unit = {
-    val exitPromise = Promise[Boolean]()
+  def shutdownClusterNode(actorSystem: ActorSystem, exitPromise: Promise[Boolean])(implicit timeout: FiniteDuration): Unit = {
     val cluster = Cluster(actorSystem)
     val me = cluster.selfUniqueAddress
 
-    val exitEventListener = actorSystem.actorOf(Props(new ExitEventListener(exitPromise, me)))
     import JavaConversions._
     val clusterMembers = cluster.state.getMembers.toSeq
     log.info(s"$me leaving cluster [" + clusterMembers.mkString(",") + "]")

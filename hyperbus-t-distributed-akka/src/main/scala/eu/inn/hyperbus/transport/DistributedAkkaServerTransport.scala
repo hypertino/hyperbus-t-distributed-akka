@@ -18,12 +18,14 @@ import scala.concurrent.duration.FiniteDuration
 
 class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                                      val logMessages: Boolean = false,
-                                     val releaseActorSystem: Boolean = false)
+                                     val actorSystemRegistryKey: Option[String] = None)
   extends ServerTransport {
 
+  private def this(actorSystemWrapper: ActorSystemWrapper, logMessages: Boolean) =
+    this(actorSystemWrapper.actorSystem, logMessages, Some(actorSystemWrapper.key))
+
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
-    logMessages = config.getOptionBoolean("log-messages") getOrElse false,
-    true)
+    logMessages = config.getOptionBoolean("log-messages") getOrElse false)
 
   protected[this] val subscriptions = new TrieMap[String, ActorRef]
   protected[this] val cluster = Cluster(actorSystem)
@@ -78,9 +80,10 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
       subscriptions.clear()
       //cluster.down(cluster.selfAddress)
       Thread.sleep(500) // todo: replace this with event, wait while cluster.leave completes
-      if (releaseActorSystem) {
-        log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name})")
-        ActorSystemRegistry.release(actorSystem.name)(duration)
+
+      actorSystemRegistryKey foreach { key ⇒
+        log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name}) key: $key")
+        ActorSystemRegistry.release(key)(duration)
       }
       true
     }

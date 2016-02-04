@@ -19,13 +19,16 @@ import scala.concurrent.duration.FiniteDuration
 class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
                                      val localAffinity: Boolean = true,
                                      val logMessages: Boolean = false,
-                                     val releaseActorSystem: Boolean = false,
+                                     val actorSystemRegistryKey: Option[String] = None,
                                      implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
+
+  private def this(actorSystemWrapper: ActorSystemWrapper, localAffinity: Boolean,
+                   logMessages: Boolean, timeout: Timeout) =
+    this(actorSystemWrapper.actorSystem, localAffinity, logMessages, Some(actorSystemWrapper.key), timeout)
 
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
     localAffinity = config.getOptionBoolean("local-afinity") getOrElse true,
     logMessages = config.getOptionBoolean("log-messages") getOrElse false,
-    true,
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
@@ -86,9 +89,9 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
     log.info("Shutting down DistributedAkkaClientTransport...")
-    if (releaseActorSystem) {
-      log.debug(s"DistributedAkkaClientTransport: releasing ActorSystem(${actorSystem.name})")
-      ActorSystemRegistry.release(actorSystem.name)(duration)
+    actorSystemRegistryKey foreach { key ⇒
+      log.debug(s"DistributedAkkaClientTransport: releasing ActorSystem(${actorSystem.name}) key: $key")
+      ActorSystemRegistry.release(key)(duration)
     }
     Future.successful(true)
   }
