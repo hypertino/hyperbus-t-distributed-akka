@@ -46,11 +46,8 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
   "Request Annotation " - {
 
     "TestPost1 should serialize" in {
-      val ba = new ByteArrayOutputStream()
       val post1 = TestPost1("155", TestBody1("abcde"), messageId = "123", correlationId = "123")
-      post1.serialize(ba)
-      val str = ba.toString("UTF-8")
-      str should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}""")
+      post1.serializeToString() should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should deserialize" in {

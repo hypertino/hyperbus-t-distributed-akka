@@ -56,9 +56,7 @@ class KafkaClientTransport(producerProperties: Properties,
   }
 
   private def publishToRoute(route: KafkaRoute, message: TransportRequest): Future[PublishResult] = {
-    val inputBytes = new ByteArrayOutputStream()
-    message.serialize(inputBytes)
-    val messageString = inputBytes.toString(encoding)
+    val messageString = message.serializeToString()
 
     val record: ProducerRecord[String, String] =
       if (route.kafkaPartitionKeys.isEmpty) {

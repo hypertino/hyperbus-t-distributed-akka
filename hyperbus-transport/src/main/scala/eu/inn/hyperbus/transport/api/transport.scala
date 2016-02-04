@@ -1,7 +1,8 @@
 package eu.inn.hyperbus.transport.api
 
-import java.io.OutputStream
+import java.io.{ByteArrayOutputStream, OutputStream}
 
+import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
 import com.typesafe.config.ConfigValue
 import eu.inn.hyperbus.transport.api.uri.Uri
 
@@ -15,6 +16,12 @@ trait TransportMessage {
   def correlationId: String
 
   def serialize(output: OutputStream)
+
+  def serializeToString(encoding: String = "UTF-8"): String = {
+    val outputStream = new ByteArrayOutputStream()
+    serialize(outputStream)
+    outputStream.toString(encoding)
+  }
 }
 
 trait TransportRequest extends TransportMessage {
