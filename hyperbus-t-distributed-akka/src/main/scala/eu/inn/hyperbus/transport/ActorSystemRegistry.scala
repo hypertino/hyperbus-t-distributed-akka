@@ -99,11 +99,10 @@ object ActorSystemRegistry {
     }
 
     def receive = {
-      case e: MemberExited ⇒
-        if (e.member.uniqueAddress == nodeAddress) {
-          exited.success(true)
-          log.info(s"Node exited: ${e.member.uniqueAddress}")
-        }
+      case e: MemberRemoved if e.member.uniqueAddress == nodeAddress ⇒ {
+        exited.success(true)
+        log.info(s"Node removed: ${e.member.uniqueAddress}")
+      }
       case _ ⇒ //ignore
     }
   }
