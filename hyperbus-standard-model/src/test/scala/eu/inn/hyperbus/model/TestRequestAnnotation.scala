@@ -46,8 +46,13 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
   "Request Annotation " - {
 
     "TestPost1 should serialize" in {
-      val post1 = TestPost1("155", TestBody1("abcde"), messageId = "123", correlationId = "123")
+      val post1 = TestPost1("155", TestBody1("abcde"), headers=Map.empty, messageId = "123", correlationId = "123")
       post1.serializeToString() should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}""")
+    }
+
+    "TestPost1 should serialize with headers" in {
+      val post1 = TestPost1("155", TestBody1("abcde"), headers=Map("test" → Seq("a")), messageId = "123", correlationId = "123")
+      post1.serializeToString() should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123","headers":{"test":["a"]}},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should deserialize" in {
@@ -69,6 +74,21 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       )))
     }
 
+    "TestPost1 should deserialize with headers" in {
+      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123","headers":{"test":["a"]}},"body":{"data":"abcde"}}"""
+      val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
+      val post1 = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
+        TestPost1(requestHeader, jsonParser)
+      }
+
+      post1.body should equal(TestBody1("abcde"))
+      post1.id should equal("155")
+      post1.uri should equal(Uri("/test-post-1/{id}", Map(
+        "id" → "155"
+      )))
+      post1.headers should equal(Map("test" → Seq("a")))
+    }
+
     "TestOuterPost should serialize" in {
       val ba = new ByteArrayOutputStream()
       val inner1 = TestInnerBodyEmbedded("eklmn")
@@ -76,7 +96,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       val inner3 = TestInnerBodyEmbedded("yey")
       val postO = TestOuterResource(TestOuterBody("abcde",
         TestOuterBodyEmbedded(inner1, List(inner2,inner3))
-      ), messageId = "123", correlationId = "123")
+      ), headers=Map.empty, messageId = "123", correlationId = "123")
       postO.serialize(ba)
       val str = ba.toString("UTF-8")
       str should equal("""{"request":{"uri":{"pattern":"/test-outer-resource"},"method":"get","contentType":"test-outer-body","messageId":"123"},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}""")
@@ -112,6 +132,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
         DynamicRequest(requestHeader, jsonParser)
       }
       request should equal(new DynamicGet(Uri("/test"),DynamicBody(Obj(Map("resourceId" -> Text("100500")))),
+        headers=Map.empty,
         messageId = "123",
         correlationId = "123"
       ))

@@ -81,7 +81,7 @@ class CliService(console: Console, config: Config) extends Service {
     val jf = new JsonFactory()
     val jp = jf.createParser(body)
     try {
-      DynamicRequest(RequestHeader(Uri(uriPattern), method, contentType, IdGenerator.create(), None), jp)
+      DynamicRequest(RequestHeader(Uri(uriPattern), method, contentType, IdGenerator.create(), None, Map.empty), jp)
     } finally {
       jp.close()
     }

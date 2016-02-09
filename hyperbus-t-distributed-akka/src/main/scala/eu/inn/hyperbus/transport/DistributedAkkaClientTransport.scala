@@ -81,8 +81,8 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     Future.successful {
       new PublishResult {
         def sent = None
-
         def offset = None
+        override def toString = s"PublishResult(sent=None,offset=None)"
       }
     }
   }

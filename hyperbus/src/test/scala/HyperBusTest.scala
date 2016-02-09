@@ -91,7 +91,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"), headers = Map.empty, messageId = "123", correlationId = "123")
 
       ct.input should equal(
         """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
@@ -113,6 +113,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
           Some("application/vnd+test-1.json"),
           Obj(Map("resourceData" → Text("ha ha")))
         ),
+        headers = Map.empty,
         messageId = "123",
         correlationId = "123"
       )
@@ -134,7 +135,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPostWithNoContent(TestBody1("empty"), messageId = "123", correlationId = "123")
+      val f = hyperBus <~ TestPostWithNoContent(TestBody1("empty"), headers = Map.empty, messageId = "123", correlationId = "123")
 
       ct.input should equal(
         """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"empty"}}"""
@@ -152,7 +153,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ StaticPostWithDynamicBody(DynamicBody(Text("ha ha")), messageId = "123", correlationId = "123")
+      val f = hyperBus <~ StaticPostWithDynamicBody(DynamicBody(Text("ha ha")), headers = Map.empty, messageId = "123", correlationId = "123")
 
       ct.input should equal(
         """{"request":{"uri":{"pattern":"/empty"},"method":"post","messageId":"123"},"body":"ha ha"}"""
@@ -170,7 +171,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody, messageId = "123", correlationId = "123")
+      val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123")
 
       ct.input should equal(
         """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
@@ -188,7 +189,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
+      val f = hyperBus <~ TestPost1(TestBody1("ha ha"), headers = Map.empty, messageId = "123", correlationId = "123")
 
       ct.input should equal(
         """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
@@ -205,18 +206,18 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: TestPost1 =>
         Future {
-          Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123")
+          Created(TestCreatedBody("100500"), headers = Map.empty, messageId = "123", correlationId = "123")
         }
       }
 
       val req = """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
-      msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))
+      msg should equal(TestPost1(TestBody1("ha ha"), headers = Map.empty, messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
-        r should equal(Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123"))
+        r should equal(Created(TestCreatedBody("100500"), headers = Map.empty, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
         r.serialize(ba)
         val s = ba.toString("UTF-8")
@@ -231,18 +232,18 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: StaticPostWithEmptyBody =>
         Future {
-          NoContent(EmptyBody, messageId = "123", correlationId = "123")
+          NoContent(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123")
         }
       }
 
       val req = """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"no-content","messageId":"123"},"body":null}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
-      msg should equal(StaticPostWithEmptyBody(EmptyBody, messageId = "123", correlationId = "123"))
+      msg should equal(StaticPostWithEmptyBody(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
-        r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
+        r should equal(NoContent(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
         r.serialize(ba)
         val s = ba.toString("UTF-8")
@@ -257,18 +258,18 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: StaticPostWithDynamicBody =>
         Future {
-          NoContent(EmptyBody, messageId = "123", correlationId = "123")
+          NoContent(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123")
         }
       }
 
       val req = """{"request":{"uri":{"pattern":"/empty"},"method":"post","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
-      msg should equal(StaticPostWithDynamicBody(DynamicBody(Some("some-content"), Text("haha")), messageId = "123", correlationId = "123"))
+      msg should equal(StaticPostWithDynamicBody(DynamicBody(Some("some-content"), Text("haha")), headers = Map.empty, messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
-        r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
+        r should equal(NoContent(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
         r.serialize(ba)
         val s = ba.toString("UTF-8")
@@ -283,20 +284,20 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null, st)
       hyperBus.onCommand(Uri("/test"), Method.GET, None) { request =>
         Future {
-          NoContent(EmptyBody, messageId = "123", correlationId = "123")
+          NoContent(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123")
         }
       }
 
       val req = """{"request":{"uri":{"pattern":"/test"},"method":"get","contentType":"some-content","messageId":"123"},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
-      msg should equal(DynamicRequest(RequestHeader(Uri("/test"), Method.GET, Some("some-content"), "123", Some("123")),
+      msg should equal(DynamicRequest(RequestHeader(Uri("/test"), Method.GET, Some("some-content"), "123", Some("123"), Map.empty),
         DynamicBody(Some("some-content"), Text("haha")))
       )
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
-        r should equal(NoContent(EmptyBody, messageId = "123", correlationId = "123"))
+        r should equal(NoContent(EmptyBody, headers = Map.empty, messageId = "123", correlationId = "123"))
         val ba = new ByteArrayOutputStream()
         r.serialize(ba)
         val s = ba.toString("UTF-8")
@@ -322,7 +323,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
 
       val hyperBus = newHyperBus(clientTransport, null)
-      val futureResult = hyperBus <| TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123")
+      val futureResult = hyperBus <| TestPost1(TestBody1("ha ha"), headers = Map.empty, messageId = "123", correlationId = "123")
       whenReady(futureResult) { r =>
         sentEvents.size should equal(1)
       }
@@ -346,6 +347,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(clientTransport, null)
       val futureResult = hyperBus <| DynamicPost(Uri("/resources"),
         DynamicBody(Some("application/vnd+test-1.json"), Obj(Map("resourceData" → Text("ha ha")))),
+        headers = Map.empty,
         messageId = "123",
         correlationId = "123"
       )
@@ -390,14 +392,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null, st)
       hyperBus ~> { post: TestPost1 =>
         Future {
-          throw Conflict(ErrorBody("failed", errorId = "abcde12345"), messageId = "123", correlationId = "123")
+          throw Conflict(ErrorBody("failed", errorId = "abcde12345"), headers = Map.empty, messageId = "123", correlationId = "123")
         }
       }
 
       val req = """{"request":{"uri":{"pattern":"/resources"},"method":"post","contentType":"application/vnd+test-1.json","messageId":"123"},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = st.sInputDeserializer(ba)
-      msg should equal(TestPost1(TestBody1("ha ha"), messageId = "123", correlationId = "123"))
+      msg should equal(TestPost1(TestBody1("ha ha"), headers = Map.empty, messageId = "123", correlationId = "123"))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>

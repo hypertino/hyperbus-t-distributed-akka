@@ -14,7 +14,8 @@ object MessageSerializer {
 
   def serializeRequest[B <: Body](request: Request[B], outputStream: OutputStream) = {
     val req = RequestHeader(request.uri, request.method, request.body.contentType, request.messageId,
-      if (request.messageId == request.correlationId) None else Some(request.correlationId)
+      if (request.messageId == request.correlationId) None else Some(request.correlationId),
+      request.headers
     )
     writeUtf8("""{"request":""", outputStream)
     req.writeJson(outputStream)
@@ -25,7 +26,8 @@ object MessageSerializer {
 
   def serializeResponse[B <: Body](response: Response[B], outputStream: OutputStream) = {
     val resp = ResponseHeader(response.status, response.body.contentType, response.messageId,
-      if (response.messageId == response.correlationId) None else Some(response.correlationId)
+      if (response.messageId == response.correlationId) None else Some(response.correlationId),
+      response.headers
     )
     writeUtf8("""{"response":""", outputStream)
     resp.writeJson(outputStream)

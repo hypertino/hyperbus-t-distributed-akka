@@ -29,7 +29,7 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     val q"case class $className[..$typeArgs](..$fields) extends ..$bases { ..$body }" = existingClass
 
     val fieldsExcept = fields.filterNot { f ⇒
-      f.name.toString == "correlationId" || f.name.toString == "messageId"
+      f.name == "headers" || f.name.toString == "correlationId" || f.name.toString == "messageId"
     }
 
     // eliminate contravariance
@@ -41,7 +41,10 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     }
 
     val newClass = q"""
-        case class $className[..$typeArgs](..$fieldsExcept,messageId: String,correlationId: String) extends ..$bases {
+        case class $className[..$typeArgs](..$fieldsExcept,
+                                           headers: Map[String, Seq[String]],
+                                           messageId: String,
+                                           correlationId: String) extends ..$bases {
           ..$body
           def status: Int = ${className.toTermName}.status
         }
@@ -49,11 +52,20 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
 
     val ctxVal = fresh("ctx")
     val companionExtra = q"""
-        def apply[..$methodTypeArgs](..$fieldsExcept)
+        def apply[..$methodTypeArgs](..$fieldsExcept, headers: Map[String, Seq[String]])
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames] = {
           val $ctxVal = contextFactory.newContext()
-          ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},messageId = $ctxVal.messageId, correlationId = $ctxVal.correlationId)
+          ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},
+            headers = headers,
+            messageId = $ctxVal.messageId,
+            correlationId = $ctxVal.correlationId
+          )
         }
+
+        def apply[..$methodTypeArgs](..$fieldsExcept)
+          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames]
+          = apply(..${fieldsExcept.map(_.name)}, Map.empty)(contextFactory)
+
         def status: Int = $annotationArgument
     """
 

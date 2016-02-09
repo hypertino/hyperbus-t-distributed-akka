@@ -22,6 +22,13 @@ trait DynamicBody extends Body with Links {
       serializer.bind[Value](content)
     }
   }
+
+  def copy(
+            contentType: Option[String] = this.contentType,
+            content: Value = this.content
+          ): DynamicBody = {
+    DynamicBody(contentType, content)
+  }
 }
 
 object DynamicBody {
@@ -45,6 +52,21 @@ private[model] case class DynamicBodyContainer(contentType: Option[String], cont
 
 trait DynamicRequest extends Request[DynamicBody] {
   override def toString = s"DynamicRequest(RequestHeader($uri,$method,${body.contentType},$messageId,$correlationId),$body)"
+
+  def copy(
+            uri: Uri = this.uri,
+            method: String = this.method,
+            messageId: String = this.messageId,
+            correlationId: String = this.correlationId,
+            headers: Map[String, Seq[String]] = this.headers,
+            body: DynamicBody = this.body
+          ): DynamicRequest = {
+    DynamicRequest(
+      RequestHeader(uri, method, body.contentType, messageId,
+        if (messageId == correlationId) None else Some(correlationId),
+        headers), body
+    )
+  }
 }
 
 object DynamicRequest {
@@ -63,19 +85,21 @@ object DynamicRequest {
   def apply(requestHeader: RequestHeader, body: DynamicBody): DynamicRequest = {
     val msgId = requestHeader.messageId
     val cId = requestHeader.correlationId.getOrElse(msgId)
+    val h = requestHeader.headers
     val b = body
     requestHeader.method match {
-      case Method.GET => DynamicGet(requestHeader.uri, b, msgId, cId)
-      case Method.POST => DynamicPost(requestHeader.uri, b, msgId, cId)
-      case Method.PUT => DynamicPut(requestHeader.uri, b, msgId, cId)
-      case Method.DELETE => DynamicDelete(requestHeader.uri, b, msgId, cId)
-      case Method.PATCH => DynamicPatch(requestHeader.uri, b, msgId, cId)
+      case Method.GET => DynamicGet(requestHeader.uri, b, h, msgId, cId)
+      case Method.POST => DynamicPost(requestHeader.uri, b, h,msgId, cId)
+      case Method.PUT => DynamicPut(requestHeader.uri, b, h,msgId, cId)
+      case Method.DELETE => DynamicDelete(requestHeader.uri, b, h,msgId, cId)
+      case Method.PATCH => DynamicPatch(requestHeader.uri, b, h, msgId, cId)
       case other ⇒ new DynamicRequest {
         override def uri: Uri = requestHeader.uri
         override def method: String = requestHeader.method
         override def correlationId: String = cId
         override def messageId: String = msgId
         override def body: DynamicBody = b
+        override def headers: Map[String,Seq[String]] = h
       }
       //case _ => throw new DecodeException(s"Unknown method: '${requestHeader.method}'") //todo: save more details (messageId) or introduce DynamicMethodRequest
     }
@@ -83,7 +107,8 @@ object DynamicRequest {
 
   def unapply(request: DynamicRequest): Option[(RequestHeader, DynamicBody)] = Some((
     RequestHeader(request.uri, request.method, request.body.contentType, request.messageId,
-      if (request.messageId == request.correlationId) None else Some(request.correlationId)),
+      if (request.messageId == request.correlationId) None else Some(request.correlationId),
+      request.headers),
     request.body
     ))
 

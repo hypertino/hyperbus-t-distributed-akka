@@ -71,7 +71,7 @@ class TestActor extends Actor {
     count += 1
     Future {
       if (testPost3.body.resourceData == 1)
-        Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123")
+        Created(TestCreatedBody("100500"), headers = Map.empty, messageId = "123", correlationId = "123")
       else
       if (testPost3.body.resourceData == -1)
         throw Conflict(ErrorBody("failed"))
@@ -82,7 +82,7 @@ class TestActor extends Actor {
       if (testPost3.body.resourceData == -3)
         NotFound(TestErrorBody("not_found"))
       else
-        Ok(DynamicBody(Text("another result")), messageId = "123", correlationId = "123")
+        Ok(DynamicBody(Text("another result")), headers = Map.empty, messageId = "123", correlationId = "123")
     }
   }
 }
@@ -120,7 +120,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       hyperBus.routeTo[TestActor](actorRef)
       hyperBus.routeTo[TestGroupActor](groupActorRef)
 
-      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"), messageId = "abc", correlationId = "xyz")
+      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"), headers = Map.empty, messageId = "abc", correlationId = "xyz")
 
       whenReady(f1) { r =>
         //r.messageId should equal("123")
@@ -149,13 +149,13 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost3(TestBody2(1))
 
       whenReady(f) { r =>
-        r should equal(Created(TestCreatedBody("100500"), messageId = "123", correlationId = "123"))
+        r should equal(Created(TestCreatedBody("100500"), headers = Map.empty, messageId = "123", correlationId = "123"))
       }
 
       val f2 = hyperBus <~ TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result")), messageId = "123", correlationId = "123"))
+        r should equal(Ok(DynamicBody(Text("another result")), headers = Map.empty, messageId = "123", correlationId = "123"))
       }
 
       val f3 = hyperBus <~ TestPost3(TestBody2(-1))

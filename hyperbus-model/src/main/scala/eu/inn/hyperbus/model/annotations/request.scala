@@ -30,7 +30,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     val q"case class $className(..$fields) extends ..$bases { ..$body }" = existingClass
 
     val fieldsExcept = fields.filterNot { f ⇒
-      f.name.toString == "correlationId" || f.name.toString == "messageId"
+      f.name.toString == "headers" || f.name.toString == "correlationId" || f.name.toString == "messageId"
     }
 
     val (bodyFieldName, bodyType) = fields.flatMap { field ⇒
@@ -61,6 +61,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     }
     val newClass = q"""
         @eu.inn.hyperbus.model.annotations.uri($uriPattern) case class $className(..$fieldsExcept,
+          headers: Map[String, Seq[String]],
           messageId: String,
           correlationId: String) extends ..$bases {
           ..$body
@@ -75,10 +76,19 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     val ctxVal = fresh("ctx")
     val bodyVal = fresh("body")
     val companionExtra = q"""
-        def apply(..$fieldsExcept)(implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className = {
+        def apply(..$fieldsExcept, headers: Map[String, Seq[String]])
+          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className = {
           val $ctxVal = contextFactory.newContext()
-          ${className.toTermName}(..${fieldsExcept.map(_.name)},messageId = $ctxVal.messageId, correlationId = $ctxVal.correlationId)
+          ${className.toTermName}(..${fieldsExcept.map(_.name)},
+            headers = headers,
+            messageId = $ctxVal.messageId,
+            correlationId = $ctxVal.correlationId
+          )
         }
+
+        def apply(..$fieldsExcept)
+          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className =
+          apply(..${fieldsExcept.map(_.name)}, Map.empty[String,Seq[String]])(contextFactory)
 
         def deserializer(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser: com.fasterxml.jackson.core.JsonParser): $className = {
           val $bodyVal = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
@@ -90,10 +100,12 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
                 q"${field.name} = requestHeader.uri.args(${field.name.toString}).specific"
             }},
             $bodyFieldName = $bodyVal,
+            headers = requestHeader.headers,
             messageId = requestHeader.messageId,
             correlationId = requestHeader.correlationId.getOrElse(requestHeader.messageId)
           )
         }
+
         def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className =
           deserializer(requestHeader, jsonParser)
         def uriPattern = $uriPattern

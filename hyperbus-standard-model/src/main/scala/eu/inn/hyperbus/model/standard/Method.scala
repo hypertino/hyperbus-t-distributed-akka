@@ -22,14 +22,19 @@ abstract class StaticGet[+B <: Body](initBody: B) extends Get[B]
 case class DynamicGet(
                        uri: Uri,
                        body: DynamicBody,
+                       headers: Map[String, Seq[String]],
                        messageId: String,
                        correlationId: String) extends Get[DynamicBody] with DynamicRequest
 
 object DynamicGet {
-  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicGet = {
+  def apply(uri: Uri, body: DynamicBody, headers: Map[String, Seq[String]])
+           (implicit contextFactory: MessagingContextFactory): DynamicGet = {
     val ctx = contextFactory.newContext()
-    DynamicGet(uri, body, ctx.messageId, ctx.correlationId)
+    DynamicGet(uri, body, headers, ctx.messageId, ctx.correlationId)
   }
+
+  def apply(uri: Uri, body: DynamicBody)
+           (implicit contextFactory: MessagingContextFactory): DynamicGet = apply(uri, body, Map.empty)(contextFactory)
 }
 
 @method("delete")
@@ -42,14 +47,19 @@ abstract class StaticDelete[+B <: Body](initBody: B) extends Delete[B]
 case class DynamicDelete(
                           uri: Uri,
                           body: DynamicBody,
+                          headers: Map[String, Seq[String]],
                           messageId: String,
                           correlationId: String) extends Delete[DynamicBody] with DynamicRequest
 
 object DynamicDelete {
-  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicDelete = {
+  def apply(uri: Uri, body: DynamicBody, headers: Map[String, Seq[String]])
+           (implicit contextFactory: MessagingContextFactory): DynamicDelete = {
     val ctx = contextFactory.newContext()
-    DynamicDelete(uri, body, ctx.messageId, ctx.correlationId)
+    DynamicDelete(uri, body, headers, ctx.messageId, ctx.correlationId)
   }
+
+  def apply(uri: Uri, body: DynamicBody)
+           (implicit contextFactory: MessagingContextFactory): DynamicDelete = apply(uri, body, Map.empty)(contextFactory)
 }
 
 @method("post")
@@ -61,14 +71,19 @@ abstract class StaticPost[+B <: Body](initBody: B) extends Post[B]
 
 case class DynamicPost(uri: Uri,
                        body: DynamicBody,
+                       headers: Map[String, Seq[String]],
                        messageId: String,
                        correlationId: String) extends Post[DynamicBody] with DynamicRequest
 
 object DynamicPost {
-  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPost = {
+  def apply(uri: Uri, body: DynamicBody, headers: Map[String, Seq[String]])
+           (implicit contextFactory: MessagingContextFactory): DynamicPost = {
     val ctx = contextFactory.newContext()
-    DynamicPost(uri, body, ctx.messageId, ctx.correlationId)
+    DynamicPost(uri, body, headers, ctx.messageId, ctx.correlationId)
   }
+
+  def apply(uri: Uri, body: DynamicBody)
+           (implicit contextFactory: MessagingContextFactory): DynamicPost = apply(uri, body, Map.empty)(contextFactory)
 }
 
 @method("put")
@@ -81,14 +96,19 @@ abstract class StaticPut[+B <: Body](initBody: B) extends Put[B]
 case class DynamicPut(
                        uri: Uri,
                        body: DynamicBody,
+                       headers: Map[String, Seq[String]],
                        messageId: String,
                        correlationId: String) extends Put[DynamicBody] with DynamicRequest
 
 object DynamicPut {
-  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPut = {
+  def apply(uri: Uri, body: DynamicBody, headers: Map[String, Seq[String]])
+           (implicit contextFactory: MessagingContextFactory): DynamicPut = {
     val ctx = contextFactory.newContext()
-    DynamicPut(uri, body, ctx.messageId, ctx.correlationId)
+    DynamicPut(uri, body, headers, ctx.messageId, ctx.correlationId)
   }
+
+  def apply(uri: Uri, body: DynamicBody)
+           (implicit contextFactory: MessagingContextFactory): DynamicPut = apply(uri, body, Map.empty)(contextFactory)
 }
 
 @method("patch")
@@ -101,12 +121,17 @@ abstract class StaticPatch[+B <: Body](initBody: B) extends Patch[B]
 case class DynamicPatch(
                          uri: Uri,
                          body: DynamicBody,
+                         headers: Map[String, Seq[String]],
                          messageId: String,
                          correlationId: String) extends Patch[DynamicBody] with DynamicRequest
 
 object DynamicPatch {
-  def apply(uri: Uri, body: DynamicBody)(implicit contextFactory: MessagingContextFactory): DynamicPatch = {
+  def apply(uri: Uri, body: DynamicBody, headers: Map[String, Seq[String]])
+           (implicit contextFactory: MessagingContextFactory): DynamicPatch = {
     val ctx = contextFactory.newContext()
-    DynamicPatch(uri, body, ctx.messageId, ctx.correlationId)
+    DynamicPatch(uri, body, headers, ctx.messageId, ctx.correlationId)
   }
+
+  def apply(uri: Uri, body: DynamicBody)
+           (implicit contextFactory: MessagingContextFactory): DynamicPatch = apply(uri, body, Map.empty)(contextFactory)
 }

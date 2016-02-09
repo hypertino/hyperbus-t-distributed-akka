@@ -168,9 +168,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
 
   def publish[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Tree = {
     val in = weakTypeOf[IN]
-    val uriPattern = getUriAnnotation(in)
     val thiz = c.prefix.tree
-
     val thizVal = fresh("thiz")
 
     val obj = q"""{

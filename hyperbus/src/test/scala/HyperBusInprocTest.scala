@@ -64,6 +64,7 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       }
 
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"),
+        headers = Map.empty,
         messageId = "abc",
         correlationId = "xyz") map { result ⇒
 
@@ -98,13 +99,13 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost3(TestBody2(1))
 
       whenReady(f) { r =>
-        r should equal(Created(TestCreatedBody("100500"), messageId = r.messageId, correlationId = r.correlationId))
+        r should equal(Created(TestCreatedBody("100500"), headers = Map.empty, messageId = r.messageId, correlationId = r.correlationId))
       }
 
       val f2 = hyperBus <~ TestPost3(TestBody2(2))
 
       whenReady(f2) { r =>
-        r should equal(Ok(DynamicBody(Text("another result")), messageId = r.messageId, correlationId = r.correlationId))
+        r should equal(Ok(DynamicBody(Text("another result")), headers = Map.empty, messageId = r.messageId, correlationId = r.correlationId))
       }
 
       val f3 = hyperBus <~ TestPost3(TestBody2(-1))

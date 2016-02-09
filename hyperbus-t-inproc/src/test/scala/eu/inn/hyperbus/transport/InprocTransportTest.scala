@@ -16,6 +16,8 @@ case class MockRequest(uri: Uri, message: String) extends TransportRequest {
 
   override def messageId: String = ???
 
+  override def headers = Map.empty
+
   override def serialize(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
 }
 
@@ -27,6 +29,8 @@ case class MockResponse(message: String) extends TransportResponse {
   override def correlationId: String = ???
 
   override def messageId: String = ???
+
+  override def headers = Map.empty
 
   override def serialize(output: OutputStream): Unit = output.write(message.getBytes("UTF-8"))
 }

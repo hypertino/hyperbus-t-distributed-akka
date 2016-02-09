@@ -80,6 +80,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 case class MockRequest(uriPattern: String,
                        partitionId: String,
                        message: String,
+                       headers: Map[String, Seq[String]] = Map.empty,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
   def uri: Uri = Uri(uriPattern, Map("partitionId" → partitionId))
@@ -91,6 +92,7 @@ case class MockRequest(uriPattern: String,
 
 case class MockResponse(message: String,
                         partitionId: String,
+                        headers: Map[String, Seq[String]] = Map.empty,
                         correlationId: String = IdGenerator.create(),
                         messageId: String = IdGenerator.create()) extends TransportResponse {
   override def serialize(output: OutputStream): Unit = {

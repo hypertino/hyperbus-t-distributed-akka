@@ -91,6 +91,8 @@ class KafkaClientTransport(producerProperties: Properties,
               def sent = Some(true)
 
               def offset = Some(s"${recordMetadata.partition()}/${recordMetadata.offset()}}")
+
+              override def toString = s"PublishResult(sent=$sent,offset=$offset)"
             }
           )
           if (logMessages && log.isTraceEnabled) {

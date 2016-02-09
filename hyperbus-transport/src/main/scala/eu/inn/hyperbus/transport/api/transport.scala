@@ -15,6 +15,8 @@ trait TransportMessage {
 
   def correlationId: String
 
+  def headers: Map[String, Seq[String]]
+
   def serialize(output: OutputStream)
 
   def serializeToString(encoding: String = "UTF-8"): String = {

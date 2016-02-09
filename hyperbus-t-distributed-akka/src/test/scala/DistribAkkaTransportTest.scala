@@ -23,6 +23,7 @@ import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 
 // move mocks to separate assembly
 case class MockRequest(uriPattern: String, message: String,
+                       headers: Map[String, Seq[String]] = Map.empty,
                        correlationId: String = IdGenerator.create(),
                        messageId: String = IdGenerator.create()) extends TransportRequest {
   def uri: Uri = Uri(uriPattern)
@@ -33,6 +34,7 @@ case class MockRequest(uriPattern: String, message: String,
 }
 
 case class MockResponse(message: String,
+                        headers: Map[String, Seq[String]] = Map.empty,
                         correlationId: String = IdGenerator.create(),
                         messageId: String = IdGenerator.create()) extends TransportResponse {
   override def serialize(output: OutputStream): Unit = {
