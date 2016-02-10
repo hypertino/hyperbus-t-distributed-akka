@@ -3,12 +3,13 @@ package eu.inn.hyperbus.model
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.{Text, Obj}
+import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.standard.{DefLink, StaticGet, DynamicGet}
+import eu.inn.hyperbus.model.standard.{DynamicGet, StaticGet}
 import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.uri.{UriParts, Uri}
+import eu.inn.hyperbus.serialization.util.StringDeserializer
+import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.util.StringSerializer
 import org.scalatest.{FreeSpec, Matchers}
 
 @request("/test-post-1/{id}")
@@ -47,12 +48,12 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
 
     "TestPost1 should serialize" in {
       val post1 = TestPost1("155", TestBody1("abcde"), headers=Map.empty, messageId = "123", correlationId = "123")
-      post1.serializeToString() should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}""")
+      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should serialize with headers" in {
       val post1 = TestPost1("155", TestBody1("abcde"), headers=Map("test" → Seq("a")), messageId = "123", correlationId = "123")
-      post1.serializeToString() should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123","headers":{"test":["a"]}},"body":{"data":"abcde"}}""")
+      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123","headers":{"test":["a"]}},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should deserialize" in {
@@ -72,6 +73,13 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       post1.uri should equal(Uri("/test-post-1/{id}", Map(
         "id" → "155"
       )))
+    }
+
+    "TestPost1 should deserialize from String" in {
+      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}"""
+      val post1 = StringDeserializer.deserializeFromString[TestPost1](str)
+      val post2 = TestPost1("155", TestBody1("abcde"), headers=Map.empty, messageId = "123", correlationId = "123")
+      post1 should equal(post2)
     }
 
     "TestPost1 should deserialize with headers" in {

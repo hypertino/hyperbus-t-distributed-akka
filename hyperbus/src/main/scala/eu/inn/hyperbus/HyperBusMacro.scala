@@ -71,7 +71,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     if (requestType.companion == null) {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
-    val requestDeserializer = requestType.companion.declaration(TermName("deserializer"))
+    val requestDeserializer = requestType.companion.declaration(TermName("apply"))
     val uriPattern = getUriAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
@@ -97,7 +97,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     if (requestType.companion == null) {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
-    val requestDeserializer = requestType.companion.declaration(TermName("deserializer"))
+    val requestDeserializer = requestType.companion.declaration(TermName("apply"))
     val uriPattern = getUriAnnotation(requestType)
     val (method: String, bodySymbol) = getMethodAndBody(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
@@ -135,7 +135,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       t.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
-      val deserializer = body.companion.declaration(TermName("deserializer"))
+      val deserializer = body.companion.declaration(TermName("apply"))
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
       cq"""$ta => $deserializer _"""

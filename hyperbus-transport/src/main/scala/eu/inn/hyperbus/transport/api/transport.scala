@@ -18,12 +18,6 @@ trait TransportMessage {
   def headers: Map[String, Seq[String]]
 
   def serialize(output: OutputStream)
-
-  def serializeToString(encoding: String = "UTF-8"): String = {
-    val outputStream = new ByteArrayOutputStream()
-    serialize(outputStream)
-    outputStream.toString(encoding)
-  }
 }
 
 trait TransportRequest extends TransportMessage {

@@ -12,12 +12,6 @@ trait Body {
   def contentType: Option[String]
 
   def serialize(output: OutputStream)
-
-  def serializeToString(encoding: String = "UTF-8"): String = {
-    val outputStream = new ByteArrayOutputStream()
-    serialize(outputStream)
-    outputStream.toString(encoding)
-  }
 }
 
 trait NoContentType {

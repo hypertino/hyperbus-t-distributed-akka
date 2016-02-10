@@ -48,14 +48,12 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
     // check requestHeader
     val companionExtra = q"""
         def contentType = Some($annotationArgument)
-        def deserializer(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
+        def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
           eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { case $deserializerVal =>
             $deserializerVal.unbind[$className]
           }
         }
-        def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className =
-          deserializer(contentType, jsonParser)
         """
 
     val newCompanion = clzCompanion map { existingCompanion =>

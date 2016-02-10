@@ -90,7 +90,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className =
           apply(..${fieldsExcept.map(_.name)}, Map.empty[String,Seq[String]])(contextFactory)
 
-        def deserializer(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser: com.fasterxml.jackson.core.JsonParser): $className = {
+        def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           val $bodyVal = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
 
           //todo: extract uri parts!
@@ -106,8 +106,6 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           )
         }
 
-        def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className =
-          deserializer(requestHeader, jsonParser)
         def uriPattern = $uriPattern
     """
 

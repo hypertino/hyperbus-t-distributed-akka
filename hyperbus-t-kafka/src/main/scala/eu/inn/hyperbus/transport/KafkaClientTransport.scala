@@ -8,6 +8,7 @@ import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
+import eu.inn.hyperbus.util.StringSerializer
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.slf4j.LoggerFactory
 
@@ -56,7 +57,7 @@ class KafkaClientTransport(producerProperties: Properties,
   }
 
   private def publishToRoute(route: KafkaRoute, message: TransportRequest): Future[PublishResult] = {
-    val messageString = message.serializeToString()
+    val messageString = StringSerializer.serializeToString(message)
 
     val record: ProducerRecord[String, String] =
       if (route.kafkaPartitionKeys.isEmpty) {
