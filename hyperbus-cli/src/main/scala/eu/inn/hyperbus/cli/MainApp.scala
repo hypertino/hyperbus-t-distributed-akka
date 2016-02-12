@@ -11,6 +11,7 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
+import eu.inn.hyperbus.serialization.util.StringDeserializer
 import eu.inn.hyperbus.transport.ActorSystemRegistry
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportManager}
@@ -28,7 +29,7 @@ case class InitCommand(hyperBus: HyperBus) extends Commands
 
 case class InputCommand(message: String) extends Commands
 
-@body("application/vnd+test-body.json")
+@body("test-body")
 case class TestBody(content: Option[String]) extends Body
 
 @request("/test")
@@ -46,19 +47,19 @@ class CliService(console: Console, config: Config) extends Service {
 
   hyperBus ~> { r: TestRequest ⇒
     Future.successful {
-      Ok(DynamicBody(Text(s"Received content: ${r.body.content}")))
+      Ok(DynamicBody(Text(s"Received: ${r.body.content}")))
     }
   }
 
-  def ask(method: String, uriPattern: String, contentType: String, body: String): Unit = {
-    val r = createDynamicRequest(method, uriPattern, Some(contentType), body)
+  def ask(request: String): Unit = {
+    val r = StringDeserializer.deserializeFromString[DynamicRequest](request)
     out(s"<~$r")
     val f = hyperBus <~ r
     printResponse(f)
   }
 
-  def publish(method: String, uriPattern: String, contentType: String, body: String): Unit = {
-    val r = createDynamicRequest(method, uriPattern, Some(contentType), body)
+  def publish(request: String): Unit = {
+    val r = StringDeserializer.deserializeFromString[DynamicRequest](request)
     out(s"<!$r")
     val f = hyperBus <| r
   }
@@ -75,16 +76,6 @@ class CliService(console: Console, config: Config) extends Service {
     val address = Address(protocol, system, host, port.toInt)
     out("Downing: " + address)
     cluster.down(address)
-  }
-
-  private def createDynamicRequest(method: String, uriPattern: String, contentType: Option[String], body: String): DynamicRequest = {
-    val jf = new JsonFactory()
-    val jp = jf.createParser(body)
-    try {
-      DynamicRequest(RequestHeader(Uri(uriPattern), method, contentType, IdGenerator.create(), None, Map.empty), jp)
-    } finally {
-      jp.close()
-    }
   }
 
   private def printResponse(response: Future[Response[Body]]) = {
@@ -141,17 +132,17 @@ class CliService(console: Console, config: Config) extends Service {
 class CliServiceController(service: CliService, console: Console, shutdownMonitor: ShutdownMonitor)
   extends ConsoleServiceController(service, console, shutdownMonitor) {
 
-  val askCommand = """^~>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
-  val publishCommand = """^\|>\s*(.+)\s+(.+)\s+(.+)\s+(.+)$""".r
+  val askCommand = """^<~\s*(.+)$""".r
+  val publishCommand = """^\<|\s*(.+)$""".r
   val downMember = """^down (.+)://(.+)@(.+):(\d+)$""".r
   val leaveMember = """^leave (.+)://(.+)@(.+):(\d+)$""".r
 
   override def customCommand = {
-    case askCommand(method, uriPattern, contentType, body) ⇒
-      service.ask(method, uriPattern, contentType, body)
+    case askCommand(str) ⇒
+      service.ask(str)
 
-    case publishCommand(method, uriPattern, contentType, body) ⇒
-      service.publish(method, uriPattern, contentType, body)
+    case publishCommand(str) ⇒
+      service.publish(str)
 
     case downMember(protocol, system, host, port) ⇒
       service.down(protocol, system, host, port)
@@ -161,8 +152,8 @@ class CliServiceController(service: CliService, console: Console, shutdownMonito
   }
 
   override def help(): Unit = {
-    console.writeln(s"""|Available commands: ~>, |>, quit
-            |Example: ~> get /test application/vnd+test-body.json {"someValue":"abc"}""".stripMargin('|'))
+    console.writeln(s"""|Available commands: <~, <|, quit
+            |Example: <~ {"request":{"method":"get","uri":{"pattern":"/test"},"messageId":"123", "contentType": "test-body"},"body":{"content":"100500"}}""".stripMargin('|'))
   }
 }
 

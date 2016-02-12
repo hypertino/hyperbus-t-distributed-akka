@@ -70,7 +70,10 @@ trait DynamicRequest extends Request[DynamicBody] {
 }
 
 object DynamicRequest {
-  def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = deserialize(requestHeader, jsonParser)
+  def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
+    val b = DynamicBody(requestHeader.contentType, jsonParser)
+    apply(requestHeader, b)
+  }
 
   def apply(message: String, encoding: String = "UTF-8"): DynamicRequest = {
     apply(new ByteArrayInputStream(message.getBytes(encoding)))
@@ -111,9 +114,4 @@ object DynamicRequest {
       request.headers),
     request.body
     ))
-
-  def deserialize(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
-    val b = DynamicBody(requestHeader.contentType, jsonParser)
-    apply(requestHeader, b)
-  }
 }

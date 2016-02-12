@@ -32,12 +32,12 @@ class HyperBus(val transportManager: TransportManager,
 
   def onEvent(uri: Uri, method: String, contentType: Option[String], groupName: Option[String])
              (handler: (DynamicRequest) => Future[Unit]): String = {
-    onEvent[DynamicRequest](uri, method, contentType, groupName, DynamicRequest.deserialize)(handler)
+    onEvent[DynamicRequest](uri, method, contentType, groupName, DynamicRequest.apply)(handler)
   }
 
   def onCommand(uri: Uri, method: String, contentType: Option[String])
                (handler: DynamicRequest => Future[_ <: Response[Body]]): String = {
-    onCommand[Response[Body], DynamicRequest](uri, method, contentType, DynamicRequest.deserialize)(handler)
+    onCommand[Response[Body], DynamicRequest](uri, method, contentType, DynamicRequest.apply)(handler)
   }
 
   protected case class RequestReplySubscription[REQ <: Request[Body]](
