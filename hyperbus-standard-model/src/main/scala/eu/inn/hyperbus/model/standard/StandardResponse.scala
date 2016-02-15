@@ -1,9 +1,25 @@
 package eu.inn.hyperbus.model.standard
 
 import eu.inn.hyperbus.model.{Body, Response}
-import eu.inn.hyperbus.serialization.ResponseHeader
+import eu.inn.hyperbus.serialization._
 
 object StandardResponse {
+
+  def apply(responseHeader: ResponseHeader,
+                           responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+                           bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body] = {
+    val body =
+      if (bodyDeserializer.isDefinedAt(responseHeader))
+        bodyDeserializer(responseHeader)(responseHeader.contentType, responseBodyJson)
+      else
+        StandardResponseBody(responseHeader, responseBodyJson)
+    apply(responseHeader, body)
+  }
+
+  def apply(responseHeader: ResponseHeader, responseBodyJson: com.fasterxml.jackson.core.JsonParser): Response[Body] = {
+    apply(responseHeader, responseBodyJson, PartialFunction.empty)
+  }
+
   def apply(responseHeader: ResponseHeader, body: Body): Response[Body] = {
     val messageId = responseHeader.messageId
     val correlationId = responseHeader.correlationId.getOrElse(messageId)

@@ -7,7 +7,7 @@ import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.standard.{DynamicGet, StaticGet}
 import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.serialization.util.StringDeserializer
+import eu.inn.hyperbus.model.serialization.util.StringDeserializer
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.util.StringSerializer
 import org.scalatest.{FreeSpec, Matchers}
@@ -77,7 +77,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
 
     "TestPost1 should deserialize from String" in {
       val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"method":"test-method","contentType":"test-body-1","messageId":"123"},"body":{"data":"abcde"}}"""
-      val post1 = StringDeserializer.deserializeFromString[TestPost1](str)
+      val post1 = StringDeserializer.request[TestPost1](str)
       val post2 = TestPost1("155", TestBody1("abcde"), headers=Map.empty, messageId = "123", correlationId = "123")
       post1 should equal(post2)
     }

@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 
 import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.model.annotations.body
+import eu.inn.hyperbus.model.serialization.util.StringDeserializer
 import eu.inn.hyperbus.model.standard._
 import org.scalatest.{FreeSpec, Matchers}
 
