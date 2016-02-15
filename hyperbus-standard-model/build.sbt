@@ -14,4 +14,4 @@ libraryDependencies ++= Seq(
   "org.mockito" % "mockito-all" % "1.10.19" % "test"
 )
 
-addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0-M5" cross CrossVersion.full)
+addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)

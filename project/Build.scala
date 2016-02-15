@@ -2,7 +2,7 @@ import sbt.Keys._
 import sbt._
 
 object Build extends sbt.Build {
-  lazy val paradiseVersionRoot = "2.1.0-M5"
+  lazy val paradiseVersionRoot = "2.1.0"
 
   val projectMajorVersion = settingKey[String]("Defines the major version number")
   val projectBuildNumber = settingKey[String]("Defines the build number")
@@ -20,13 +20,13 @@ object Build extends sbt.Build {
         "-deprecation",
         "-unchecked",
         "-optimise",
-        "-target:jvm-1.7",
+        "-target:jvm-1.8",
         "-encoding", "UTF-8"
       ),
 
       javacOptions ++= Seq(
-        "-source", "1.7",
-        "-target", "1.7",
+        "-source", "1.8",
+        "-target", "1.8",
         "-encoding", "UTF-8",
         "-Xlint:unchecked",
         "-Xlint:deprecation"

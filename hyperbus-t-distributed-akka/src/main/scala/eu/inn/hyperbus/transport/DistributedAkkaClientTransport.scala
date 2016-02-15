@@ -4,12 +4,11 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import akka.actor.{Props, ActorSystem}
 import akka.cluster.Cluster
-import akka.contrib.pattern.DistributedPubSubExtension
-import akka.contrib.pattern.DistributedPubSubMediator.Publish
+import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.distributedakka.{NoRouteWatcher, DistributedPubSubExtensionEx, Util}
+import eu.inn.hyperbus.transport.distributedakka.{NoRouteWatcher, DistributedPubSubEx, Util}
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
 
@@ -40,7 +39,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     case _ ⇒ actorSystem.actorOf(Props(new NoRouteWatcher), "no-route-watcher")
   }
 
-  protected[this] val mediator = DistributedPubSubExtensionEx(actorSystem).mediator
+  protected[this] val mediator = DistributedPubSubEx(actorSystem).mediator
 
 
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {

@@ -2,21 +2,14 @@ package eu.inn.hyperbus.transport.distributedakka
 
 import akka.actor._
 import akka.cluster.Cluster
-import akka.contrib.pattern.DistributedPubSubMediator
-import akka.routing._
-
-import scala.concurrent.duration._
+import akka.cluster.pubsub.{DistributedPubSubMediator, DistributedPubSubSettings}
+import akka.dispatch.Dispatchers
 
 /*
 * TODO: remove this class if akka accepts and implements this:
 * https://github.com/akka/akka/issues/19009
 * */
-class DistributedPubSubMediatorEx(
-                                   role: Option[String],
-                                   routingLogic: RoutingLogic,
-                                   gossipInterval: FiniteDuration,
-                                   removedTimeToLive: FiniteDuration,
-                                   maxDeltaElements: Int) extends DistributedPubSubMediator(role, routingLogic, gossipInterval, removedTimeToLive, maxDeltaElements) {
+class DistributedPubSubMediatorEx(settings: DistributedPubSubSettings) extends DistributedPubSubMediator(settings) {
   override def publishToEachGroup(path: String, msg: Any): Unit = {
     val prefix = path + '/'
     val lastKey = path + '0' // '0' is the next char of '/'
@@ -30,50 +23,35 @@ class DistributedPubSubMediatorEx(
 }
 
 object DistributedPubSubMediatorEx {
-  def props(
-             role: Option[String],
-             routingLogic: RoutingLogic = RandomRoutingLogic(),
-             gossipInterval: FiniteDuration = 1.second,
-             removedTimeToLive: FiniteDuration = 2.minutes,
-             maxDeltaElements: Int = 3000): Props =
-    Props(classOf[DistributedPubSubMediatorEx], role, routingLogic, gossipInterval, removedTimeToLive, maxDeltaElements)
+  def props(settings: DistributedPubSubSettings): Props =
+    Props(new DistributedPubSubMediatorEx(settings)).withDeploy(Deploy.local)
 }
 
-class DistributedPubSubExtensionEx(system: ExtendedActorSystem) extends Extension {
-  private val config = system.settings.config.getConfig("akka.contrib.cluster.pub-sub")
-  private val role: Option[String] = config.getString("role") match {
-    case "" ⇒ None
-    case r  ⇒ Some(r)
-  }
+class DistributedPubSubEx(system: ExtendedActorSystem) extends Extension {
+  private val settings = DistributedPubSubSettings(system)
 
-  def isTerminated: Boolean = Cluster(system).isTerminated || !role.forall(Cluster(system).selfRoles.contains)
+  def isTerminated: Boolean =
+    Cluster(system).isTerminated || !settings.role.forall(Cluster(system).selfRoles.contains)
 
   val mediator: ActorRef = {
     if (isTerminated)
       system.deadLetters
     else {
-      val routingLogic = config.getString("routing-logic") match {
-        case "random"             ⇒ RandomRoutingLogic()
-        case "round-robin"        ⇒ RoundRobinRoutingLogic()
-        case "consistent-hashing" ⇒ throw new IllegalArgumentException(s"'consistent-hashing' routing logic can't be used by the pub-sub mediator")
-        case "broadcast"          ⇒ BroadcastRoutingLogic()
-        case other                ⇒ throw new IllegalArgumentException(s"Unknown 'routing-logic': [$other]")
+      val name = system.settings.config.getString("akka.cluster.pub-sub.name")
+      val dispatcher = system.settings.config.getString("akka.cluster.pub-sub.use-dispatcher") match {
+        case "" ⇒ Dispatchers.DefaultDispatcherId
+        case id ⇒ id
       }
-      val gossipInterval = config.getDuration("gossip-interval", MILLISECONDS).millis
-      val removedTimeToLive = config.getDuration("removed-time-to-live", MILLISECONDS).millis
-      val maxDeltaElements = config.getInt("max-delta-elements")
-      val name = config.getString("name")
-      system.actorOf(DistributedPubSubMediatorEx.props(role, routingLogic, gossipInterval, removedTimeToLive, maxDeltaElements),
-        name)
+      system.systemActorOf(DistributedPubSubMediatorEx.props(settings).withDispatcher(dispatcher), name)
     }
   }
 }
 
-object DistributedPubSubExtensionEx extends ExtensionId[DistributedPubSubExtensionEx] with ExtensionIdProvider {
-  override def get(system: ActorSystem): DistributedPubSubExtensionEx = super.get(system)
+object DistributedPubSubEx extends ExtensionId[DistributedPubSubEx] with ExtensionIdProvider {
+  override def get(system: ActorSystem): DistributedPubSubEx = super.get(system)
 
-  override def lookup = DistributedPubSubExtensionEx
+  override def lookup = DistributedPubSubEx
 
-  override def createExtension(system: ExtendedActorSystem): DistributedPubSubExtensionEx =
-    new DistributedPubSubExtensionEx(system)
+  override def createExtension(system: ExtendedActorSystem): DistributedPubSubEx =
+    new DistributedPubSubEx(system)
 }

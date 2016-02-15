@@ -81,8 +81,7 @@ object ActorSystemRegistry {
     }
 
     log.info(s"Shutting down $actorSystem...")
-    actorSystem.shutdown()
-    actorSystem.awaitTermination(timeout)
+    Await.result(actorSystem.terminate(), timeout)
   }
 
   class ExitEventListener(val exited: Promise[Boolean], nodeAddress: UniqueAddress) extends Actor with ActorLogging {

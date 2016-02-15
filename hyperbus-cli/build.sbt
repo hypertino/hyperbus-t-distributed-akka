@@ -2,7 +2,7 @@ organization := "eu.inn"
 
 name := "hyperbus-cli"
 
-val akkaV = "2.3.11"
+val akkaV = "2.4.1"
 
 resolvers ++= Seq(
   Resolver.sonatypeRepo("public")

@@ -3,7 +3,7 @@ package eu.inn.hyperbus.transport.distributedakka
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import akka.actor.{Actor, DeadLetter}
-import akka.contrib.pattern.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe, UnsubscribeAck}
+import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe, UnsubscribeAck}
 import akka.pattern.pipe
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.uri.Uri
@@ -27,7 +27,7 @@ private[transport] case class Start[OUT, IN <: TransportRequest](id: String, sub
 private [transport] object Stop
 
 private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] extends Actor {
-  protected[this] val mediator = DistributedPubSubExtensionEx(context.system).mediator
+  protected[this] val mediator = DistributedPubSubEx(context.system).mediator
   protected[this] var subscription: Subscription[OUT, IN] = null
   protected[this] var logMessages = false
   protected[this] var log = LoggerFactory.getLogger(getClass)
