@@ -24,7 +24,7 @@ trait Links {
 
 object LinksMap {
   type LinksMapType = Map[String, Either[Link, Seq[Link]]]
-  def apply(self: String): LinksMapType = Map("self" → Left(Link("/test-inner-resource", templated = Some(true))))
+  def apply(self: String): LinksMapType = Map("self" → Left(Link(self, templated = Some(true))))
   def apply(link: Link): LinksMapType = Map("self" → Left(link))
   def apply(links: Map[String, Either[Link, Seq[Link]]]): LinksMapType = links
 }

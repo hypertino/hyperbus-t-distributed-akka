@@ -1,12 +1,11 @@
 package eu.inn.hyperbus.model
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
+import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.model.standard._
-import eu.inn.hyperbus.serialization.{MessageDeserializer, DecodeException, RequestHeader}
-import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestHeader}
 import eu.inn.hyperbus.transport.api.uri.Uri
 
 
@@ -17,7 +16,6 @@ trait DynamicBody extends Body with Links {
 
   def serialize(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
-    import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
     eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer =>
       serializer.bind[Value](content)
     }
@@ -51,7 +49,7 @@ object DynamicBody {
 private[model] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
 
 trait DynamicRequest extends Request[DynamicBody] {
-  override def toString = s"DynamicRequest(RequestHeader($uri,$method,${body.contentType},$messageId,$correlationId),$body)"
+  override def toString = s"DynamicRequest(RequestHeader($uri,$method,${body.contentType},$messageId,$correlationId,$headers),$body)"
 
   def copy(
             uri: Uri = this.uri,
@@ -96,6 +94,11 @@ object DynamicRequest {
       case Method.PUT => DynamicPut(requestHeader.uri, b, h,msgId, cId)
       case Method.DELETE => DynamicDelete(requestHeader.uri, b, h,msgId, cId)
       case Method.PATCH => DynamicPatch(requestHeader.uri, b, h, msgId, cId)
+      case Method.FEED_GET => DynamicFeedGet(requestHeader.uri, b, h, msgId, cId)
+      case Method.FEED_POST => DynamicFeedPost(requestHeader.uri, b, h,msgId, cId)
+      case Method.FEED_PUT => DynamicFeedPut(requestHeader.uri, b, h,msgId, cId)
+      case Method.FEED_DELETE => DynamicFeedDelete(requestHeader.uri, b, h,msgId, cId)
+      case Method.FEED_PATCH => DynamicFeedPatch(requestHeader.uri, b, h, msgId, cId)
       case other ⇒ new DynamicRequest {
         override def uri: Uri = requestHeader.uri
         override def method: String = requestHeader.method

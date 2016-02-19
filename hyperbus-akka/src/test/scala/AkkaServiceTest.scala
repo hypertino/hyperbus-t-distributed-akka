@@ -18,7 +18,7 @@ import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 @body("application/vnd+test-1.json")
 case class TestBody1(resourceData: String) extends Body
@@ -136,7 +136,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
         actorRef.underlyingActor.count should equal(2)
         groupActorRef.underlyingActor.count should equal(2)
       }
-      system.shutdown()
+      Await.result(system.terminate(), 10.second)
     }
 
     "Send and Receive multiple responses" in {
@@ -176,7 +176,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
         r shouldBe a[NotFound[_]]
         r.asInstanceOf[Response[_]].body shouldBe a[TestErrorBody]
       }
-      system.shutdown()
+      Await.result(system.terminate(), 10.second)
     }
   }
 }
