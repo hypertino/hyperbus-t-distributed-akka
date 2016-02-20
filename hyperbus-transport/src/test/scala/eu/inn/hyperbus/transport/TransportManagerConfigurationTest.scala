@@ -2,6 +2,7 @@ package eu.inn.hyperbus.transport
 
 import com.typesafe.config.{Config, ConfigFactory}
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.matchers.{RegexTextMatcher, AnyValue, SpecificValue}
 import eu.inn.hyperbus.transport.api.uri._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -69,7 +70,7 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
       assert(sbc.serverRoutes.nonEmpty)
       sbc.serverRoutes.head.uri.pattern should equal(SpecificValue("/topic/{userId}"))
       sbc.serverRoutes.head.uri.args should equal(Map(
-        "userId" → RegexUriPart(".*")
+        "userId" → RegexTextMatcher(".*")
       ))
       sbc.serverRoutes.head.transport shouldBe a[MockServerTransport]
     }

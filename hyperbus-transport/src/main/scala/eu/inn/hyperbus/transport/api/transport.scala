@@ -4,6 +4,7 @@ import java.io.{ByteArrayOutputStream, OutputStream}
 
 import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
 import com.typesafe.config.ConfigValue
+import eu.inn.hyperbus.transport.api.matchers.TextMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 
 import scala.concurrent.Future
@@ -22,6 +23,7 @@ trait TransportMessage {
 
 trait TransportRequest extends TransportMessage {
   def uri: Uri
+  def filters: Map[String, TextMatcher]
 }
 
 trait TransportResponse extends TransportMessage

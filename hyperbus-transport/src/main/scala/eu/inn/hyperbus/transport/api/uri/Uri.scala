@@ -4,16 +4,17 @@ import com.typesafe.config.ConfigValue
 import eu.inn.binders.core.{BindOptions, ImplicitDeserializer, ImplicitSerializer}
 import eu.inn.binders.json.{JsonDeserializer, JsonSerializer}
 import eu.inn.binders.naming.PlainConverter
+import eu.inn.hyperbus.transport.api.matchers.{TextMatcher, TextMatcherPojo, SpecificValue}
 
 import scala.language.postfixOps
 
-case class Uri(pattern: UriPart, args: Map[String, UriPart]) {
-  def matchUri(other: Uri): Boolean = pattern.matchUriPart(other.pattern) &&
+case class Uri(pattern: TextMatcher, args: Map[String, TextMatcher]) {
+  def matchUri(other: Uri): Boolean = pattern.matchText(other.pattern) &&
     UriParts.matchUriParts(args, other.args)
 
   override def toString = s"Uri($pattern$argsFormat)"
 
-  def matchArgs(other: Map[String, UriPart]) = UriParts.matchUriParts(args, other)
+  def matchArgs(other: Map[String, TextMatcher]) = UriParts.matchUriParts(args, other)
 
   private [this] def argsFormat =
     if (args.isEmpty) ""
@@ -35,7 +36,7 @@ case class Uri(pattern: UriPart, args: Map[String, UriPart]) {
 }
 
 object Uri {
-  def apply(pattern: UriPart): Uri = Uri(pattern, Map.empty[String,UriPart])
+  def apply(pattern: TextMatcher): Uri = Uri(pattern, Map.empty[String,TextMatcher])
 
   def apply(pattern: String): Uri = Uri(SpecificValue(pattern))
 
@@ -51,13 +52,13 @@ object Uri {
 
   private [api] def apply(pojo: UriPojo): Uri = {
     Uri(
-      UriPart(pojo.pattern),
+      TextMatcher(pojo.pattern),
       pojo.args.map { args ⇒
         args.map { case (k, v) ⇒
-          k → UriPart(v)
+          k → TextMatcher(v)
         }
       } getOrElse {
-        Map.empty[String, UriPart]
+        Map.empty[String, TextMatcher]
       }
     )
   }
@@ -67,7 +68,7 @@ object Uri {
   }
 }
 
-private[api] case class UriPojo(pattern: UriPartPojo, args: Option[Map[String, UriPartPojo]])
+private[api] case class UriPojo(pattern: TextMatcherPojo, args: Option[Map[String, TextMatcherPojo]])
 private[api] case class UriPojoJson(pattern: String, args: Option[Map[String, String]])
 
 // todo: use generic type instead PlainConverter

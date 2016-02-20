@@ -7,7 +7,8 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization.RequestHeader
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.uri.{Uri,AnyValue}
+import eu.inn.hyperbus.transport.api.matchers.AnyValue
+import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 

@@ -4,7 +4,8 @@ import akka.testkit.TestActorRef
 import akka.util.Timeout
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Text}
-import eu.inn.hyperbus.transport.api.uri.{Uri,AnyValue}
+import eu.inn.hyperbus.transport.api.matchers.AnyValue
+import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}

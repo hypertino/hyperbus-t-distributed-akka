@@ -4,7 +4,8 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.uri.{AnyValue, Uri}
+import eu.inn.hyperbus.transport.api.matchers.AnyValue
+import eu.inn.hyperbus.transport.api.uri.{Uri}
 
 object ConfigLoader {
 

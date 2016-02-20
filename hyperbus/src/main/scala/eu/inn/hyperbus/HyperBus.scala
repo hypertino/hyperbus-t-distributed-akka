@@ -7,7 +7,8 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.uri.{UriPart, Uri}
+import eu.inn.hyperbus.transport.api.matchers.TextMatcher
+import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -244,7 +245,7 @@ class HyperBus(val transportManager: TransportManager,
 
   protected def responseSerializerNotFound(response: Response[Body]) = log.error("Can't serialize response: {}", response)
 
-  protected def getRouteKey(uri: UriPart, groupName: Option[String]) = {
+  protected def getRouteKey(uri: TextMatcher, groupName: Option[String]) = {
     val specificUri = uri.specific // todo: implement other filters?
 
     groupName.map {
