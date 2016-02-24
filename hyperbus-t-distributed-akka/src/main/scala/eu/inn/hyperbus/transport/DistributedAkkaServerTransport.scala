@@ -18,15 +18,13 @@ import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
 class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
-                                     val logMessages: Boolean = false,
                                      val actorSystemRegistryKey: Option[String] = None)
   extends ServerTransport {
 
   private def this(actorSystemWrapper: ActorSystemWrapper, logMessages: Boolean) =
-    this(actorSystemWrapper.actorSystem, logMessages, Some(actorSystemWrapper.key))
+    this(actorSystemWrapper.actorSystem, Some(actorSystemWrapper.key))
 
-  def this(config: Config) = this(ActorSystemRegistry.addRef(config),
-    logMessages = config.getOptionBoolean("log-messages") getOrElse false)
+  def this(config: Config) = this(actorSystem = ActorSystemRegistry.addRef(config))
 
   protected[this] val subscriptions = new TrieMap[String, ActorRef]
   protected[this] val cluster = Cluster(actorSystem)
@@ -34,8 +32,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
   override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[IN],
-                                                 exceptionSerializer: Serializer[Throwable])
+                                                 inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[TransportResponse]): String = {
 
     val id = idCounter.incrementAndGet().toHexString
@@ -43,7 +40,6 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     subscriptions.put(id, actor)
     actor ! Start(id,
       distributedakka.Subscription[TransportResponse, IN](requestMatcher, None, inputDeserializer, exceptionSerializer, handler),
-      logMessages
     )
     id
   }

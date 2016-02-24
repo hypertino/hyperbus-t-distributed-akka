@@ -6,17 +6,14 @@ import eu.inn.hyperbus.impl.MacroApi
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, TextMatcher}
-import eu.inn.hyperbus.util.{LogUtils, Subscriptions}
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.util.LogUtils
 import org.slf4j.LoggerFactory
 
-import scala.collection.concurrent.TrieMap
-import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.experimental.macros
 import scala.util.Try
-import scala.util.control.NonFatal
 
 class HyperBus(val transportManager: TransportManager,
                val defaultGroupName: Option[String] = None,
@@ -42,13 +39,21 @@ class HyperBus(val transportManager: TransportManager,
                                                                      ){
     def underlyingHandler(in: REQ): Future[Response[Body]] = {
       if (logMessages && log.isTraceEnabled) {
-        log.trace(Map("messageId" → in.messageId,"correlationId" → in.correlationId, "subscriptionId" → this.hashCode.toHexString,
-          s"hyperBus ~> $in")
+        log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
+          "subscriptionId" → this.hashCode.toHexString), s"hyperBus ~> $in")
       }
-      val futureResult = handler(in)
-      futureResult.recoverWith {
-        case z: Response[_] ⇒ Future.successful(z)
-        case t: Throwable ⇒ Future.successful(unhandledException(in, t))
+      val futureOut = handler(in) recover {
+        case z: Response[_] ⇒ z
+        case t: Throwable ⇒ unhandledException(in, t)
+      }
+      if (logMessages && log.isTraceEnabled) {
+        futureOut map { out ⇒
+          log.trace(Map("messageId" → out.messageId, "correlationId" → out.correlationId,
+            "subscriptionId" → this.hashCode.toHexString), s"hyperBus <~(R)~  $out")
+          out
+        }
+      } else {
+        futureOut
       }
     }
 
@@ -64,10 +69,14 @@ class HyperBus(val transportManager: TransportManager,
                                                                  requestDeserializer: RequestDeserializer[REQ]
                                                                ) {
     def underlyingHandler(in: REQ): Future[Unit] = {
-      val futureResult = handler(in)
-      futureResult.recoverWith {
-        case z: Response[_] ⇒ Future.successful(z)
-        case t: Throwable ⇒ Future.successful(unhandledException(in, t))
+      if (logMessages && log.isTraceEnabled) {
+        log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
+          "subscriptionId" → this.hashCode.toHexString), s"hyperBus |> $in")
+      }
+
+      handler(in) recover {
+        case z: Response[_] ⇒ z
+        case t: Throwable ⇒ unhandledException(in, t)
       }
     }
 
@@ -107,7 +116,6 @@ class HyperBus(val transportManager: TransportManager,
                                                               requestDeserializer: RequestDeserializer[REQ])
                                                              (handler: (REQ) => Future[RESP]): String = {
 
-    //lookup
     val subscription = new RequestReplySubscription[REQ](handler, requestDeserializer)
     transportManager.onCommand(requestMatcher, subscription.deserializer)(subscription.underlyingHandler)
   }
@@ -159,16 +167,6 @@ class HyperBus(val transportManager: TransportManager,
   protected def safeErrorMessage(msg: String, request: Request[Body]): String = {
     msg + " " + safe(() => request.uri.toString) + safe(() => request.headers.toString)
   }
-
-  /*
-  protected def unhandledRequest(routeKey: String, request: Request[Body]): Response[Body] = {
-    val s = safeErrorMessage("Unhandled request", request)
-    InternalServerError(ErrorBody(DefError.HANDLER_NOT_FOUND, Some(s)))
-  }
-
-  protected def unhandledPublication(routeKey: String, request: Request[Body]): Unit = {
-    log.warn(safeErrorMessage("Unhandled publication", request, routeKey))
-  }*/
 
   protected def unhandledException(request: Request[Body], exception: Throwable): Response[Body] = {
     val errorBody = ErrorBody(DefError.INTERNAL_ERROR, Some(

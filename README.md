@@ -15,10 +15,10 @@ TODO:
     - distrib-akka Topic parition aware server and client ?    
     - custom http methods/verbs?
     + tests for different route/filters
-
+        
     + criteria body (special content-type)?
     
-    
+    + akka serialization perf tests
     
     *-- remove url from request
     *-- typed topic (instead of extracting from body!) 

@@ -27,22 +27,20 @@ private[transport] case class Subscription[OUT, IN <: TransportRequest](requestM
   }
 }
 
-private[transport] case class Start[OUT, IN <: TransportRequest](id: String, subscription: Subscription[OUT, IN], logMessages: Boolean) extends Command
+private[transport] case class Start[OUT, IN <: TransportRequest](id: String, subscription: Subscription[OUT, IN]) extends Command
 
 private [transport] object Stop
 
 private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] extends Actor {
   protected[this] val mediator = DistributedPubSubEx(context.system).mediator
   protected[this] var subscription: Subscription[OUT, IN] = null
-  protected[this] var logMessages = false
-  protected[this] var log = LoggerFactory.getLogger(getClass)
+  protected[this] val log = LoggerFactory.getLogger(getClass)
 
   override def receive: Receive = handleStart orElse handleStop
 
   def handleStart: Receive = {
     case start: Start[OUT, IN] ⇒
       subscription = start.subscription
-      logMessages = start.logMessages
       log.debug(s"$self is subscribing to topic ${subscription.topic}/${subscription.groupName}")
       mediator ! Subscribe(subscription.topic, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
 

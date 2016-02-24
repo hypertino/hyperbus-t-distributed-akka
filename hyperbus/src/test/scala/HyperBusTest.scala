@@ -50,20 +50,21 @@ class ServerTransportTest extends ServerTransport {
   var sInputDeserializer: Deserializer[TransportRequest] = null
   var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
   var sSubscriptionHandler: (TransportRequest) ⇒ Future[Unit] = null
-  var sExceptionSerializer: Serializer[Throwable] = null
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
 
-  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
+  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) => Future[TransportResponse]): String = {
 
     sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
-    sExceptionSerializer = exceptionSerializer
     idCounter.incrementAndGet().toHexString
   }
 
-  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher, groupName: String, inputDeserializer: Deserializer[IN])
+  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                               groupName: String,
+                                               inputDeserializer: Deserializer[IN])
                                               (handler: (IN) => Future[Unit]): String = {
     sInputDeserializer = inputDeserializer
     sSubscriptionHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[Unit]]
@@ -75,7 +76,6 @@ class ServerTransportTest extends ServerTransport {
     sInputDeserializer = null
     sSubscriptionHandler = null
     sHandler = null
-    sExceptionSerializer = null
   }
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = {
