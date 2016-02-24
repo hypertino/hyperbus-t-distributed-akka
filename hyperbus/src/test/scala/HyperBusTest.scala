@@ -20,7 +20,7 @@ class ClientTransportTest(output: String) extends ClientTransport {
 
   def input = messageBuf.toString()
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
+  override def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse] = {
     val ba = new ByteArrayOutputStream()
     message.serialize(ba)
     messageBuf.append(ba.toString("UTF-8"))
@@ -53,19 +53,19 @@ class ServerTransportTest extends ServerTransport {
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
 
-  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) => Future[TransportResponse]): String = {
+  override def onCommand(requestMatcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[TransportRequest])
+                                                (handler: (TransportRequest) => Future[TransportResponse]): String = {
 
     sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
     idCounter.incrementAndGet().toHexString
   }
 
-  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+  override def onEvent(requestMatcher: TransportRequestMatcher,
                                                groupName: String,
-                                               inputDeserializer: Deserializer[IN])
-                                              (handler: (IN) => Future[Unit]): String = {
+                                               inputDeserializer: Deserializer[TransportRequest])
+                                              (handler: (TransportRequest) => Future[Unit]): String = {
     sInputDeserializer = inputDeserializer
     sSubscriptionHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[Unit]]
     idCounter.incrementAndGet().toHexString
@@ -345,7 +345,10 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "|> static request subscription (server)" in {
       var receivedEvents = 0
       val serverTransport = new ServerTransportTest() {
-        override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
+        override def onEvent(requestMatcher: TransportRequestMatcher,
+                             groupName: String,
+                             inputDeserializer: Deserializer[TransportRequest])
+                            (handler: (TransportRequest) => Future[Unit]): String =  {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }
@@ -362,7 +365,10 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "|> dynamic request subscription (server)" in {
       var receivedEvents = 0
       val serverTransport = new ServerTransportTest() {
-        override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) => Future[Unit]): String =  {
+        override def onEvent(requestMatcher: TransportRequestMatcher,
+                             groupName: String,
+                             inputDeserializer: Deserializer[TransportRequest])
+                            (handler: (TransportRequest) => Future[Unit]): String =  {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }

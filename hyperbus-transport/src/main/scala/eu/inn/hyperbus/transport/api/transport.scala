@@ -38,24 +38,24 @@ trait PublishResult {
 }
 
 trait ClientTransport {
-  def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT]
-
+  def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse]
   def publish(message: TransportRequest): Future[PublishResult]
-
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
+trait Subscription
+
 trait ServerTransport {
-  def onCommand[IN <: TransportRequest](matcher: TransportRequestMatcher,
-                                        inputDeserializer: Deserializer[IN])
-                                       (handler: (IN) => Future[TransportResponse]): String
+  def onCommand(matcher: TransportRequestMatcher,
+                                        inputDeserializer: Deserializer[TransportRequest])
+                                       (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription]
 
-  def onEvent[IN <: TransportRequest](matcher: TransportRequestMatcher,
+  def onEvent(matcher: TransportRequestMatcher,
                                       groupName: String,
-                                      inputDeserializer: Deserializer[IN])
-                                     (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
+                                      inputDeserializer: Deserializer[TransportRequest])
+                                     (handler: (TransportRequest) => Future[Unit]): Future[Subscription] // todo: Unit -> some useful response?
 
-  def off(subscriptionId: String)
+  def off(subscription: Subscription): Future[Unit]
 
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }

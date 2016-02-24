@@ -31,9 +31,9 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected[this] val idCounter = new AtomicLong(0)
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) => Future[TransportResponse]): String = {
+  override def onCommand(requestMatcher: TransportRequestMatcher,
+                         inputDeserializer: Deserializer[TransportRequest])
+                        (handler: (TransportRequest) => Future[TransportResponse]): String = {
 
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[ProcessServerActor[IN]], "eu-inn-distr-process-server" + id) // todo: unique id?

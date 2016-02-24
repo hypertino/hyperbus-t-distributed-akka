@@ -1,5 +1,6 @@
 package eu.inn.hyperbus.transport.api
 
+import java.io.InvalidClassException
 import java.util.concurrent.atomic.AtomicLong
 
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
@@ -20,15 +21,13 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
                        protected[this] val serverRoutes: Seq[TransportRoute[ServerTransport]],
                        implicit protected[this] val executionContext: ExecutionContext) extends TransportManagerApi {
 
-  protected[this] val subscriptions = new TrieMap[String, (TransportRequestMatcher, String)]
-  protected[this] val idCounter = new AtomicLong(0)
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
   def this(configuration: TransportConfiguration) = this(configuration.clientRoutes,
     configuration.serverRoutes, ExecutionContext.global)
 
-  def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
-    this.lookupClientTransport(message).ask[OUT](message, outputDeserializer)
+  def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse] = {
+    this.lookupClientTransport(message).ask(message, outputDeserializer)
   }
 
   def publish(message: TransportRequest): Future[PublishResult] = {
@@ -43,40 +42,46 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
     }
   }
 
-  def off(subscriptionId: String): Unit = {
-    subscriptions.get(subscriptionId).foreach(s ⇒ lookupServerTransport(s._1).off(s._2))
-    subscriptions.remove(subscriptionId)
+  def off(subscription: Subscription): Future[Unit] = {
+    subscription match {
+      case TransportSubscription(transport, underlyingSubscription) ⇒
+        transport.off(underlyingSubscription)
+      case other ⇒
+        Future.failed {
+          new ClassCastException(s"TransportSubscription expected but ${other.getClass} is received")
+        }
+    }
   }
 
-  def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                        inputDeserializer: Deserializer[IN])
-                                       (handler: (IN) => Future[TransportResponse]): String = {
+  def onCommand(requestMatcher: TransportRequestMatcher,
+                                        inputDeserializer: Deserializer[TransportRequest])
+                                       (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription] = {
 
-    val underlyingSubscriptionId = lookupServerTransport(requestMatcher).onCommand[IN](
+    val transport = lookupServerTransport(requestMatcher)
+    transport.onCommand(
       requestMatcher,
-      inputDeserializer)(handler)
+      inputDeserializer)(handler) map { underlyingSubscription ⇒
 
-    val result = addSubscriptionLink(requestMatcher, underlyingSubscriptionId)
-    log.info(s"New processor on $requestMatcher: #${handler.hashCode.toHexString}. Id = $result")
-    result
+      val subscription = TransportSubscription(transport, underlyingSubscription)
+      log.info(s"New `onCommand` subscription on $requestMatcher: #${handler.hashCode.toHexString}. $subscription")
+      subscription
+    }
   }
 
-  def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher, groupName: String,
-                                      inputDeserializer: Deserializer[IN])
-                                     (handler: (IN) => Future[Unit]): String = {
-    val underlyingSubscriptionId = lookupServerTransport(requestMatcher).onEvent[IN](
+  def onEvent(requestMatcher: TransportRequestMatcher, groupName: String,
+                                      inputDeserializer: Deserializer[TransportRequest])
+                                     (handler: (TransportRequest) => Future[Unit]): Future[Subscription] = {
+
+    val transport = lookupServerTransport(requestMatcher)
+    transport.onEvent(
       requestMatcher,
       groupName,
-      inputDeserializer)(handler)
-    val result = addSubscriptionLink(requestMatcher, underlyingSubscriptionId)
-    log.info(s"New subscription on $requestMatcher($groupName): #${handler.hashCode.toHexString}. Id = $result")
-    result
-  }
+      inputDeserializer)(handler) map { underlyingSubscription ⇒
 
-  protected def addSubscriptionLink(requestMatcher: TransportRequestMatcher, underlyingSubscriptionId: String) = {
-    val subscriptionId = idCounter.incrementAndGet().toHexString
-    subscriptions.put(subscriptionId, (requestMatcher, underlyingSubscriptionId))
-    subscriptionId
+      val subscription = TransportSubscription(transport, underlyingSubscription)
+      log.info(s"New `onEvent` subscription on $requestMatcher: #${handler.hashCode.toHexString}. $subscription")
+      subscription
+    }
   }
 
   protected def lookupServerTransport(requestMatcher: TransportRequestMatcher): ServerTransport = {
@@ -98,3 +103,7 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
   }
 }
 
+private [transport] case class TransportSubscription(
+                                                      transport: ServerTransport,
+                                                      underlyingSubscription: Subscription
+                                                    ) extends Subscription

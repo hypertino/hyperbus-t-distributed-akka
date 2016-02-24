@@ -5,27 +5,25 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
-import eu.inn.hyperbus.transport.inproc.{SubKey, Subscription}
+import eu.inn.hyperbus.transport.inproc.{InprocSubscription, SubKey, HandlerWrapper}
 import eu.inn.hyperbus.util.ConfigUtils._
-import eu.inn.hyperbus.util.{TransportUtils, Subscriptions}
+import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Promise, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
-class InprocTransport(serialize: Boolean = false,
-                      val logMessages: Boolean = false)
-                     (implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport with TransportUtils {
+class InprocTransport(serialize: Boolean = false)
+                     (implicit val executionContext: ExecutionContext) extends ClientTransport with ServerTransport {
 
   def this(config: Config) = this(
-    serialize = config.getOptionBoolean("serialize").getOrElse(false),
-    logMessages = config.getOptionBoolean("log-messages") getOrElse false
+    serialize = config.getOptionBoolean("serialize").getOrElse(false)
   )(
     scala.concurrent.ExecutionContext.global // todo: configurable ExecutionContext like in akka?
   )
 
-  protected val subscriptions = new Subscriptions[SubKey, Subscription]
+  protected val subscriptions = new Subscriptions[SubKey, HandlerWrapper]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
   protected def reserializeMessage[OUT <: TransportMessage](message: TransportMessage, deserializer: Deserializer[OUT]): OUT = {
@@ -41,8 +39,8 @@ class InprocTransport(serialize: Boolean = false,
   }
 
   // todo: refactor this method, it's awful
-  protected def _ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT], isPublish: Boolean): Future[_] = {
-    val resultPromise = Promise[OUT]
+  protected def _ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse], isPublish: Boolean): Future[_] = {
+    val resultPromise = Promise[TransportResponse]
     var commandHandlerFound = false
     var eventHandlerFound = false
     //var result: Future[OUT] = null
@@ -76,14 +74,12 @@ class InprocTransport(serialize: Boolean = false,
             // todo: log if not matched?
             if (matched) {
               commandHandlerFound = true
-              logCommandRequest(messageForSubscriber, subKey.hashCode.toHexString)
               subscriber.handler(messageForSubscriber) map { case response ⇒
-                logCommandResponse(response, subKey.hashCode.toHexString)
                 if (!isPublish) {
                   val finalResponse = if (serialize) {
                     reserializeMessage(response, outputDeserializer)
                   } else {
-                    response.asInstanceOf[OUT]
+                    response
                   }
                   resultPromise.success(finalResponse)
                 }
@@ -105,7 +101,6 @@ class InprocTransport(serialize: Boolean = false,
 
             if (matched) {
               eventHandlerFound = true
-              logEventMessage(message, subKey.hashCode.toHexString)
               subscriber.handler(messageForSubscriber).onFailure {
                 case NonFatal(e) ⇒
                   log.error("`onEvent` handler failed with", e)
@@ -136,46 +131,55 @@ class InprocTransport(serialize: Boolean = false,
     }
   }
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
-    logAskRequest(message)
-    _ask(message, outputDeserializer, isPublish = false).asInstanceOf[Future[OUT]]
+  override def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse] = {
+    _ask(message, outputDeserializer, isPublish = false).asInstanceOf[Future[TransportResponse]]
   }
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
-    logPublishMessage(message)
-    _ask[TransportResponse](message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
+    _ask(message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
   }
 
-  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) => Future[TransportResponse]): String = {
+  override def onCommand(requestMatcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[TransportRequest])
+                                                (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription] = {
 
     if (requestMatcher.uri.isEmpty)
       throw new IllegalArgumentException("requestMatcher.uri is empty")
 
-    subscriptions.add(
+    val id = subscriptions.add(
       requestMatcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(None, requestMatcher),
-      Subscription(inputDeserializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
+      HandlerWrapper(inputDeserializer, handler)
     )
+    Future.successful(InprocSubscription(id))
   }
 
-  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+  override def onEvent(requestMatcher: TransportRequestMatcher,
                                                groupName: String,
-                                               inputDeserializer: Deserializer[IN])
-                                              (handler: (IN) => Future[Unit]): String = {
+                                               inputDeserializer: Deserializer[TransportRequest])
+                                              (handler: (TransportRequest) => Future[Unit]): Future[Subscription] = {
     if (requestMatcher.uri.isEmpty)
       throw new IllegalArgumentException("requestMatcher.uri")
 
-    subscriptions.add(
+    val id = subscriptions.add(
       requestMatcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(Some(groupName), requestMatcher),
-      Subscription(inputDeserializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
+      HandlerWrapper(inputDeserializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
+    Future.successful(InprocSubscription(id))
   }
 
-  override def off(subscriptionId: String) = {
-    subscriptions.remove(subscriptionId)
+  override def off(subscription: Subscription): Future[Unit] = {
+    subscription match {
+      case i: InprocSubscription ⇒
+        Future {
+          subscriptions.remove(i.id)
+        }
+      case other ⇒
+        Future.failed {
+          new ClassCastException(s"InprocSubscription expected but ${other.getClass} is received")
+        }
+    }
   }
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = {

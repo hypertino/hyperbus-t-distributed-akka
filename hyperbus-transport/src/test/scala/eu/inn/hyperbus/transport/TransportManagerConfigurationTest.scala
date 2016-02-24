@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
 class MockClientTransport(config: Config) extends ClientTransport {
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
+  override def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse] = ???
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
 
@@ -19,18 +19,18 @@ class MockClientTransport(config: Config) extends ClientTransport {
 }
 
 class MockServerTransport(config: Config) extends ServerTransport {
-  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) ⇒ Future[TransportResponse]): String = ???
+  override def onCommand(requestMatcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[TransportRequest])
+                                                (handler: (TransportRequest) ⇒ Future[TransportResponse]): Future[Subscription] = ???
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
 
-  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+  override def onEvent(requestMatcher: TransportRequestMatcher,
                                                groupName: String,
-                                               inputDeserializer: Deserializer[IN])
-                                              (handler: (IN) ⇒ Future[Unit]): String = ???
+                                               inputDeserializer: Deserializer[TransportRequest])
+                                              (handler: (TransportRequest) ⇒ Future[Unit]): Future[Subscription] = ???
 
-  override def off(subscriptionId: String): Unit = ???
+  override def off(subscription: Subscription): Future[Unit] = ???
 }
 
 class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with Matchers {
