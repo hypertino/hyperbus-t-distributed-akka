@@ -1,8 +1,7 @@
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.standard.{Ok, StaticPost}
-import eu.inn.hyperbus.transport.api.matchers.AnyValue
+import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, AnyValue}
 import eu.inn.hyperbus.transport.api.{TransportManager, ClientTransport, ServerTransport, TransportRoute}
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
@@ -13,8 +12,8 @@ import scala.concurrent.ExecutionContext
 @body("application/vnd+parition.json")
 case class TestPartition(data: String) extends Body
 
-@request("/resources/{partitionId}")
-case class TestPostPartition1(partitionId: String, body: TestPartition) extends StaticPost(body)
+@request(Method.POST, "/resources/{partitionId}")
+case class TestPostPartition1(partitionId: String, body: TestPartition) extends Request[TestPartition]
 with DefinedResponse[Ok[DynamicBody]]
 
 
@@ -64,8 +63,8 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
   // todo: add partition tests for Dynamic
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, Uri(AnyValue)))
-    val sr = List(TransportRoute(st, Uri(AnyValue)))
+    val cr = List(TransportRoute(ct, TransportRequestMatcher(Some(Uri(AnyValue)))))
+    val sr = List(TransportRoute(st, TransportRequestMatcher(Some(Uri(AnyValue)))))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(transportManager)
   }

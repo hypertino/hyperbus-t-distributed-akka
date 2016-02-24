@@ -1,8 +1,7 @@
 package eu.inn.hyperbus.transport.api
 
 import com.typesafe.config.{Config, ConfigFactory}
-import eu.inn.hyperbus.transport.api.matchers.AnyValue
-import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.util.ConfigUtils
 
 class TransportConfigurationError(message: String) extends RuntimeException(message)
@@ -43,11 +42,8 @@ object TransportConfigurationLoader {
       throw new TransportConfigurationError(s"Couldn't find transport '$transportName'")
     ).asInstanceOf[T]
 
-    val uriPattern = if (config.hasPath("uri-filter"))
-      Uri(config.getValue("uri-filter"))
-    else
-      Uri(AnyValue)
-    TransportRoute[T](transport, uriPattern)
+    val matcher = TransportRequestMatcher(config.getValue("match"))
+    TransportRoute[T](transport, matcher)
   }
 
   private def createTransport(config: Config): Any = {

@@ -3,7 +3,7 @@ package eu.inn.hyperbus.serialization
 import java.io.{ByteArrayOutputStream, OutputStream}
 
 import eu.inn.binders.core.BindOptions
-import eu.inn.hyperbus.model.{Body, Request, Response}
+import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.transport.api.uri.UriJsonSerializer
 
 object MessageSerializer {
@@ -12,11 +12,10 @@ object MessageSerializer {
   implicit val bindOptions = new BindOptions(true)
   implicit val uriJsonSerializer = new UriJsonSerializer
 
-  def serializeRequest[B <: Body](request: Request[B], outputStream: OutputStream) = {
-    val req = RequestHeader(request.uri, request.method, request.body.contentType, request.messageId,
-      if (request.messageId == request.correlationId) None else Some(request.correlationId),
-      request.headers
-    )
+  def serializeRequest[B <: Body](request: Request[B], outputStream: OutputStream): Unit = {
+    require(request.headers, "method")
+    require(request.headers, "messageId")
+    val req = RequestHeader(request.uri, request.headers)
     writeUtf8("""{"request":""", outputStream)
     req.writeJson(outputStream)
     writeUtf8(""","body":""", outputStream)
@@ -25,10 +24,8 @@ object MessageSerializer {
   }
 
   def serializeResponse[B <: Body](response: Response[B], outputStream: OutputStream) = {
-    val resp = ResponseHeader(response.status, response.body.contentType, response.messageId,
-      if (response.messageId == response.correlationId) None else Some(response.correlationId),
-      response.headers
-    )
+    require(response.headers, "messageId")
+    val resp = ResponseHeader(response.status, response.headers)
     writeUtf8("""{"response":""", outputStream)
     resp.writeJson(outputStream)
     writeUtf8(""","body":""", outputStream)
@@ -36,7 +33,14 @@ object MessageSerializer {
     writeUtf8("}", outputStream)
   }
 
+  def require(headers: Map[String, Seq[String]], required: String) = {
+    if (headers.get(required).flatMap(_.headOption).isEmpty)
+      throw new HeaderIsRequiredException(required)
+  }
+
   def writeUtf8(s: String, out: OutputStream) = {
     out.write(s.getBytes("UTF8"))
   }
 }
+
+class HeaderIsRequiredException(header: String) extends RuntimeException(s"Header value is not set: $header")

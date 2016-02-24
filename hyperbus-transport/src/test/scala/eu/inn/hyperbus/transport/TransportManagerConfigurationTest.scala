@@ -2,7 +2,7 @@ package eu.inn.hyperbus.transport
 
 import com.typesafe.config.{Config, ConfigFactory}
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{RegexTextMatcher, AnyValue, SpecificValue}
+import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, RegexTextMatcher, AnyValue, SpecificValue}
 import eu.inn.hyperbus.transport.api.uri._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -19,11 +19,17 @@ class MockClientTransport(config: Config) extends ClientTransport {
 }
 
 class MockServerTransport(config: Config) extends ServerTransport {
-  override def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])(handler: (IN) ⇒ Future[TransportResponse]): String = ???
+  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[IN],
+                                                 exceptionSerializer: Serializer[Throwable])
+                                                (handler: (IN) ⇒ Future[TransportResponse]): String = ???
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
 
-  override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])(handler: (IN) ⇒ Future[Unit]): String = ???
+  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                               groupName: String,
+                                               inputDeserializer: Deserializer[IN])
+                                              (handler: (IN) ⇒ Future[Unit]): String = ???
 
   override def off(subscriptionId: String): Unit = ???
 }
@@ -39,18 +45,25 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
           },
           client-routes: [
             {
-              uri-filter: {
-                pattern: { value: "/topic/{userId}", match-type: Specific }
-                args: { userId: { match-type: Any } }
+              match: {
+                uri: {
+                  pattern: { value: "/topic/{userId}", match-type: Specific }
+                  args: { userId: { match-type: Any } }
+                }
+                headers: {
+                  method: { value: "post" }
+                }
               }
               transport: mock-client
             }
           ],
           server-routes: [
             {
-              uri-filter: {
-                pattern: { value: "/topic/{userId}", match-type: Specific }
-                args: { userId: { value: ".*", match-type: Regex } }
+              match: {
+                uri: {
+                  pattern: { value: "/topic/{userId}", match-type: Specific }
+                  args: { userId: { value: ".*", match-type: Regex } }
+                }
               }
               transport: mock-server
             }
@@ -61,15 +74,20 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
       val sbc = TransportConfigurationLoader.fromConfig(config)
 
       assert(sbc.clientRoutes.nonEmpty)
-      sbc.clientRoutes.head.uri.pattern should equal(SpecificValue("/topic/{userId}"))
-      sbc.clientRoutes.head.uri.args should equal(Map(
+      assert(sbc.clientRoutes.head.matcher.uri.nonEmpty)
+      sbc.clientRoutes.head.matcher.uri.get.pattern should equal(SpecificValue("/topic/{userId}"))
+      sbc.clientRoutes.head.matcher.uri.get.args should equal(Map(
         "userId" → AnyValue
+      ))
+      sbc.clientRoutes.head.matcher.headers should equal(Map(
+        "method" → SpecificValue("post")
       ))
       sbc.clientRoutes.head.transport shouldBe a[MockClientTransport]
 
       assert(sbc.serverRoutes.nonEmpty)
-      sbc.serverRoutes.head.uri.pattern should equal(SpecificValue("/topic/{userId}"))
-      sbc.serverRoutes.head.uri.args should equal(Map(
+      assert(sbc.serverRoutes.head.matcher.uri.nonEmpty)
+      sbc.serverRoutes.head.matcher.uri.get.pattern should equal(SpecificValue("/topic/{userId}"))
+      sbc.serverRoutes.head.matcher.uri.get.args should equal(Map(
         "userId" → RegexTextMatcher(".*")
       ))
       sbc.serverRoutes.head.transport shouldBe a[MockServerTransport]

@@ -1,7 +1,6 @@
 package eu.inn.hyperbus.transport.api
 
-import eu.inn.hyperbus.transport.api.uri.Uri
-
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
@@ -15,14 +14,15 @@ trait TransportManagerApi {
 
   def publish(message: TransportRequest): Future[PublishResult]
 
-  def process[IN <: TransportRequest](uriFilter: Uri,
-                                      inputDeserializer: Deserializer[IN],
-                                      exceptionSerializer: Serializer[Throwable])
-                                     (handler: (IN) => Future[TransportResponse]): String
+  def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                        inputDeserializer: Deserializer[IN],
+                                        exceptionSerializer: Serializer[Throwable])
+                                       (handler: (IN) => Future[TransportResponse]): String
 
-  def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String,
-                                        inputDeserializer: Deserializer[IN])
-                                       (handler: (IN) => Future[Unit]): String
+  def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                      groupName: String,
+                                      inputDeserializer: Deserializer[IN])
+                                     (handler: (IN) => Future[Unit]): String
 
   def off(subscriptionId: String): Unit
 

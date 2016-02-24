@@ -7,6 +7,7 @@ import akka.cluster.Cluster
 import akka.pattern.gracefulStop
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.distributedakka.{ProcessServerActor, Start, SubscribeServerActor}
 import eu.inn.hyperbus.util.ConfigUtils._
@@ -32,26 +33,30 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected[this] val idCounter = new AtomicLong(0)
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
-                                              (handler: (IN) => Future[TransportResponse]): String = {
+  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[IN],
+                                                 exceptionSerializer: Serializer[Throwable])
+                                                (handler: (IN) => Future[TransportResponse]): String = {
 
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[ProcessServerActor[IN]], "eu-inn-distr-process-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[TransportResponse, IN](uriFilter, None, inputDeserializer, exceptionSerializer, handler),
+      distributedakka.Subscription[TransportResponse, IN](requestMatcher, None, inputDeserializer, exceptionSerializer, handler),
       logMessages
     )
     id
   }
 
-  override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) => Future[Unit]): String = {
+  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                               groupName: String,
+                                               inputDeserializer: Deserializer[IN])
+                                              (handler: (IN) => Future[Unit]): String = {
     val id = idCounter.incrementAndGet().toHexString
     val actor = actorSystem.actorOf(Props[SubscribeServerActor[IN]], "eu-inn-distr-subscribe-server" + id) // todo: unique id?
     subscriptions.put(id, actor)
     actor ! Start(id,
-      distributedakka.Subscription[Unit, IN](uriFilter, Some(groupName), inputDeserializer, null, handler),
+      distributedakka.Subscription[Unit, IN](requestMatcher, Some(groupName), inputDeserializer, null, handler),
       logMessages
     )
     id

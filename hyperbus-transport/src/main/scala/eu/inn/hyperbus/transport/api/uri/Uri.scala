@@ -4,17 +4,17 @@ import com.typesafe.config.ConfigValue
 import eu.inn.binders.core.{BindOptions, ImplicitDeserializer, ImplicitSerializer}
 import eu.inn.binders.json.{JsonDeserializer, JsonSerializer}
 import eu.inn.binders.naming.PlainConverter
-import eu.inn.hyperbus.transport.api.matchers.{TextMatcher, TextMatcherPojo, SpecificValue}
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TextMatcher, TextMatcherPojo, SpecificValue}
 
 import scala.language.postfixOps
 
 case class Uri(pattern: TextMatcher, args: Map[String, TextMatcher]) {
   def matchUri(other: Uri): Boolean = pattern.matchText(other.pattern) &&
-    UriParts.matchUriParts(args, other.args)
+    Uri.matchUriParts(args, other.args)
 
   override def toString = s"Uri($pattern$argsFormat)"
 
-  def matchArgs(other: Map[String, TextMatcher]) = UriParts.matchUriParts(args, other)
+  def matchArgs(other: Map[String, TextMatcher]) = Uri.matchUriParts(args, other)
 
   private [this] def argsFormat =
     if (args.isEmpty) ""
@@ -50,7 +50,7 @@ object Uri {
     apply(pojo)
   }
 
-  private [api] def apply(pojo: UriPojo): Uri = {
+  private [transport] def apply(pojo: UriPojo): Uri = {
     Uri(
       TextMatcher(pojo.pattern),
       pojo.args.map { args ⇒
@@ -63,13 +63,23 @@ object Uri {
     )
   }
 
-  private [api] def apply(pojo: UriPojoJson): Uri = {
+  private [transport] def apply(pojo: UriPojoJson): Uri = {
     apply(pojo.pattern, pojo.args.getOrElse(Map.empty).map(kv ⇒ kv._1 → kv._2))
+  }
+
+  def matchUriParts(a: Map[String, TextMatcher], b: Map[String, TextMatcher]): Boolean = {
+    a.map { case (k, v) ⇒
+      b.get(k).map { av ⇒
+        v.matchText(av)
+      } getOrElse {
+        false // was: v == AnyValue
+      }
+    }.forall(r => r)
   }
 }
 
-private[api] case class UriPojo(pattern: TextMatcherPojo, args: Option[Map[String, TextMatcherPojo]])
-private[api] case class UriPojoJson(pattern: String, args: Option[Map[String, String]])
+private[transport] case class UriPojo(pattern: TextMatcherPojo, args: Option[Map[String, TextMatcherPojo]])
+private[transport] case class UriPojoJson(pattern: String, args: Option[Map[String, String]])
 
 // todo: use generic type instead PlainConverter
 class UriJsonDeserializer(implicit val bindOptions: BindOptions) extends ImplicitDeserializer[Uri, JsonDeserializer[PlainConverter]] {

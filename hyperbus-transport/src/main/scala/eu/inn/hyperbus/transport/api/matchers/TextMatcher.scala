@@ -25,7 +25,7 @@ object TextMatcher {
     case Some("Regex") ⇒ RegexTextMatcher(value.getOrElse(
       throw new TransportConfigurationError("Please provide value for Regex TextMatcher"))
     )
-    case Some("Specific") ⇒ SpecificValue(value.getOrElse(
+    case Some("Specific") | None ⇒ SpecificValue(value.getOrElse(
       throw new TransportConfigurationError("Please provide value for Specific TextMatcher"))
     )
     case other ⇒

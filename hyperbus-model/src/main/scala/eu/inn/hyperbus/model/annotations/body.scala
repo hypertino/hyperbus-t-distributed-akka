@@ -25,16 +25,21 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
 
   import c.universe._
 
-  def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
+  def updateClass(existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
+    val contentType = c.prefix.tree match {
+      case q"new body($contentType)" => c.Expr(contentType)
+      case _ ⇒ c.abort(c.enclosingPosition, "Please provide arguments for @body annotation")
+    }
+
     val q"case class $className(..$fields) extends ..$bases { ..$body }" = existingClass
 
     val fVal = fresh("f")
     val serializerVal = fresh("serializer")
     val deserializerVal = fresh("deserializer")
     val newClass = q"""
-        @eu.inn.hyperbus.model.annotations.contentType($annotationArgument) case class $className(..$fields) extends ..$bases {
+        @eu.inn.hyperbus.model.annotations.contentType($contentType) case class $className(..$fields) extends ..$bases {
           ..$body
-          def contentType = Some($annotationArgument)
+          def contentType = Some($contentType)
           override def serialize(outputStream: java.io.OutputStream) = {
             import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
             implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
@@ -47,7 +52,7 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
 
     // check requestHeader
     val companionExtra = q"""
-        def contentType = Some($annotationArgument)
+        def contentType = Some($contentType)
         def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
           eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { case $deserializerVal =>

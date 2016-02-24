@@ -1,5 +1,6 @@
 package eu.inn.hyperbus.transport.api
 
-import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 
-case class TransportRoute[T](transport: T, uri: Uri, )
+case class TransportRoute[T](transport: T, matcher: TransportRequestMatcher)
+

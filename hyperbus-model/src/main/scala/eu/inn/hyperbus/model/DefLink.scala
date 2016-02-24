@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.model.standard
+package eu.inn.hyperbus.model
 
 object DefLink {
   val SELF = "self"

@@ -1,10 +1,9 @@
-package eu.inn.hyperbus.model.standard
+package eu.inn.hyperbus.model
 
 import java.io.OutputStream
 
 import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.IdGenerator
-import eu.inn.hyperbus.model.Body
 
 trait ErrorBody extends Body {
   def code: String
@@ -44,7 +43,7 @@ object ErrorBody {
   }*/
 }
 
-private[standard] case class ErrorBodyContainer(code: String,
+private[model] case class ErrorBodyContainer(code: String,
                                                 description: Option[String],
                                                 errorId: String,
                                                 extra: Value,
@@ -54,6 +53,7 @@ private[standard] case class ErrorBodyContainer(code: String,
   def serialize(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
     import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
+    implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
     eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer =>
       serializer.bind(this.copy(contentType = None)) // find other way to skip contentType
     }

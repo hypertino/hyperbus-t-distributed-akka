@@ -1,11 +1,9 @@
-package eu.inn.hyperbus.model.serialization.util
+package eu.inn.hyperbus.serialization
 
 import java.io.ByteArrayInputStream
 
-import eu.inn.binders.dynamic.{Value, Null}
+import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.model.standard.{StandardResponse, ErrorBody}
-import eu.inn.hyperbus.serialization.MessageDeserializer
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
@@ -28,8 +26,7 @@ object StringDeserializer {
     case Some(string) ⇒ {
       import eu.inn.binders._
       implicit val jsf = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
-      val value = eu.inn.binders.json.SerializerFactory.findFactory().withStringParser(string) { case jsonParser ⇒
-        import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions // dont remove this!
+      val value = eu.inn.binders.json.SerializerFactory.findFactory().withStringParser(string) { case jsonParser ⇒ // dont remove this!
         jsonParser.unbind[Value]
       }
       DynamicBody(value)
@@ -47,7 +44,7 @@ object StringDeserializer {
   }
 }
 
-private [util] object StringDeserializerImpl {
+private [serialization] object StringDeserializerImpl {
   def request[T: c.WeakTypeTag](c: Context)(input: c.Expr[String], encoding: c.Expr[String]): c.Expr[T] = {
     import c.universe._
     val isVal = newTermName(c.fresh("is"))

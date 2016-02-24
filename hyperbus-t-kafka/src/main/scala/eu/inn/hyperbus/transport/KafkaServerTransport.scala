@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
@@ -36,24 +37,28 @@ class KafkaServerTransport(
   protected[this] val idCounter = new AtomicLong(0)
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
-                                              (handler: (IN) => Future[TransportResponse]): String = ???
+  override def onCommand[IN <: TransportRequest](matcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[IN],
+                                                 exceptionSerializer: Serializer[Throwable])
+                                                (handler: (IN) => Future[TransportResponse]): String = ???
 
-  override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) => Future[Unit]): String = {
+  override def onEvent[IN <: TransportRequest](matcher: TransportRequestMatcher,
+                                               groupName: String,
+                                               inputDeserializer: Deserializer[IN])
+                                              (handler: (IN) => Future[Unit]): String = {
 
-    routes.find(r ⇒ r.uri.matchUri(uriFilter)) map { route ⇒
+    routes.find(r ⇒ r.requestMatcher.matchRequestMatcher(matcher)) map { route ⇒
 
       val id = idCounter.incrementAndGet().toHexString
       val subscription = new Subscription[Unit, IN](1, /*todo: per topic thread count*/
-        route, uriFilter, groupName, inputDeserializer, handler
+        route, matcher, groupName, inputDeserializer, handler
       )
       subscriptions.put(id, subscription)
       subscription.run()
       id
 
     } getOrElse {
-      throw new NoTransportRouteException(s"Kafka consumer (server). Uri: $uriFilter")
+      throw new NoTransportRouteException(s"Kafka consumer (server). matcher: $matcher")
     }
   }
 
@@ -80,7 +85,7 @@ class KafkaServerTransport(
   class Subscription[OUT, IN <: TransportRequest](
                                                    threadCount: Int,
                                                    route: KafkaRoute,
-                                                   uriFilter: Uri,
+                                                   requestMatcher: TransportRequestMatcher,
                                                    groupName: String,
                                                    inputDeserializer: Deserializer[IN],
                                                    handler: (IN) ⇒ Future[OUT]) {
@@ -135,7 +140,7 @@ class KafkaServerTransport(
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = inputDeserializer(inputBytes) // todo: encoding!
-        if (uriFilter.matchUri(input.uri)) { // todo: test order of matching?
+        if (requestMatcher.matchMessage(input)) { // todo: test order of matching?
           if (logMessages && log.isTraceEnabled) {
             log.trace(s"Consumer #$consumerId got message from partiton#${next.partition}: $messageString")
           }
@@ -154,7 +159,7 @@ class KafkaServerTransport(
 
     private def consumeStream(stream: KafkaStream[Array[Byte], Array[Byte]]): Unit = {
       val consumerId = Thread.currentThread().getName
-      log.info(s"Starting consumer #$consumerId on topic ${route.kafkaTopic} -> $uriFilter}")
+      log.info(s"Starting consumer #$consumerId on topic ${route.kafkaTopic} -> $requestMatcher}")
       try {
         val iterator = stream.iterator()
         while (iterator.hasNext()) {

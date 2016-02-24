@@ -6,7 +6,8 @@ import eu.inn.binders._
 import eu.inn.binders.json.SerializerFactory
 import eu.inn.hyperbus.IdGenerator
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.uri.{UriParts, Uri}
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
@@ -32,7 +33,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      transportManager.subscribe(Uri("/topic/{abc}"), "sub1",
+      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1",
         MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
@@ -40,7 +41,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
         }
       }
 
-      transportManager.subscribe(Uri("/topic/{abc}"), "sub1",
+      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1",
         MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")
@@ -48,7 +49,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
         }
       }
 
-      transportManager.subscribe(Uri("/topic/{abc}"), "sub2",
+      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub2",
         MockRequestDeserializer) { msg: MockRequest =>
         Future {
           msg.message should equal("12345")

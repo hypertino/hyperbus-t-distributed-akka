@@ -4,12 +4,12 @@ import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
-import eu.inn.hyperbus.model.standard._
+import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestHeader}
 import eu.inn.hyperbus.transport.api.uri.Uri
 
 
-trait DynamicBody extends Body with Links {
+trait DynamicBody extends Body with Links { // todo: replace with case class!
   def content: Value
 
   lazy val links: LinksMap.LinksMapType = content.__links[Option[LinksMap.LinksMapType]].getOrElse(Map.empty)
@@ -48,24 +48,9 @@ object DynamicBody {
 
 private[model] case class DynamicBodyContainer(contentType: Option[String], content: Value) extends DynamicBody
 
-trait DynamicRequest extends Request[DynamicBody] {
-  override def toString = s"DynamicRequest(RequestHeader($uri,$method,${body.contentType},$messageId,$correlationId,$headers),$body)"
-
-  def copy(
-            uri: Uri = this.uri,
-            method: String = this.method,
-            messageId: String = this.messageId,
-            correlationId: String = this.correlationId,
-            headers: Map[String, Seq[String]] = this.headers,
-            body: DynamicBody = this.body
-          ): DynamicRequest = {
-    DynamicRequest(
-      RequestHeader(uri, method, body.contentType, messageId,
-        if (messageId == correlationId) None else Some(correlationId),
-        headers), body
-    )
-  }
-}
+case class DynamicRequest(uri: Uri,
+                          body: DynamicBody,
+                          headers: Map[String, Seq[String]]) extends Request[DynamicBody]
 
 object DynamicRequest {
   def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {
@@ -84,37 +69,20 @@ object DynamicRequest {
   }
 
   def apply(requestHeader: RequestHeader, body: DynamicBody): DynamicRequest = {
-    val msgId = requestHeader.messageId
-    val cId = requestHeader.correlationId.getOrElse(msgId)
-    val h = requestHeader.headers
-    val b = body
-    requestHeader.method match {
-      case Method.GET => DynamicGet(requestHeader.uri, b, h, msgId, cId)
-      case Method.POST => DynamicPost(requestHeader.uri, b, h,msgId, cId)
-      case Method.PUT => DynamicPut(requestHeader.uri, b, h,msgId, cId)
-      case Method.DELETE => DynamicDelete(requestHeader.uri, b, h,msgId, cId)
-      case Method.PATCH => DynamicPatch(requestHeader.uri, b, h, msgId, cId)
-      case Method.FEED_GET => DynamicFeedGet(requestHeader.uri, b, h, msgId, cId)
-      case Method.FEED_POST => DynamicFeedPost(requestHeader.uri, b, h,msgId, cId)
-      case Method.FEED_PUT => DynamicFeedPut(requestHeader.uri, b, h,msgId, cId)
-      case Method.FEED_DELETE => DynamicFeedDelete(requestHeader.uri, b, h,msgId, cId)
-      case Method.FEED_PATCH => DynamicFeedPatch(requestHeader.uri, b, h, msgId, cId)
-      case other ⇒ new DynamicRequest {
-        override def uri: Uri = requestHeader.uri
-        override def method: String = requestHeader.method
-        override def correlationId: String = cId
-        override def messageId: String = msgId
-        override def body: DynamicBody = b
-        override def headers: Map[String,Seq[String]] = h
-      }
-      //case _ => throw new DecodeException(s"Unknown method: '${requestHeader.method}'") //todo: save more details (messageId) or introduce DynamicMethodRequest
-    }
+    DynamicRequest(requestHeader.uri, body, requestHeader.headers)
   }
 
-  def unapply(request: DynamicRequest): Option[(RequestHeader, DynamicBody)] = Some((
-    RequestHeader(request.uri, request.method, request.body.contentType, request.messageId,
-      if (request.messageId == request.correlationId) None else Some(request.correlationId),
-      request.headers),
-    request.body
-    ))
+  def apply(uri: Uri, method: String, body: DynamicBody, headersBuilder: HeadersBuilder)
+           (implicit contextFactory: MessagingContextFactory): DynamicRequest = {
+    DynamicRequest(uri, body, headersBuilder
+      .withMethod(method)
+      .withContentType(body.contentType)
+      .withContext(contextFactory)
+      .result())
+  }
+
+  def apply(uri: Uri, method: String, body: DynamicBody)
+           (implicit contextFactory: MessagingContextFactory): DynamicRequest = {
+    apply(uri, method, body, new HeadersBuilder)(contextFactory)
+  }
 }

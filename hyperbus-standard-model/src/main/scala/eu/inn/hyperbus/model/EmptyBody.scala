@@ -1,9 +1,8 @@
-package eu.inn.hyperbus.model.standard
+package eu.inn.hyperbus.model
 
 import java.io.OutputStream
 
 import eu.inn.binders.dynamic.Value
-import eu.inn.hyperbus.model.Body
 import eu.inn.hyperbus.model.annotations.contentType
 import eu.inn.hyperbus.serialization.MessageSerializer
 

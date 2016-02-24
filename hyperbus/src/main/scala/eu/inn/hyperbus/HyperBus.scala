@@ -4,11 +4,9 @@ import java.io.InputStream
 
 import eu.inn.hyperbus.impl.MacroApi
 import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.model.standard._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TextMatcher
-import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, TextMatcher}
 import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
@@ -31,14 +29,14 @@ class HyperBus(val transportManager: TransportManager,
   protected val underlyingSubscriptions = new mutable.HashMap[String, (String, UnderlyingHandler[_])]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def onEvent(uri: Uri, method: String, contentType: Option[String], groupName: Option[String])
+  def onEvent(requestMatcher: TransportRequestMatcher, groupName: Option[String])
              (handler: (DynamicRequest) => Future[Unit]): String = {
-    onEvent[DynamicRequest](uri, method, contentType, groupName, DynamicRequest.apply)(handler)
+    onEvent[DynamicRequest](requestMatcher, groupName, DynamicRequest.apply)(handler)
   }
 
-  def onCommand(uri: Uri, method: String, contentType: Option[String])
+  def onCommand(requestMatcher: TransportRequestMatcher)
                (handler: DynamicRequest => Future[_ <: Response[Body]]): String = {
-    onCommand[Response[Body], DynamicRequest](uri, method, contentType, DynamicRequest.apply)(handler)
+    onCommand[Response[Body], DynamicRequest](requestMatcher, DynamicRequest.apply)(handler)
   }
 
   protected case class RequestReplySubscription[REQ <: Request[Body]](
@@ -77,7 +75,7 @@ class HyperBus(val transportManager: TransportManager,
         case re: ErrorResponse ⇒ throw re
         case NonFatal(e) =>
           val error = BadRequest(ErrorBody(DefError.REQUEST_PARSE_ERROR, Some(e.toString)))
-          logError("Can't deserialize request", error)
+          logError("Can't deserialize request", error, e)
           throw error
       }
     }
@@ -125,12 +123,14 @@ class HyperBus(val transportManager: TransportManager,
     transportManager.publish(request)
   }
 
-  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](uri: Uri,
-                                                              method: String,
-                                                              contentType: Option[String],
+  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
                                                               requestDeserializer: RequestDeserializer[REQ])
                                                              (handler: (REQ) => Future[RESP]): String = {
-    val routeKey = getRouteKey(uri.pattern, None)
+    val routeKey = getRouteKey(requestMatcher, None)
+    val method = requestMatcher.headers.get(Header.METHOD).map(_.specific).getOrElse(
+      throw new IllegalArgumentException(s"method is not set on matcher headers: $requestMatcher")
+    )
+    val contentType = requestMatcher.headers.get(Header.CONTENT_TYPE).map(_.specific)
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -142,16 +142,14 @@ class HyperBus(val transportManager: TransportManager,
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingRequestReplyHandler[REQ](routeKey)
         val d: Deserializer[REQ] = uh.deserializer
-        val uid = transportManager.process[REQ](uri, d, exceptionSerializer)(uh.handler)
+        val uid = transportManager.onCommand[REQ](requestMatcher, d, exceptionSerializer)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
     }
   }
 
-  def onEvent[REQ <: Request[Body]](uri: Uri,
-                                    method: String,
-                                    contentType: Option[String],
+  def onEvent[REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
                                     groupName: Option[String],
                                     requestDeserializer: RequestDeserializer[REQ])
                                    (handler: (REQ) => Future[Unit]): String = {
@@ -161,7 +159,11 @@ class HyperBus(val transportManager: TransportManager,
         throw new UnsupportedOperationException(s"Can't subscribe: group name is not defined")
       }
     }
-    val routeKey = getRouteKey(uri.pattern, Some(finalGroupName))
+    val method = requestMatcher.headers.get(Header.METHOD).map(_.specific).getOrElse(
+      throw new IllegalArgumentException(s"method is not set on matcher headers: $requestMatcher")
+    )
+    val contentType = requestMatcher.headers.get(Header.CONTENT_TYPE).map(_.specific)
+    val routeKey = getRouteKey(requestMatcher, Some(finalGroupName))
 
     underlyingSubscriptions.synchronized {
       val r = subscriptions.add(
@@ -173,7 +175,7 @@ class HyperBus(val transportManager: TransportManager,
       if (!underlyingSubscriptions.contains(routeKey)) {
         val uh = new UnderlyingPubSubHandler[REQ](routeKey)
         val d: Deserializer[REQ] = uh.deserializer
-        val uid = transportManager.subscribe[REQ](uri, finalGroupName, d)(uh.handler)
+        val uid = transportManager.onEvent[REQ](requestMatcher, finalGroupName, d)(uh.handler)
         underlyingSubscriptions += routeKey ->(uid, uh)
       }
       r
@@ -204,7 +206,7 @@ class HyperBus(val transportManager: TransportManager,
       case r: ErrorResponse ⇒ r.serialize(outputStream)
       case t ⇒
         val error = InternalServerError(ErrorBody(DefError.INTERNAL_ERROR, Some(t.getMessage)))
-        logError("Unhandled exception", error)
+        logError("Unhandled exception", error, t)
         error.serialize(outputStream)
     }
   }
@@ -217,8 +219,8 @@ class HyperBus(val transportManager: TransportManager,
     }
   }
 
-  protected def logError(msg: String, error: HyperBusException[ErrorBody]): Unit = {
-    log.error(msg + ". #" + error.body.errorId, error)
+  protected def logError(msg: String, error: HyperBusException[ErrorBody], throwable: Throwable): Unit = {
+    log.error(msg + ". #" + error.body.errorId, throwable)
   }
 
   protected def safeErrorMessage(msg: String, request: Request[Body], routeKey: String): String = {
@@ -245,8 +247,10 @@ class HyperBus(val transportManager: TransportManager,
 
   protected def responseSerializerNotFound(response: Response[Body]) = log.error("Can't serialize response: {}", response)
 
-  protected def getRouteKey(uri: TextMatcher, groupName: Option[String]) = {
-    val specificUri = uri.specific // todo: implement other filters?
+  protected def getRouteKey(requestMatcher: TransportRequestMatcher, groupName: Option[String]) = {
+    if (requestMatcher.uri.isEmpty)
+      throw new IllegalArgumentException(s"uri is not set on matcher: $requestMatcher")
+    val specificUri = requestMatcher.uri.get.pattern.specific // todo: implement other filters?
 
     groupName.map {
       specificUri + "#" + _

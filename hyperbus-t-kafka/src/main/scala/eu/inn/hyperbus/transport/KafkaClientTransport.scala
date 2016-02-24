@@ -5,6 +5,7 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
@@ -15,7 +16,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-case class KafkaRoute(uri: Uri,
+case class KafkaRoute(requestMatcher: TransportRequestMatcher,
                       kafkaTopic: String,
                       kafkaPartitionKeys: List[String])
 
@@ -40,7 +41,7 @@ class KafkaClientTransport(producerProperties: Properties,
   override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
-    routes.find(r ⇒ r.uri.matchUri(message.uri)) map (publishToRoute(_, message)) getOrElse {
+    routes.find(r ⇒ r.requestMatcher.matchMessage(message)) map (publishToRoute(_, message)) getOrElse {
       throw new NoTransportRouteException(s"Kafka producer (client). Uri: ${message.uri}")
     }
   }

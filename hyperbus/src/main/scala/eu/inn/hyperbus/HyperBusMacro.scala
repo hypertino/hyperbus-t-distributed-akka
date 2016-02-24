@@ -72,17 +72,18 @@ private[hyperbus] trait HyperBusMacroImplementation {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
     val requestDeserializer = requestType.companion.declaration(TermName("apply"))
+    val methodGetter = requestType.companion.declaration(TermName("method"))
     val uriPattern = getUriAnnotation(requestType)
-    val (method: String, bodySymbol) = getMethodAndBody(requestType)
+    val bodySymbol = getBodySymbol(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val thizVal = fresh("thiz")
-    val uriVal = fresh("uriPattern")
+    val rmVal = fresh("requestMatcher")
 
     val obj = q"""{
       val $thizVal = $thiz
-      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($uriPattern)
-      $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($uriVal, $method, $contentType, $requestDeserializer _) {
+      val $rmVal = $thizVal.macroApiImpl.requestMatcher($uriPattern, $methodGetter, $contentType)
+      $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($rmVal, $requestDeserializer _) {
         response: $requestType => $handler(response)
       }
     }"""
@@ -98,18 +99,19 @@ private[hyperbus] trait HyperBusMacroImplementation {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
     val requestDeserializer = requestType.companion.declaration(TermName("apply"))
+    val methodGetter = requestType.companion.declaration(TermName("method"))
     val uriPattern = getUriAnnotation(requestType)
-    val (method: String, bodySymbol) = getMethodAndBody(requestType)
+    val bodySymbol = getBodySymbol(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
 
     val thizVal = fresh("thiz")
-    val uriVal = fresh("uri")
+    val rmVal = fresh("requestMatcher")
     val responseVal = fresh("response")
 
     val obj = q"""{
       val $thizVal = $thiz
-      val $uriVal = $thizVal.macroApiImpl.uriWithAnyValue($uriPattern)
-      $thizVal.onEvent[$requestType]($uriVal, $method, $contentType, $groupName, $requestDeserializer _) {
+      val $rmVal = $thizVal.macroApiImpl.requestMatcher($uriPattern, $methodGetter, $contentType)
+      $thizVal.onEvent[$requestType]($rmVal, $groupName, $requestDeserializer _) {
         case $responseVal: $requestType => $handler($responseVal)
       }
     }"""
@@ -190,17 +192,15 @@ private[hyperbus] trait HyperBusMacroImplementation {
     })
   }
 
-  private def getMethodAndBody(in: Type) = {
+  private def getBodySymbol(in: Type) = {
     val requestTypeSig = typeOf[Request[_]].typeSymbol.typeSignature
     in.baseClasses.flatMap { baseSymbol =>
       val baseType = in.baseType(baseSymbol)
       baseType.baseClasses.find(_.typeSignature =:= requestTypeSig).flatMap { requestTrait =>
-        getMethodAnnotation(baseSymbol.typeSignature) map { annotationOfMethod =>
-          (annotationOfMethod, in.baseType(requestTrait).typeArgs.head)
-        }
+        in.baseType(requestTrait).typeArgs.headOption
       }
     }.headOption.getOrElse {
-      c.abort(c.enclosingPosition, s"@method annotation is not defined.}")
+      c.abort(c.enclosingPosition, s"Body symbol of Request[Body] is not defined.}")
     }
   }
 

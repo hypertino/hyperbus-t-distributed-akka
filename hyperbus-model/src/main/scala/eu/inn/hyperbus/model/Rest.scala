@@ -4,7 +4,7 @@ import java.io.{ByteArrayOutputStream, OutputStream}
 
 import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.serialization.MessageSerializer
-import eu.inn.hyperbus.transport.api.{TransportMessage, TransportRequest, TransportResponse}
+import eu.inn.hyperbus.transport.api.{EntityWithHeaders, TransportMessage, TransportRequest, TransportResponse}
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
@@ -24,27 +24,42 @@ trait Links {
 
 object LinksMap {
   type LinksMapType = Map[String, Either[Link, Seq[Link]]]
-  def apply(self: String): LinksMapType = Map("self" → Left(Link(self, templated = Some(true))))
-  def apply(link: Link): LinksMapType = Map("self" → Left(link))
+  def apply(self: String): LinksMapType = Map(DefLink.SELF → Left(Link(self, templated = Some(true))))
+  def apply(link: Link): LinksMapType = Map(DefLink.SELF → Left(link))
   def apply(links: Map[String, Either[Link, Seq[Link]]]): LinksMapType = links
 }
 
 trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory {
-  outer ⇒
   def body: B
 
-  def messageId: String
+  def messageId = header(Header.MESSAGE_ID)
 
-  def correlationId: String
+  def correlationId = headerOption(Header.CORRELATION_ID).getOrElse(messageId)
 
   def newContext() = MessagingContext(correlationId)
 }
 
+object Headers {
+  def fromCorrelation(messageId: String, correlationId: String): Map[String,Seq[String]] = {
+    Map(
+      Header.MESSAGE_ID → Seq(messageId)) ++ {
+      if (messageId != correlationId)
+        Map(Header.CORRELATION_ID → Seq(correlationId))
+      else
+        Map.empty
+    }
+  }
+  def fromCorrelation(messagingContext: MessagingContext): Map[String,Seq[String]] =
+    fromCorrelation(messagingContext.messageId, messagingContext.correlationId)
+  def fromContentType(contentType: Option[String]): Map[String,Seq[String]] =
+    contentType.map(ct ⇒ Map(Header.CONTENT_TYPE → Seq(ct))).getOrElse(Map.empty)
+}
+
 trait Request[+B <: Body] extends Message[B] with TransportRequest {
-  type bodyType = Body
-
-  def method: String
-
+  def method: String = header(Header.METHOD)
+  protected def assertMethod(value: String): Unit = {
+    if (method != value) throw new IllegalArgumentException(s"Incorrect method value: $method != $value (headers?)")
+  }
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeRequest(this, outputStream)
 }
 

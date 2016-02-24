@@ -1,29 +1,31 @@
 package eu.inn.hyperbus.transport.api
 
-import java.io.{ByteArrayOutputStream, OutputStream}
+import java.io.OutputStream
 
-import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
-import com.typesafe.config.ConfigValue
-import eu.inn.hyperbus.transport.api.matchers.TextMatcher
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
-import scala.util.matching.Regex
 
-trait TransportMessage {
+trait EntityWithHeaders {
+  def headers: Map[String, Seq[String]]
+
+  def headerOption(name: String): Option[String] = headers.get(name).flatMap(_.headOption)
+
+  def header(name: String): String = headerOption(name).getOrElse(throw new NoSuchHeaderException(name))
+}
+
+trait TransportMessage extends EntityWithHeaders {
   def messageId: String
 
   def correlationId: String
-
-  def headers: Map[String, Seq[String]]
 
   def serialize(output: OutputStream)
 }
 
 trait TransportRequest extends TransportMessage {
   def uri: Uri
-  def filters: Map[String, TextMatcher]
 }
 
 trait TransportResponse extends TransportMessage
@@ -43,11 +45,15 @@ trait ClientTransport {
 }
 
 trait ServerTransport {
-  def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
-                                     (handler: (IN) => Future[TransportResponse]): String
+  def onCommand[IN <: TransportRequest](matcher: TransportRequestMatcher,
+                                        inputDeserializer: Deserializer[IN],
+                                        exceptionSerializer: Serializer[Throwable])
+                                       (handler: (IN) => Future[TransportResponse]): String
 
-  def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])
-                                       (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
+  def onEvent[IN <: TransportRequest](matcher: TransportRequestMatcher,
+                                      groupName: String,
+                                      inputDeserializer: Deserializer[IN])
+                                     (handler: (IN) => Future[Unit]): String // todo: Unit -> some useful response?
 
   def off(subscriptionId: String)
 
@@ -55,4 +61,4 @@ trait ServerTransport {
 }
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
-
+class NoSuchHeaderException(header: String) extends RuntimeException(s"No such header: $header")

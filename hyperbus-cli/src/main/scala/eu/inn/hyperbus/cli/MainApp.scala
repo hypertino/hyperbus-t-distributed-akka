@@ -10,8 +10,7 @@ import eu.inn.config.ConfigLoader
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.standard._
-import eu.inn.hyperbus.serialization.RequestHeader
-import eu.inn.hyperbus.model.serialization.util.StringDeserializer
+import eu.inn.hyperbus.serialization.{StringDeserializer, RequestHeader}
 import eu.inn.hyperbus.transport.ActorSystemRegistry
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportManager}

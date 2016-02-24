@@ -4,7 +4,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.uri.{UriParts, Uri}
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.inproc.{SubKey, Subscription}
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.Subscriptions
@@ -70,7 +70,9 @@ class InprocTransport(serialize: Boolean = false)
     }
 
     // todo: filter is redundant for inproc?
-    subscriptions.get(message.uri.pattern.specific).subRoutes filter (_._1.matchArgs(message.uri.args)) foreach {
+    subscriptions.get(message.uri.pattern.specific).subRoutes.filter{subRoute ⇒
+      subRoute._1.requestMatcher.matchMessage(message)
+    }.foreach {
       case (subKey, subscriptionList) =>
 
         if (subKey.groupName.isEmpty) {
@@ -81,41 +83,35 @@ class InprocTransport(serialize: Boolean = false)
             reserializeMessage(message, subscriber.inputDeserializer)
           ) foreach { messageForSubscriber ⇒
 
-            tryX("Decode failed", subscriber.exceptionSerializer,
-              messageForSubscriber.uri.args
-              //subscriber. partitionArgsExtractor(messageForSubscriber)
-            ) foreach { args ⇒
-
-              if (subKey.matchArgs(args)) {
-                // todo: log if not matched?
-                val handlerResult = subscriber.handler(messageForSubscriber)
-                result = if (serialize) {
-                  handlerResult map { out ⇒
-                    reserializeMessage(out, outputDeserializer)
-                  } recoverWith {
-                    case NonFatal(e) ⇒
-                      log.error("`process` handler failed with", e)
-                      Future.successful {
-                        reserializeException(e, subscriber.exceptionSerializer, outputDeserializer)
-                      }
-                  }
-                }
-                else {
-                  handlerResult.asInstanceOf[Future[OUT]]
-                }
-                if (isPublish) {
-                  // convert to Future[Unit]
-                  result = result.map { _ ⇒
-                    new PublishResult {
-                      def sent = Some(true)
-
-                      def offset = None
+            // todo: log if not matched?
+            if (subKey.requestMatcher.matchMessage(messageForSubscriber)) {
+              val handlerResult = subscriber.handler(messageForSubscriber)
+              result = if (serialize) {
+                handlerResult map { out ⇒
+                  reserializeMessage(out, outputDeserializer)
+                } recoverWith {
+                  case NonFatal(e) ⇒
+                    log.error("`onCommand` handler failed with", e)
+                    Future.successful {
+                      reserializeException(e, subscriber.exceptionSerializer, outputDeserializer)
                     }
-                  }.asInstanceOf[Future[OUT]]
                 }
-                if (log.isTraceEnabled) {
-                  log.trace(s"Message ($messageForSubscriber) is delivered to `process` @$subKey}")
-                }
+              }
+              else {
+                handlerResult.asInstanceOf[Future[OUT]]
+              }
+              if (isPublish) {
+                // convert to Future[Unit]
+                result = result.map { _ ⇒
+                  new PublishResult {
+                    def sent = Some(true)
+                    def offset = None
+                    override def toString = s"PublishResult(sent=Some(true),offset=None)"
+                  }
+                }.asInstanceOf[Future[OUT]]
+              }
+              if (log.isTraceEnabled) {
+                log.trace(s"Message ($messageForSubscriber) is delivered to `onCommand` @$subKey}")
               }
             }
           }
@@ -128,29 +124,29 @@ class InprocTransport(serialize: Boolean = false)
             }
             catch {
               case NonFatal(e) ⇒
-                log.error("`subscription` deserializer failed with", e)
+                log.error("`onEvent` deserializer failed with", e)
                 None
             }
 
           ma.foreach { messageForSubscriber ⇒
-            if (subKey.matchArgs(messageForSubscriber.uri.args)) {
+            if (subKey.requestMatcher.matchMessage(messageForSubscriber)) {
               // todo: log if not matched?
               subscriber.handler(messageForSubscriber).onFailure {
                 case NonFatal(e) ⇒
-                  log.error("`subscription` handler failed with", e)
+                  log.error("`onEvent` handler failed with", e)
               }
 
               if (result == null) {
                 result = Future.successful(
                   new PublishResult {
                     def sent = Some(true)
-
                     def offset = None
+                    override def toString = s"PublishResult(sent=Some(true),offset=None)"
                   }
                 ).asInstanceOf[Future[OUT]]
               }
               if (log.isTraceEnabled) {
-                log.trace(s"Message ($messageForSubscriber) is delivered to `subscriber` @$subKey}")
+                log.trace(s"Message ($messageForSubscriber) is delivered to `onEvent` @$subKey}")
               }
             }
           }
@@ -173,21 +169,31 @@ class InprocTransport(serialize: Boolean = false)
     _ask[TransportResponse](message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
   }
 
-  override def process[IN <: TransportRequest](uriFilter: Uri, inputDeserializer: Deserializer[IN], exceptionSerializer: Serializer[Throwable])
-                                              (handler: (IN) => Future[TransportResponse]): String = {
+  override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                                 inputDeserializer: Deserializer[IN],
+                                                 exceptionSerializer: Serializer[Throwable])
+                                                (handler: (IN) => Future[TransportResponse]): String = {
+
+    if (requestMatcher.uri.isEmpty)
+      throw new IllegalArgumentException("requestMatcher.uri is empty")
 
     subscriptions.add(
-      uriFilter.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(None, uriFilter.args),
+      requestMatcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      SubKey(None, requestMatcher),
       Subscription(inputDeserializer, exceptionSerializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }
 
-  override def subscribe[IN <: TransportRequest](uriFilter: Uri, groupName: String, inputDeserializer: Deserializer[IN])
-                                                (handler: (IN) => Future[Unit]): String = {
+  override def onEvent[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
+                                               groupName: String,
+                                               inputDeserializer: Deserializer[IN])
+                                              (handler: (IN) => Future[Unit]): String = {
+    if (requestMatcher.uri.isEmpty)
+      throw new IllegalArgumentException("requestMatcher.uri")
+
     subscriptions.add(
-      uriFilter.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(Some(groupName), uriFilter.args),
+      requestMatcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      SubKey(Some(groupName), requestMatcher),
       Subscription(inputDeserializer, null, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
   }

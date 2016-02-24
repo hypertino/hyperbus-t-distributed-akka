@@ -12,6 +12,7 @@ import eu.inn.binders.json._
 import eu.inn.hyperbus.IdGenerator
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
@@ -92,33 +93,33 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      val id = transportManager.process(Uri("/topic/{abc}"), MockRequestDeserializer, null) { msg: MockRequest =>
+      val id = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), MockRequestDeserializer, null) { msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)
         }
       }
 
-      val id2 = transportManager.process(Uri("/topic/{abc}"), MockRequestDeserializer, null) { msg: MockRequest =>
+      val id2 = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), MockRequestDeserializer, null) { msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(msg.message.reverse)
         }
       }
 
-      val id3 = transportManager.subscribe(Uri("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
+      val id3 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      val id4 = transportManager.subscribe(Uri("/topic/{abc}"), "sub1", MockRequestDeserializer) { msg: MockRequest =>
+      val id4 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
 
-      val id5 = transportManager.subscribe(Uri("/topic/{abc}"), "sub2", MockRequestDeserializer) { msg: MockRequest =>
+      val id5 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub2", MockRequestDeserializer) { msg: MockRequest =>
         msg.message should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})

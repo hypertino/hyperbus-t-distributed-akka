@@ -19,20 +19,21 @@ private[annotations] object ResponseMacro {
   }
 }
 
-// todo: add status annotation, for the future
 private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroImplBase {
-
   import c.universe._
 
-  def updateClass(annotationArgument: Tree, existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
+  def updateClass(existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
+    val status = c.prefix.tree match {
+      case q"new response($status)" => c.Expr(status)
+      case _ ⇒ c.abort(c.enclosingPosition, "Please provide arguments for @response annotation")
+    }
 
     val q"case class $className[..$typeArgs](..$fields) extends ..$bases { ..$body }" = existingClass
 
-    val fieldsExcept = fields.filterNot { f ⇒
-      f.name == "headers" || f.name.toString == "correlationId" || f.name.toString == "messageId"
+    val fieldsExceptHeaders = fields.filterNot { f ⇒
+      f.name == "headers"
     }
 
-    // eliminate contravariance
     val methodTypeArgs = typeArgs.map { t: TypeDef ⇒
       TypeDef(Modifiers(), t.name, t.tparams, t.rhs)
     }
@@ -41,10 +42,9 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     }
 
     val newClass = q"""
-        case class $className[..$typeArgs](..$fieldsExcept,
-                                           headers: Map[String, Seq[String]],
-                                           messageId: String,
-                                           correlationId: String) extends ..$bases {
+        @eu.inn.hyperbus.model.annotations.status($status)
+        case class $className[..$typeArgs](..$fieldsExceptHeaders,
+                                           headers: Map[String, Seq[String]]) extends ..$bases {
           ..$body
           def status: Int = ${className.toTermName}.status
         }
@@ -52,21 +52,21 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
 
     val ctxVal = fresh("ctx")
     val companionExtra = q"""
-        def apply[..$methodTypeArgs](..$fieldsExcept, headers: Map[String, Seq[String]])
+        def apply[..$methodTypeArgs](..$fieldsExceptHeaders, headersBuilder: eu.inn.hyperbus.model.HeadersBuilder)
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames] = {
-          val $ctxVal = contextFactory.newContext()
-          ${className.toTermName}[..$classTypeNames](..${fieldsExcept.map(_.name)},
-            headers = headers,
-            messageId = $ctxVal.messageId,
-            correlationId = $ctxVal.correlationId
+          ${className.toTermName}[..$classTypeNames](..${fieldsExceptHeaders.map(_.name)},
+            headers = headersBuilder
+              .withContext(contextFactory)
+              .withContentType(body.contentType)
+              .result()
           )
         }
 
-        def apply[..$methodTypeArgs](..$fieldsExcept)
+        def apply[..$methodTypeArgs](..$fieldsExceptHeaders)
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames]
-          = apply(..${fieldsExcept.map(_.name)}, Map.empty)(contextFactory)
+          = apply(..${fieldsExceptHeaders.map(_.name)}, new eu.inn.hyperbus.model.HeadersBuilder)(contextFactory)
 
-        def status: Int = $annotationArgument
+        def status: Int = $status
     """
 
     val newCompanion = clzCompanion map { existingCompanion =>

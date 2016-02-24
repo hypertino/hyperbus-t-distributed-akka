@@ -115,7 +115,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   def dispatch[A: c.WeakTypeTag](actor: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
-      c.abort(c.enclosingPosition, s"No suitable 'process' / '~>' or 'subscribe' / '|>' method is defined in ${weakTypeOf[A]}")
+      c.abort(c.enclosingPosition, s"No suitable 'onCommand' / '~>' or 'onEvent' / '|>' method is defined in ${weakTypeOf[A]}")
     }
 
     val typ = weakTypeOf[A]
@@ -147,8 +147,8 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   protected def extractOnMethods[A: c.WeakTypeTag]: List[MethodSymbol] = {
     val fts = weakTypeOf[Future[_]].typeSymbol.typeSignature
     weakTypeOf[A].members.filter(member => member.isMethod &&
-      (member.name.decodedName.toString.startsWith("process") ||
-        member.name.decodedName.toString.startsWith("subscribe") ||
+      (member.name.decodedName.toString.startsWith("onCommand") ||
+        member.name.decodedName.toString.startsWith("onEvent") ||
         member.name.decodedName.toString.startsWith("~>") || // ~>
         member.name.decodedName.toString.startsWith("|>")) && // |>
       member.isPublic && {

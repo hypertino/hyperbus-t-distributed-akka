@@ -6,7 +6,7 @@ import akka.actor.{Actor, DeadLetter}
 import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe, UnsubscribeAck}
 import akka.pattern.pipe
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -14,12 +14,17 @@ import scala.util.control.NonFatal
 
 private[transport] trait Command
 
-private[transport] case class Subscription[OUT, IN <: TransportRequest](uri: Uri,
+private[transport] case class Subscription[OUT, IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
                                                                         groupName: Option[String],
                                                                         inputDeserializer: Deserializer[IN],
                                                                         exceptionSerializer: Serializer[Throwable],
                                                                         handler: (IN) => Future[OUT]) {
-  def topic = uri.pattern.specific // currently only Specific url's are supported, todo: add Regex, Any, etc...
+  def topic = {
+    requestMatcher.uri.map(_.pattern.specific) // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      .getOrElse(
+        throw new IllegalArgumentException("requestMatcher.uri is empty")
+      )
+  }
 }
 
 private[transport] case class Start[OUT, IN <: TransportRequest](id: String, subscription: Subscription[OUT, IN], logMessages: Boolean) extends Command
@@ -39,7 +44,7 @@ private[transport] abstract class ServerActor[OUT, IN <: TransportRequest] exten
       subscription = start.subscription
       logMessages = start.logMessages
       log.debug(s"$self is subscribing to topic ${subscription.topic}/${subscription.groupName}")
-      mediator ! Subscribe(subscription.uri.pattern.specific, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
+      mediator ! Subscribe(subscription.topic, Util.getUniqGroupName(subscription.groupName), self) // todo: test empty group behavior
 
     case ack: SubscribeAck ⇒
       log.debug(s"$self is subscribed to topic ${subscription.topic}/${subscription.groupName}")
