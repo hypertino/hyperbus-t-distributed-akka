@@ -63,13 +63,20 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val f = hyperBus <~ TestPost1(TestBody1("ha ha")) map { result ⇒
-        result.body.resourceId should equal("100500") // this will fail to compile if return type from macros is invalid
-        result
+      hyperBus ~> { implicit post: TestPost2 =>
+        Future {
+          Created(TestCreatedBody(post.body.resourceData.toString))
+        }
       }
 
-      whenReady(f) { r =>
+      val f1 = hyperBus <~ TestPost1(TestBody1("ha ha"))
+      whenReady(f1) { r =>
         r.body should equal(TestCreatedBody("100500"))
+      }
+
+      val f2 = hyperBus <~ TestPost2(TestBody2(7890))
+      whenReady(f2) { r =>
+        r.body should equal(TestCreatedBody("7890"))
       }
     }
 

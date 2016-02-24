@@ -20,8 +20,7 @@ class MockClientTransport(config: Config) extends ClientTransport {
 
 class MockServerTransport(config: Config) extends ServerTransport {
   override def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[IN],
-                                                 exceptionSerializer: Serializer[Throwable])
+                                                 inputDeserializer: Deserializer[IN])
                                                 (handler: (IN) ⇒ Future[TransportResponse]): String = ???
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???

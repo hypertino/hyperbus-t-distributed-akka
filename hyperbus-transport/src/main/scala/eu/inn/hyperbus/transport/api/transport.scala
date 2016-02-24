@@ -16,6 +16,7 @@ trait EntityWithHeaders {
   def header(name: String): String = headerOption(name).getOrElse(throw new NoSuchHeaderException(name))
 }
 
+// todo: toString with JSON and class info
 trait TransportMessage extends EntityWithHeaders {
   def messageId: String
 
@@ -46,8 +47,7 @@ trait ClientTransport {
 
 trait ServerTransport {
   def onCommand[IN <: TransportRequest](matcher: TransportRequestMatcher,
-                                        inputDeserializer: Deserializer[IN],
-                                        exceptionSerializer: Serializer[Throwable])
+                                        inputDeserializer: Deserializer[IN])
                                        (handler: (IN) => Future[TransportResponse]): String
 
   def onEvent[IN <: TransportRequest](matcher: TransportRequestMatcher,

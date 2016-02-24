@@ -5,7 +5,6 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
-import eu.inn.hyperbus.transport.api.uri.Uri
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration

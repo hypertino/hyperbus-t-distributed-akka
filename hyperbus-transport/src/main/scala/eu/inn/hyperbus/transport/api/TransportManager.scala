@@ -49,14 +49,12 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
   }
 
   def onCommand[IN <: TransportRequest](requestMatcher: TransportRequestMatcher,
-                                        inputDeserializer: Deserializer[IN],
-                                        exceptionSerializer: Serializer[Throwable])
+                                        inputDeserializer: Deserializer[IN])
                                        (handler: (IN) => Future[TransportResponse]): String = {
 
     val underlyingSubscriptionId = lookupServerTransport(requestMatcher).onCommand[IN](
       requestMatcher,
-      inputDeserializer,
-      exceptionSerializer)(handler)
+      inputDeserializer)(handler)
 
     val result = addSubscriptionLink(requestMatcher, underlyingSubscriptionId)
     log.info(s"New processor on $requestMatcher: #${handler.hashCode.toHexString}. Id = $result")

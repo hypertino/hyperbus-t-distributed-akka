@@ -36,6 +36,7 @@ object SubscriptionList {
   private[util] def getNextRandomInt(max: Int) = randomGen.nextInt(max)
 }
 
+// todo: this is too complicated, refactoring or documentation is needed
 class Subscriptions[K, T] {
 
   case class SubscriptionMap(subRoutes: Map[K, SubscriptionList[T]]) extends ComplexElement[SubscriptionMap, String] {

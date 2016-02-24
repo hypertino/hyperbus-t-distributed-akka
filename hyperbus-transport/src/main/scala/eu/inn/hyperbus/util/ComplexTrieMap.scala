@@ -10,6 +10,7 @@ trait ComplexElement[ME, REMOVE] {
   def isEmpty: Boolean
 }
 
+// todo: this is too complicated, refactoring or documentation is needed
 class ComplexTrieMap[K, REMOVE, V <: ComplexElement[V, REMOVE]] {
   protected val map = new TrieMap[K, V]
 
