@@ -1,10 +1,8 @@
-import java.io.{InputStream, OutputStream}
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.typesafe.config.ConfigFactory
-import eu.inn.binders._
-import eu.inn.binders.json.SerializerFactory
-import eu.inn.hyperbus.IdGenerator
+import eu.inn.hyperbus.model.annotations.{body, request}
+import eu.inn.hyperbus.model.{Body, Method, Request}
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
@@ -13,6 +11,12 @@ import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
+
+@body("mock")
+case class MockBody(test: String) extends Body
+
+@request(Method.POST, "/mock/{partitionId}")
+case class MockRequest(partitionId: String, body: MockBody) extends Request[MockBody]
 
 class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter {
   var transportManager: TransportManager = null
@@ -33,26 +37,23 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1",
-        MockRequestDeserializer) { msg: MockRequest =>
-        Future {
-          msg.message should equal("12345")
+      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
+        case msg: MockRequest => Future {
+          msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
 
-      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1",
-        MockRequestDeserializer) { msg: MockRequest =>
-        Future {
-          msg.message should equal("12345")
+      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
+        case msg: MockRequest => Future {
+          msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
 
-      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub2",
-        MockRequestDeserializer) { msg: MockRequest =>
-        Future {
-          msg.message should equal("12345")
+      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply) {
+        case msg: MockRequest => Future {
+          msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
@@ -61,8 +62,8 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       // clear counter
       cnt.set(0)
       val f = Future.sequence (List(
-        transportManager.publish(MockRequest("/topic/{abc}", "1", "12345")),
-        transportManager.publish(MockRequest("/topic/{abc}", "2", "12345")))
+        transportManager.publish(MockRequest("1", MockBody("12345"))),
+        transportManager.publish(MockRequest("2", MockBody("12345"))))
       )
 
       whenReady(f) { publishResults =>
@@ -77,38 +78,3 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
   }
 }
 
-// move mocks to separate assembly
-case class MockRequest(uriPattern: String,
-                       partitionId: String,
-                       message: String,
-                       headers: Map[String, Seq[String]] = Map.empty,
-                       correlationId: String = IdGenerator.create(),
-                       messageId: String = IdGenerator.create()) extends TransportRequest {
-  def uri: Uri = Uri(uriPattern, Map("partitionId" → partitionId))
-
-  override def serialize(output: OutputStream): Unit = {
-    SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
-  }
-}
-
-case class MockResponse(message: String,
-                        partitionId: String,
-                        headers: Map[String, Seq[String]] = Map.empty,
-                        correlationId: String = IdGenerator.create(),
-                        messageId: String = IdGenerator.create()) extends TransportResponse {
-  override def serialize(output: OutputStream): Unit = {
-    SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
-  }
-}
-
-object MockRequestDeserializer extends Deserializer[MockRequest] {
-  override def apply(input: InputStream): MockRequest = {
-    SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockRequest])
-  }
-}
-
-object MockResponseDeserializer extends Deserializer[MockResponse] {
-  override def apply(input: InputStream): MockResponse = {
-    SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockResponse])
-  }
-}

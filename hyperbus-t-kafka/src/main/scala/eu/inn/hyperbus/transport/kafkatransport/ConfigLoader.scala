@@ -16,7 +16,10 @@ object ConfigLoader {
 
     routesConfigList.map { config ⇒
       val kafkaTopic = config.read[KafkaTopicPojo]("kafka")
-      val matcher = TransportRequestMatcher(config.getValue("matcher"))
+      val matcher = if (config.hasPath("match"))
+        TransportRequestMatcher(config.getValue("match"))
+      else
+        TransportRequestMatcher(Some(Uri(AnyValue)))
       KafkaRoute(matcher, kafkaTopic.topic, kafkaTopic.partitionKeys.getOrElse(List.empty))
     }.toList
   }

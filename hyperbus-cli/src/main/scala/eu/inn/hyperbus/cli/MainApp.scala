@@ -40,7 +40,7 @@ class CliService(console: Console, config: Config) extends Service {
 
   val transportConfiguration = TransportConfigurationLoader.fromConfig(config)
   val transportManager = new TransportManager(transportConfiguration)
-  val hyperBus = new HyperBus(transportManager)
+  val hyperBus = new HyperBus(transportManager, logMessages = true)
 
   val actorSystem = ActorSystemRegistry.get("eu-inn").get
 

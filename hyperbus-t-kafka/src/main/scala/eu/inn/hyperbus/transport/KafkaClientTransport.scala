@@ -24,21 +24,19 @@ class KafkaPartitionKeyIsNotDefined(message: String) extends RuntimeException(me
 
 class KafkaClientTransport(producerProperties: Properties,
                            routes: List[KafkaRoute],
-                           logMessages: Boolean = false,
                            encoding: String = "UTF-8")
                           (implicit val executionContext: ExecutionContext) extends ClientTransport {
 
   def this(config: Config) = this(
     producerProperties = ConfigLoader.loadProducerProperties(config.getConfig("producer")),
     routes = ConfigLoader.loadRoutes(config.getConfigList("routes")),
-    logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     encoding = config.getOptionString("encoding").getOrElse("UTF-8")
   )(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
 
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
   protected[this] val producer = new KafkaProducer[String, String](producerProperties)
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = ???
+  override def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse] = ???
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
     routes.find(r ⇒ r.requestMatcher.matchMessage(message)) map (publishToRoute(_, message)) getOrElse {
@@ -75,10 +73,6 @@ class KafkaClientTransport(producerProperties: Properties,
         new ProducerRecord(route.kafkaTopic, recordKey.substring(1), messageString)
       }
 
-    if (logMessages && log.isTraceEnabled) {
-      log.trace(s"Sending to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode()} $messageString")
-    }
-
     val promise = Promise[PublishResult]()
 
     producer.send(record, new Callback {
@@ -97,10 +91,6 @@ class KafkaClientTransport(producerProperties: Properties,
               override def toString = s"PublishResult(sent=$sent,offset=$offset)"
             }
           )
-          if (logMessages && log.isTraceEnabled) {
-            log.trace(s"Sent to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : #${message.hashCode().toHexString}." +
-              s"Offset: ${recordMetadata.offset()} partition: ${recordMetadata.partition()}")
-          }
         }
       }
     })
