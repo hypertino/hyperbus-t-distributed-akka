@@ -1,9 +1,9 @@
 package eu.inn.hyperbus.serialization
 
-import java.io.{ByteArrayOutputStream, OutputStream}
+import java.io.OutputStream
 
 import eu.inn.binders.core.BindOptions
-import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.model.{Response, Body, Request}
 import eu.inn.hyperbus.transport.api.uri.UriJsonSerializer
 
 object MessageSerializer {
@@ -43,4 +43,3 @@ object MessageSerializer {
   }
 }
 
-class HeaderIsRequiredException(header: String) extends RuntimeException(s"Header value is not set: $header")

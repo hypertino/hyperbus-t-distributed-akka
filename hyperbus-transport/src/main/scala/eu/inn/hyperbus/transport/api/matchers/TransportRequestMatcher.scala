@@ -4,6 +4,7 @@ import com.typesafe.config.{ConfigValue, Config}
 import eu.inn.hyperbus.transport.api.TransportRequest
 import eu.inn.hyperbus.transport.api.uri.{UriPojo, Uri}
 
+// todo: rename this class
 case class TransportRequestMatcher(uri: Option[Uri], headers: Map[String, TextMatcher]) {
 
   // strict matching for concrete message

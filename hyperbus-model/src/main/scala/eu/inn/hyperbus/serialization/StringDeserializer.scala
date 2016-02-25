@@ -4,12 +4,13 @@ import java.io.ByteArrayInputStream
 
 import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.model._
+import eu.inn.hyperbus.util.StringSerializer
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 object StringDeserializer {
-  val defaultEncoding = "UTF-8"
+  private val defaultEncoding = StringSerializer.defaultEncoding
   
   def request[T <: Request[_]](input: String, encoding: String): T = macro StringDeserializerImpl.request[T]
   def request[T <: Request[_]](input: String): T = macro StringDeserializerImpl.requestUtf8[T]
@@ -61,6 +62,6 @@ private [serialization] object StringDeserializerImpl {
 
   def requestUtf8[T: c.WeakTypeTag](c: Context)(input: c.Expr[String]): c.Expr[T] = {
     import c.universe._
-    request[T](c)(input, c.Expr[String](Literal(Constant(StringDeserializer.defaultEncoding))))
+    request[T](c)(input, c.Expr[String](Literal(Constant(StringSerializer.defaultEncoding))))
   }
 }

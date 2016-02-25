@@ -1,6 +1,8 @@
 package eu.inn.hyperbus.transport
 
 import com.typesafe.config.{Config, ConfigFactory}
+import eu.inn.hyperbus.model.{Body, Request}
+import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, RegexTextMatcher, AnyValue, SpecificValue}
 import eu.inn.hyperbus.transport.api.uri._
@@ -20,15 +22,15 @@ class MockClientTransport(config: Config) extends ClientTransport {
 
 class MockServerTransport(config: Config) extends ServerTransport {
   override def onCommand(requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[TransportRequest])
-                                                (handler: (TransportRequest) ⇒ Future[TransportResponse]): Future[Subscription] = ???
+                         inputDeserializer: RequestDeserializer[Request[Body]])
+                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = ???
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
 
   override def onEvent(requestMatcher: TransportRequestMatcher,
-                                               groupName: String,
-                                               inputDeserializer: Deserializer[TransportRequest])
-                                              (handler: (TransportRequest) ⇒ Future[Unit]): Future[Subscription] = ???
+                       groupName: String,
+                       inputDeserializer: RequestDeserializer[Request[Body]])
+                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = ???
 
   override def off(subscription: Subscription): Future[Unit] = ???
 }

@@ -4,10 +4,8 @@ import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 
 import com.fasterxml.jackson.core.JsonParser
 import eu.inn.binders.dynamic.Value
-import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestHeader}
 import eu.inn.hyperbus.transport.api.uri.Uri
-
 
 trait DynamicBody extends Body with Links { // todo: replace with case class!
   def content: Value

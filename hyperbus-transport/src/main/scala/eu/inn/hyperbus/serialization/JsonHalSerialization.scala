@@ -1,7 +1,7 @@
 package eu.inn.hyperbus.serialization
 
-import com.fasterxml.jackson.core.{JsonParser, JsonGenerator}
-import eu.inn.binders.json.{SerializerFactory, JsonDeserializerBase, JsonSerializerBase}
+import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
+import eu.inn.binders.json.{JsonDeserializerBase, JsonSerializerBase, SerializerFactory}
 import eu.inn.binders.naming.Converter
 
 class JsonHalSerializer[C <: Converter](jsonGenerator: JsonGenerator) extends JsonSerializerBase[C, JsonHalSerializer[C]](jsonGenerator) {

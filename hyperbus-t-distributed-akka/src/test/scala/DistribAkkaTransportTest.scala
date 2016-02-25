@@ -6,10 +6,14 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.event.LoggingReceive
 import akka.testkit.TestActorRef
+import com.fasterxml.jackson.core.JsonParser
 import com.typesafe.config.ConfigFactory
 import eu.inn.binders._
 import eu.inn.binders.json._
 import eu.inn.hyperbus.IdGenerator
+import eu.inn.hyperbus.model.{Response, Request, Method, Body}
+import eu.inn.hyperbus.model.annotations.{response, request, body}
+import eu.inn.hyperbus.serialization.{ResponseHeader, MessageDeserializer}
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
@@ -22,38 +26,17 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 
 
-// move mocks to separate assembly
-case class MockRequest(uriPattern: String, message: String,
-                       headers: Map[String, Seq[String]] = Map.empty,
-                       correlationId: String = IdGenerator.create(),
-                       messageId: String = IdGenerator.create()) extends TransportRequest {
-  def uri: Uri = Uri(uriPattern)
+@body("mock")
+case class MockBody(test: String) extends Body
 
-  override def serialize(output: OutputStream): Unit = {
-    SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
-  }
-}
+@request(Method.POST, "/mock")
+case class MockRequest(body: MockBody) extends Request[MockBody]
 
-case class MockResponse(message: String,
-                        headers: Map[String, Seq[String]] = Map.empty,
-                        correlationId: String = IdGenerator.create(),
-                        messageId: String = IdGenerator.create()) extends TransportResponse {
-  override def serialize(output: OutputStream): Unit = {
-    SerializerFactory.findFactory().withStreamGenerator(output)(_.bind(this))
-  }
-}
+@request(Method.POST, "/not-existing")
+case class MockNotExistingRequest(body: MockBody) extends Request[MockBody]
 
-object MockRequestDeserializer extends Deserializer[MockRequest] {
-  override def apply(input: InputStream): MockRequest = {
-    SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockRequest])
-  }
-}
-
-object MockResponseDeserializer extends Deserializer[MockResponse] {
-  override def apply(input: InputStream): MockResponse = {
-    SerializerFactory.findFactory().withStreamParser(input)(_.unbind[MockResponse])
-  }
-}
+@response(200)
+case class MockResponse(body: MockBody) extends Response[MockBody]
 
 class TestActorX extends Actor with ActorLogging {
   val membersUp = new AtomicInteger(0)
@@ -93,45 +76,52 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      val id = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), MockRequestDeserializer, null) { msg: MockRequest =>
-        Future {
-          cnt.incrementAndGet()
-          MockResponse(msg.message.reverse)
+      val responseDeserializer = (input: InputStream) ⇒ {
+        MessageDeserializer.deserializeResponseWith(input) { (responseHeader: ResponseHeader, responseBodyJson: JsonParser) ⇒
+          MockResponse(MockBody(responseHeader.contentType, responseBodyJson))
         }
       }
 
-      val id2 = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), MockRequestDeserializer, null) { msg: MockRequest =>
+      val id = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
-          MockResponse(msg.message.reverse)
+          MockResponse(MockBody(msg.body.test.reverse))
         }
       }
+      println(id.futureValue)
 
-      val id3 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1", MockRequestDeserializer) { msg: MockRequest =>
-        msg.message should equal("12345")
+      val id2 = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
+        Future {
+          cnt.incrementAndGet()
+          MockResponse(MockBody(msg.body.test.reverse))
+        }
+      } futureValue
+
+      val id3 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
+        msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
-      }
+      } futureValue
 
-      val id4 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub1", MockRequestDeserializer) { msg: MockRequest =>
-        msg.message should equal("12345")
+      val id4 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
+        msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
-      }
+      } futureValue
 
-      val id5 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/topic/{abc}"))), "sub2", MockRequestDeserializer) { msg: MockRequest =>
-        msg.message should equal("12345")
+      val id5 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub2", MockRequest.apply) { case msg: MockRequest =>
+        msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
-      }
+      } futureValue
 
       Thread.sleep(500) // we need to wait until subscriptions will go acros the
 
-      val f: Future[MockResponse] = transportManager.ask(MockRequest("/topic/{abc}", "12345"), MockResponseDeserializer)
+      val f: Future[TransportResponse] = transportManager.ask(MockRequest(MockBody("12345")), responseDeserializer)
 
       whenReady(f, timeout(Span(5, Seconds))) { msg =>
         msg shouldBe a[MockResponse]
-        msg.message should equal("54321")
+        msg.asInstanceOf[MockResponse].body.test should equal("54321")
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(3)
 
@@ -155,7 +145,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
           e shouldBe a[NoTransportRouteException]
         }*/
 
-        val f3: Future[MockResponse] = transportManager.ask(MockRequest("not-existing-topic", "12345"), MockResponseDeserializer)
+        val f3: Future[TransportResponse] = transportManager.ask(MockNotExistingRequest(MockBody("12345")), responseDeserializer)
 
         whenReady(f3.failed, timeout(Span(1, Seconds))) { e =>
           e shouldBe a[NoTransportRouteException]

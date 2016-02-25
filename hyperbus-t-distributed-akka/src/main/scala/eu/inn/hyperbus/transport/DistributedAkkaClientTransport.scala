@@ -7,9 +7,11 @@ import akka.cluster.Cluster
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.typesafe.config.Config
+import eu.inn.hyperbus.serialization.StringDeserializer
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.distributedakka.{NoRouteWatcher, DistributedPubSubEx, Util}
+import eu.inn.hyperbus.transport.distributedakka._
 import eu.inn.hyperbus.util.ConfigUtils._
+import eu.inn.hyperbus.util.StringSerializer
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -17,17 +19,14 @@ import scala.concurrent.duration.FiniteDuration
 
 class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
                                      val localAffinity: Boolean = true,
-                                     val logMessages: Boolean = false,
                                      val actorSystemRegistryKey: Option[String] = None,
                                      implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
 
-  private def this(actorSystemWrapper: ActorSystemWrapper, localAffinity: Boolean,
-                   logMessages: Boolean, timeout: Timeout) =
-    this(actorSystemWrapper.actorSystem, localAffinity, logMessages, Some(actorSystemWrapper.key), timeout)
+  private def this(actorSystemWrapper: ActorSystemWrapper, localAffinity: Boolean, timeout: Timeout) =
+    this(actorSystemWrapper.actorSystem, localAffinity, Some(actorSystemWrapper.key), timeout)
 
   def this(config: Config) = this(ActorSystemRegistry.addRef(config),
     localAffinity = config.getOptionBoolean("local-afinity") getOrElse true,
-    logMessages = config.getOptionBoolean("log-messages") getOrElse false,
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
@@ -42,41 +41,25 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   protected[this] val mediator = DistributedPubSubEx(actorSystem).mediator
 
 
-  override def ask[OUT <: TransportResponse](message: TransportRequest, outputDeserializer: Deserializer[OUT]): Future[OUT] = {
-
+  override def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse] = {
     val specificUri = message.uri.pattern.specific
-    val inputBytes = new ByteArrayOutputStream()
-    message.serialize(inputBytes)
-    val messageString = inputBytes.toString(Util.defaultEncoding)
-    import eu.inn.hyperbus.util.LogUtils._
-
-    if (logMessages && log.isTraceEnabled) {
-      log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus <~ $messageString")
-    }
+    val content = StringSerializer.serializeToString(message)
+    val request = HyperBusRequest(content)
 
     import actorSystem.dispatcher
-    akka.pattern.ask(mediator, Publish(specificUri, messageString, sendOneMessageToEachGroup = true)) map {
-      case result: String ⇒
-        if (logMessages && log.isTraceEnabled) {
-          log.trace(Map("requestId" → messageString.hashCode.toHexString), s"hyperBus ~(R)~> $result")
-        }
-        val outputBytes = new ByteArrayInputStream(result.getBytes(Util.defaultEncoding))
+    akka.pattern.ask(mediator, Publish(specificUri, request, sendOneMessageToEachGroup = true)) map {
+      case result: HyperBusResponse ⇒
+        val outputBytes = new ByteArrayInputStream(result.content.getBytes(StringSerializer.defaultEncoding))
         outputDeserializer(outputBytes)
-      // todo: case _ ⇒
     }
   }
 
   override def publish(message: TransportRequest): Future[PublishResult] = {
     val specificUri = message.uri.pattern.specific
-    val inputBytes = new ByteArrayOutputStream()
-    message.serialize(inputBytes)
-    val messageString = inputBytes.toString(Util.defaultEncoding)
+    val content = StringSerializer.serializeToString(message)
+    val request = HyperBusRequest(content)
 
-    if (logMessages && log.isTraceEnabled) {
-      log.trace(s"hyperBus <| $messageString")
-    }
-
-    mediator ! Publish(specificUri, messageString, sendOneMessageToEachGroup = true) // todo: At least one confirm?
+    mediator ! Publish(specificUri, request, sendOneMessageToEachGroup = true) // todo: At least one confirm?
     Future.successful {
       new PublishResult {
         def sent = None

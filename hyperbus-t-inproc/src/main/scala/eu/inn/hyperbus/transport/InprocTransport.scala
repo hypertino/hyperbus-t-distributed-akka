@@ -3,6 +3,8 @@ package eu.inn.hyperbus.transport
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import com.typesafe.config.Config
+import eu.inn.hyperbus.model.{Body, Request}
+import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.inproc.{InprocSubscription, SubKey, HandlerWrapper}
@@ -26,7 +28,19 @@ class InprocTransport(serialize: Boolean = false)
   protected val subscriptions = new Subscriptions[SubKey, HandlerWrapper]
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  protected def reserializeMessage[OUT <: TransportMessage](message: TransportMessage, deserializer: Deserializer[OUT]): OUT = {
+  protected def reserializeRequest[OUT <: Request[Body]](message: TransportMessage, deserializer: RequestDeserializer[OUT]): OUT = {
+    if (serialize) {
+      val ba = new ByteArrayOutputStream()
+      message.serialize(ba)
+      val bi = new ByteArrayInputStream(ba.toByteArray)
+      MessageDeserializer.deserializeRequestWith(bi)(deserializer)
+    }
+    else {
+      message.asInstanceOf[OUT]
+    }
+  }
+
+  protected def reserializeResponse[OUT <: TransportResponse](message: TransportMessage, deserializer: Deserializer[OUT]): OUT = {
     if (serialize) {
       val ba = new ByteArrayOutputStream()
       message.serialize(ba)
@@ -66,7 +80,7 @@ class InprocTransport(serialize: Boolean = false)
           // default subscription (groupName="") returns reply
 
           tryX("onCommand` deserialization failed",
-            reserializeMessage(message, subscriber.inputDeserializer)
+            reserializeRequest(message, subscriber.inputDeserializer)
           ) foreach { messageForSubscriber ⇒
 
             val matched = !serialize || subKey.requestMatcher.matchMessage(messageForSubscriber)
@@ -77,7 +91,7 @@ class InprocTransport(serialize: Boolean = false)
               subscriber.handler(messageForSubscriber) map { case response ⇒
                 if (!isPublish) {
                   val finalResponse = if (serialize) {
-                    reserializeMessage(response, outputDeserializer)
+                    reserializeResponse(response, outputDeserializer)
                   } else {
                     response
                   }
@@ -94,7 +108,7 @@ class InprocTransport(serialize: Boolean = false)
           }
         } else {
           tryX("onEvent` deserialization failed",
-            reserializeMessage(message, subscriber.inputDeserializer)
+            reserializeRequest(message, subscriber.inputDeserializer)
           ) foreach { messageForSubscriber ⇒
 
             val matched = !serialize || subKey.requestMatcher.matchMessage(messageForSubscriber)
@@ -139,31 +153,31 @@ class InprocTransport(serialize: Boolean = false)
     _ask(message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
   }
 
-  override def onCommand(requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[TransportRequest])
-                                                (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription] = {
+  override def onCommand(matcher: TransportRequestMatcher,
+                         inputDeserializer: RequestDeserializer[Request[Body]])
+                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
-    if (requestMatcher.uri.isEmpty)
+    if (matcher.uri.isEmpty)
       throw new IllegalArgumentException("requestMatcher.uri is empty")
 
     val id = subscriptions.add(
-      requestMatcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(None, requestMatcher),
+      matcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      SubKey(None, matcher),
       HandlerWrapper(inputDeserializer, handler)
     )
     Future.successful(InprocSubscription(id))
   }
 
-  override def onEvent(requestMatcher: TransportRequestMatcher,
-                                               groupName: String,
-                                               inputDeserializer: Deserializer[TransportRequest])
-                                              (handler: (TransportRequest) => Future[Unit]): Future[Subscription] = {
-    if (requestMatcher.uri.isEmpty)
+  override def onEvent(matcher: TransportRequestMatcher,
+                       groupName: String,
+                       inputDeserializer: RequestDeserializer[Request[Body]])
+                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
+    if (matcher.uri.isEmpty)
       throw new IllegalArgumentException("requestMatcher.uri")
 
     val id = subscriptions.add(
-      requestMatcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
-      SubKey(Some(groupName), requestMatcher),
+      matcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
+      SubKey(Some(groupName), matcher),
       HandlerWrapper(inputDeserializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
     )
     Future.successful(InprocSubscription(id))

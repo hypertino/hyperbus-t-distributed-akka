@@ -1,5 +1,8 @@
 package eu.inn.hyperbus.model
 
+/**
+  * Created by maqdev on 25.02.16.
+  */
 object Method {
   val GET = "get"
   val POST = "post"
@@ -12,4 +15,3 @@ object Method {
   val FEED_PATCH = "feed:patch"
   val FEED_DELETE = "feed:delete"
 }
-

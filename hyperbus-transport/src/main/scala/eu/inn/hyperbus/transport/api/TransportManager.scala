@@ -3,6 +3,8 @@ package eu.inn.hyperbus.transport.api
 import java.io.InvalidClassException
 import java.util.concurrent.atomic.AtomicLong
 
+import eu.inn.hyperbus.model.{Body, Request}
+import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import org.slf4j.LoggerFactory
 
@@ -54,8 +56,8 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
   }
 
   def onCommand(requestMatcher: TransportRequestMatcher,
-                                        inputDeserializer: Deserializer[TransportRequest])
-                                       (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription] = {
+                inputDeserializer: RequestDeserializer[Request[Body]])
+               (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
     val transport = lookupServerTransport(requestMatcher)
     transport.onCommand(
@@ -68,9 +70,10 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
     }
   }
 
-  def onEvent(requestMatcher: TransportRequestMatcher, groupName: String,
-                                      inputDeserializer: Deserializer[TransportRequest])
-                                     (handler: (TransportRequest) => Future[Unit]): Future[Subscription] = {
+  def onEvent(requestMatcher: TransportRequestMatcher,
+              groupName: String,
+              inputDeserializer: RequestDeserializer[Request[Body]])
+             (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
 
     val transport = lookupServerTransport(requestMatcher)
     transport.onEvent(

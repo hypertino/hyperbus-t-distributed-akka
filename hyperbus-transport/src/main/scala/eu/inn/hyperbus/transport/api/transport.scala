@@ -2,6 +2,8 @@ package eu.inn.hyperbus.transport.api
 
 import java.io.OutputStream
 
+import eu.inn.hyperbus.model.{Request, Body}
+import eu.inn.hyperbus.serialization.RequestDeserializer
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 
@@ -47,13 +49,13 @@ trait Subscription
 
 trait ServerTransport {
   def onCommand(matcher: TransportRequestMatcher,
-                                        inputDeserializer: Deserializer[TransportRequest])
-                                       (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription]
+               inputDeserializer: RequestDeserializer[Request[Body]])
+               (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription]
 
   def onEvent(matcher: TransportRequestMatcher,
-                                      groupName: String,
-                                      inputDeserializer: Deserializer[TransportRequest])
-                                     (handler: (TransportRequest) => Future[Unit]): Future[Subscription] // todo: Unit -> some useful response?
+              groupName: String,
+              inputDeserializer: RequestDeserializer[Request[Body]])
+             (handler: (Request[Body]) => Future[Unit]): Future[Subscription] // todo: Unit -> some useful response?
 
   def off(subscription: Subscription): Future[Unit]
 
