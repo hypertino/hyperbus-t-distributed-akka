@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.serialization.RequestHeader
+import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.{SpecificValue, TransportRequestMatcher, AnyValue}
 import eu.inn.hyperbus.transport.api.uri.Uri
@@ -49,15 +49,15 @@ case class ServerSubscriptionTest(id: String) extends Subscription
 
 class ServerTransportTest extends ServerTransport {
   var sUriFilter: Uri = null
-  var sInputDeserializer: Deserializer[TransportRequest] = null
+  var sInputDeserializer: RequestDeserializer[Request[Body]] = null
   var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
   var sSubscriptionHandler: (TransportRequest) ⇒ Future[Unit] = null
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
 
-  override def onCommand(requestMatcher: TransportRequestMatcher,
-                                                 inputDeserializer: Deserializer[TransportRequest])
-                                                (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription] = {
+  override def onCommand(matcher: TransportRequestMatcher,
+                         inputDeserializer: RequestDeserializer[Request[Body]])
+                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
     sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
@@ -66,10 +66,10 @@ class ServerTransportTest extends ServerTransport {
     }
   }
 
-  override def onEvent(requestMatcher: TransportRequestMatcher,
-                                               groupName: String,
-                                               inputDeserializer: Deserializer[TransportRequest])
-                                              (handler: (TransportRequest) => Future[Unit]): Future[Subscription] = {
+  override def onEvent(matcher: TransportRequestMatcher,
+                       groupName: String,
+                       inputDeserializer: RequestDeserializer[Request[Body]])
+                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
     sInputDeserializer = inputDeserializer
     sSubscriptionHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[Unit]]
     Future {
@@ -226,7 +226,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"contentType":["application/vnd+test-1.json"],"messageId":["123"]}},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDeserializer(ba)
+      val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
       msg should equal(TestPost1(TestBody1("ha ha")))
 
       val futureResult = st.sHandler(msg)
@@ -246,7 +246,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"uri":{"pattern":"/empty"},"headers":{"method":["post"],"contentType":["no-content"],"messageId":["123"]}},"body":null}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDeserializer(ba)
+      val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
       msg should equal(StaticPostWithEmptyBody(EmptyBody))
 
       val futureResult = st.sHandler(msg)
@@ -266,7 +266,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"uri":{"pattern":"/empty"},"headers":{"method":["post"],"contentType":["some-content"],"messageId":["123"]}},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDeserializer(ba)
+      val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
       msg should equal(StaticPostWithDynamicBody(DynamicBody(Some("some-content"), Text("haha"))))
 
       val futureResult = st.sHandler(msg)
@@ -289,7 +289,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"uri":{"pattern":"/test"},"headers":{"method":["get"],"contentType":["some-content"],"messageId":["123"]}},"body":"haha"}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDeserializer(ba)
+      val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
       msg should equal(DynamicRequest(
         RequestHeader(Uri("/test"), Map(
           Header.METHOD → Seq(Method.GET),
@@ -356,8 +356,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val serverTransport = new ServerTransportTest() {
         override def onEvent(requestMatcher: TransportRequestMatcher,
                              groupName: String,
-                             inputDeserializer: Deserializer[TransportRequest])
-                            (handler: (TransportRequest) => Future[Unit]): Future[Subscription] =  {
+                             inputDeserializer: RequestDeserializer[Request[Body]])
+                            (handler: (Request[Body]) => Future[Unit]): Future[Subscription] =  {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }
@@ -376,8 +376,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val serverTransport = new ServerTransportTest() {
         override def onEvent(requestMatcher: TransportRequestMatcher,
                              groupName: String,
-                             inputDeserializer: Deserializer[TransportRequest])
-                            (handler: (TransportRequest) => Future[Unit]): Future[Subscription] =  {
+                             inputDeserializer: RequestDeserializer[Request[Body]])
+                            (handler: (Request[Body]) => Future[Unit]): Future[Subscription] =  {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }
@@ -404,7 +404,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val req = """{"request":{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"contentType":["application/vnd+test-1.json"],"messageId":["123"]}},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
-      val msg = st.sInputDeserializer(ba)
+      val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
       msg should equal(TestPost1(TestBody1("ha ha")))
 
       val futureResult = st.sHandler(msg)
