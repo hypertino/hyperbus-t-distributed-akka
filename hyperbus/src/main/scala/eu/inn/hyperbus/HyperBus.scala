@@ -23,12 +23,12 @@ class HyperBus(val transportManager: TransportManager,
   protected val log = LoggerFactory.getLogger(this.getClass)
 
   def onEvent(requestMatcher: TransportRequestMatcher, groupName: Option[String])
-             (handler: (DynamicRequest) => Future[Unit]): String = {
+             (handler: (DynamicRequest) => Future[Unit]): Future[Subscription] = {
     onEvent[DynamicRequest](requestMatcher, groupName, DynamicRequest.apply)(handler)
   }
 
   def onCommand(requestMatcher: TransportRequestMatcher)
-               (handler: DynamicRequest => Future[_ <: Response[Body]]): String = {
+               (handler: DynamicRequest => Future[_ <: Response[Body]]): Future[Subscription] = {
     onCommand[Response[Body], DynamicRequest](requestMatcher, DynamicRequest.apply)(handler)
   }
 
@@ -114,7 +114,7 @@ class HyperBus(val transportManager: TransportManager,
 
   def onCommand[RESP <: Response[Body], REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
                                                               requestDeserializer: RequestDeserializer[REQ])
-                                                             (handler: (REQ) => Future[RESP]): String = {
+                                                             (handler: (REQ) => Future[RESP]): Future[Subscription] = {
 
     val subscription = new RequestReplySubscription[REQ](handler, requestDeserializer)
     transportManager.onCommand(requestMatcher, subscription.deserializer)(subscription.underlyingHandler)
@@ -123,7 +123,7 @@ class HyperBus(val transportManager: TransportManager,
   def onEvent[REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
                                     groupName: Option[String],
                                     requestDeserializer: RequestDeserializer[REQ])
-                                   (handler: (REQ) => Future[Unit]): String = {
+                                   (handler: (REQ) => Future[Unit]): Future[Subscription] = {
 
     val finalGroupName = groupName.getOrElse {
       defaultGroupName.getOrElse {
@@ -134,8 +134,8 @@ class HyperBus(val transportManager: TransportManager,
     transportManager.onEvent(requestMatcher, finalGroupName, subscription.deserializer)(subscription.underlyingHandler)
   }
 
-  def off(subscriptionId: String): Unit = {
-    transportManager.off(subscriptionId)
+  def off(subscription: Subscription): Future[Unit] = {
+    transportManager.off(subscription)
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {

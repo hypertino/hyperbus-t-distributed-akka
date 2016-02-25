@@ -2,6 +2,7 @@ package eu.inn.hyperbus
 
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{contentType, method, uri}
+import eu.inn.hyperbus.transport.api.Subscription
 
 import scala.concurrent.Future
 import scala.reflect.macros._
@@ -11,7 +12,7 @@ private[hyperbus] object HyperBusMacro {
 
   def onCommand[IN <: Request[Body] : c.WeakTypeTag]
   (c: blackbox.Context)
-  (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
+  (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
@@ -20,7 +21,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def onEvent[IN : c.WeakTypeTag]
-  (c: blackbox.Context)(handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+  (c: blackbox.Context)(handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
@@ -29,7 +30,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def onEventForGroup[IN : c.WeakTypeTag]
-  (c: blackbox.Context)(groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+  (c: blackbox.Context)(groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
@@ -64,7 +65,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
   import c.universe._
 
   def onCommand[IN <: Request[Body] : c.WeakTypeTag]
-  (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[String] = {
+  (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[Future[Subscription]] = {
 
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
@@ -88,11 +89,11 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }"""
     //println(obj)
-    c.Expr[String](obj)
+    c.Expr[Future[Subscription]](obj)
   }
 
   def onEvent[IN : c.WeakTypeTag]
-  (groupName: Option[c.Expr[String]], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[String] = {
+  (groupName: Option[c.Expr[String]], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
     if (requestType.companion == null) {
@@ -116,7 +117,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       }
     }"""
     //println(obj)
-    c.Expr[String](obj)
+    c.Expr[Future[Subscription]](obj)
   }
 
   def ask[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Expr[Any] = {

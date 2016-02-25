@@ -45,6 +45,8 @@ class ClientTransportTest(output: String) extends ClientTransport {
   }
 }
 
+case class ServerSubscriptionTest(id: String) extends Subscription
+
 class ServerTransportTest extends ServerTransport {
   var sUriFilter: Uri = null
   var sInputDeserializer: Deserializer[TransportRequest] = null
@@ -55,27 +57,34 @@ class ServerTransportTest extends ServerTransport {
 
   override def onCommand(requestMatcher: TransportRequestMatcher,
                                                  inputDeserializer: Deserializer[TransportRequest])
-                                                (handler: (TransportRequest) => Future[TransportResponse]): String = {
+                                                (handler: (TransportRequest) => Future[TransportResponse]): Future[Subscription] = {
 
     sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]
-    idCounter.incrementAndGet().toHexString
+    Future {
+      ServerSubscriptionTest(idCounter.incrementAndGet().toHexString)
+    }
   }
 
   override def onEvent(requestMatcher: TransportRequestMatcher,
                                                groupName: String,
                                                inputDeserializer: Deserializer[TransportRequest])
-                                              (handler: (TransportRequest) => Future[Unit]): String = {
+                                              (handler: (TransportRequest) => Future[Unit]): Future[Subscription] = {
     sInputDeserializer = inputDeserializer
     sSubscriptionHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[Unit]]
-    idCounter.incrementAndGet().toHexString
+    Future {
+      ServerSubscriptionTest(idCounter.incrementAndGet().toHexString)
+    }
   }
 
-  override def off(subscriptionId: String) = {
-    sSubscriptionId = subscriptionId
-    sInputDeserializer = null
-    sSubscriptionHandler = null
-    sHandler = null
+  override def off(subscription: Subscription): Future[Unit] = Future {
+    subscription match {
+      case ServerSubscriptionTest(subscriptionId) ⇒
+        sSubscriptionId = subscriptionId
+        sInputDeserializer = null
+        sSubscriptionHandler = null
+        sHandler = null
+    }
   }
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = {
@@ -348,7 +357,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         override def onEvent(requestMatcher: TransportRequestMatcher,
                              groupName: String,
                              inputDeserializer: Deserializer[TransportRequest])
-                            (handler: (TransportRequest) => Future[Unit]): String =  {
+                            (handler: (TransportRequest) => Future[Unit]): Future[Subscription] =  {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }
@@ -368,7 +377,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         override def onEvent(requestMatcher: TransportRequestMatcher,
                              groupName: String,
                              inputDeserializer: Deserializer[TransportRequest])
-                            (handler: (TransportRequest) => Future[Unit]): String =  {
+                            (handler: (TransportRequest) => Future[Unit]): Future[Subscription] =  {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }
@@ -413,46 +422,50 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "off test ~> (server)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null, st)
-      val id1 = hyperBus ~> { post: TestPostWithNoContent =>
+      val id1f = hyperBus ~> { post: TestPostWithNoContent =>
         Future {
           NoContent(EmptyBody)
         }
       }
+      val id1 = id1f.futureValue
 
       st.sHandler shouldNot equal(null)
-      hyperBus.off(id1)
+      hyperBus.off(id1).futureValue
       st.sHandler should equal(null)
-      st.sSubscriptionId should equal(id1)
+      st.sSubscriptionId should equal("1")
 
-      val id2 = hyperBus ~> { post: TestPostWithNoContent =>
+      val id2f = hyperBus ~> { post: TestPostWithNoContent =>
         Future {
           NoContent(EmptyBody)
         }
       }
+      val id2 = id2f.futureValue
 
       st.sHandler shouldNot equal(null)
-      hyperBus.off(id2)
+      hyperBus.off(id2).futureValue
       st.sHandler should equal(null)
-      st.sSubscriptionId should equal(id2)
+      st.sSubscriptionId should equal("2")
     }
-  }
 
-  "off test |> (server)" in {
-    val st = new ServerTransportTest()
-    val hyperBus = newHyperBus(null, st)
-    val id1 = hyperBus |> { request: TestPost1 => Future {} }
+    "off test |> (server)" in {
+      val st = new ServerTransportTest()
+      val hyperBus = newHyperBus(null, st)
+      val id1f = hyperBus |> { request: TestPost1 => Future {} }
+      val id1 = id1f.futureValue
 
-    st.sSubscriptionHandler shouldNot equal(null)
-    hyperBus.off(id1)
-    st.sSubscriptionHandler should equal(null)
-    st.sSubscriptionId should equal(id1)
+      st.sSubscriptionHandler shouldNot equal(null)
+      hyperBus.off(id1).futureValue
+      st.sSubscriptionHandler should equal(null)
+      st.sSubscriptionId should equal("1")
 
-    val id2 = hyperBus |> { request: TestPost1 => Future {} }
+      val id2f = hyperBus |> { request: TestPost1 => Future {} }
+      val id2 = id2f.futureValue
 
-    st.sSubscriptionHandler shouldNot equal(null)
-    hyperBus.off(id2)
-    st.sSubscriptionHandler should equal(null)
-    st.sSubscriptionId should equal(id2)
+      st.sSubscriptionHandler shouldNot equal(null)
+      hyperBus.off(id2).futureValue
+      st.sSubscriptionHandler should equal(null)
+      st.sSubscriptionId should equal("2")
+    }
   }
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
