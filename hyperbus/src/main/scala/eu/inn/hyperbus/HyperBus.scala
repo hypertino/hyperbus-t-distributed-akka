@@ -33,10 +33,8 @@ class HyperBus(val transportManager: TransportManager,
   }
 
 
-  protected class RequestReplySubscription[REQ <: Request[Body]](
-                                                                       handler: (REQ) => Future[Response[Body]],
-                                                                       requestDeserializer: RequestDeserializer[REQ]
-                                                                     ){
+  protected class RequestReplySubscription[REQ <: Request[Body]](val handler: (REQ) => Future[Response[Body]],
+                                                                 val requestDeserializer: RequestDeserializer[REQ]){
     def underlyingHandler(in: TransportRequest): Future[TransportResponse] = {
       if (logMessages && log.isTraceEnabled) {
         log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
@@ -56,18 +54,10 @@ class HyperBus(val transportManager: TransportManager,
         futureOut
       }
     }
-
-    def deserializer(inputStream: InputStream): REQ = {
-      MessageDeserializer.deserializeRequestWith[REQ](inputStream) { (requestHeader, requestBodyJson) =>
-        requestDeserializer(requestHeader, requestBodyJson)
-      }
-    }
   }
 
-  protected class PubSubSubscription[REQ <: Request[Body]](
-                                                                 handler: (REQ) => Future[Unit],
-                                                                 requestDeserializer: RequestDeserializer[REQ]
-                                                               ) {
+  protected class PubSubSubscription[REQ <: Request[Body]](val handler: (REQ) => Future[Unit],
+                                                          val requestDeserializer: RequestDeserializer[REQ]) {
     def underlyingHandler(in: TransportRequest): Future[Unit] = {
       if (logMessages && log.isTraceEnabled) {
         log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
@@ -77,12 +67,6 @@ class HyperBus(val transportManager: TransportManager,
       handler(in.asInstanceOf[REQ]) recover {
         case z: Response[_] ⇒ z
         case t: Throwable ⇒ unhandledException(in.asInstanceOf[REQ], t)
-      }
-    }
-
-    def deserializer(inputStream: InputStream): REQ = {
-      MessageDeserializer.deserializeRequestWith[REQ](inputStream) { (requestHeader, requestBodyJson) =>
-        requestDeserializer(requestHeader, requestBodyJson)
       }
     }
   }
@@ -117,7 +101,7 @@ class HyperBus(val transportManager: TransportManager,
                                                              (handler: (REQ) => Future[RESP]): Future[Subscription] = {
 
     val subscription = new RequestReplySubscription[REQ](handler, requestDeserializer)
-    transportManager.onCommand(requestMatcher, subscription.deserializer)(subscription.underlyingHandler)
+    transportManager.onCommand(requestMatcher, subscription.requestDeserializer)(subscription.underlyingHandler)
   }
 
   def onEvent[REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
@@ -131,7 +115,7 @@ class HyperBus(val transportManager: TransportManager,
       }
     }
     val subscription = new PubSubSubscription[REQ](handler, requestDeserializer)
-    transportManager.onEvent(requestMatcher, finalGroupName, subscription.deserializer)(subscription.underlyingHandler)
+    transportManager.onEvent(requestMatcher, finalGroupName, subscription.requestDeserializer)(subscription.underlyingHandler)
   }
 
   def off(subscription: Subscription): Future[Unit] = {
