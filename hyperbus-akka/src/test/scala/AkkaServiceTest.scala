@@ -44,12 +44,12 @@ case class AkkaTestErrorBody(code: String,
 
 
 @request(Method.POST, "/resources")
-case class AkkaTestPost1(body: TestBody1) extends Request[TestBody1]
-with DefinedResponse[Created[TestCreatedBody]]
+case class AkkaTestPost1(body: AkkaTestBody1) extends Request[AkkaTestBody1]
+with DefinedResponse[Created[AkkaTestCreatedBody]]
 
 @request(Method.POST, "/resources")
-case class AkkaTestPost3(body: TestBody2) extends Request[TestBody2]
-with DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody], NotFound[AkkaTestErrorBody])]
+case class AkkaTestPost3(body: AkkaTestBody2) extends Request[AkkaTestBody2]
+with DefinedResponse[(Ok[DynamicBody], Created[AkkaTestCreatedBody], NotFound[AkkaTestErrorBody])]
 
 class TestActor extends Actor {
   var count = 0
@@ -113,10 +113,10 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       val groupActorRef = TestActorRef[TestGroupActor]
 
       implicit val timeout = Timeout(20.seconds)
-      hyperBus.routeTo[TestActor](actorRef)
-      hyperBus.routeTo[TestGroupActor](groupActorRef)
+      hyperBus.routeTo[TestActor](actorRef).futureValue.map(println)
+      hyperBus.routeTo[TestGroupActor](groupActorRef).futureValue.map(println)
 
-      val f1 = hyperBus <~ AkkaTestPost1(TestBody1("ha ha"))
+      val f1 = hyperBus <~ AkkaTestPost1(AkkaTestBody1("ha ha"))
 
       whenReady(f1) { r =>
         //r.messageId should equal("123")
@@ -126,7 +126,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
         groupActorRef.underlyingActor.count should equal(1)
       }
 
-      val f2 = hyperBus <| AkkaTestPost1(TestBody1("ha ha"))
+      val f2 = hyperBus <| AkkaTestPost1(AkkaTestBody1("ha ha"))
 
       whenReady(f2) { r =>
         actorRef.underlyingActor.count should equal(2)
@@ -142,33 +142,33 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       implicit val timeout = Timeout(20.seconds)
       hyperBus.routeTo[TestActor](actorRef)
 
-      val f = hyperBus <~ AkkaTestPost3(TestBody2(1))
+      val f = hyperBus <~ AkkaTestPost3(AkkaTestBody2(1))
 
       whenReady(f) { r =>
         r shouldBe a[Created[_]]
         r.body should equal(AkkaTestCreatedBody("100500"))
       }
 
-      val f2 = hyperBus <~ AkkaTestPost3(TestBody2(2))
+      val f2 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(2))
 
       whenReady(f2) { r =>
         r shouldBe a[Ok[_]]
         r.body should equal(DynamicBody(Text("another result")))
       }
 
-      val f3 = hyperBus <~ AkkaTestPost3(TestBody2(-1))
+      val f3 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(-1))
 
       whenReady(f3.failed) { r =>
         r shouldBe a[Conflict[_]]
       }
 
-      val f4 = hyperBus <~ AkkaTestPost3(TestBody2(-2))
+      val f4 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(-2))
 
       whenReady(f4.failed) { r =>
         r shouldBe a[Conflict[_]]
       }
 
-      val f5 = hyperBus <~ AkkaTestPost3(TestBody2(-3))
+      val f5 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(-3))
 
       whenReady(f5.failed) { r =>
         r shouldBe a[NotFound[_]]

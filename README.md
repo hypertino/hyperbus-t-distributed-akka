@@ -1,4 +1,5 @@
 TODO:
+    + improve logging
     + reply on server if no method is handled (NoTransport alt/akka)
     + print routes on launch
     apply метод в request/response object принимающий содержимое body

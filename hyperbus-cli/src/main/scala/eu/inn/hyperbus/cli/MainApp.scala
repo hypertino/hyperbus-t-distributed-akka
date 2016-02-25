@@ -2,19 +2,16 @@ package eu.inn.hyperbus.cli
 
 import akka.actor.Address
 import akka.cluster.Cluster
-import com.fasterxml.jackson.core.JsonFactory
 import com.typesafe.config.Config
 import eu.inn.binders.dynamic.Text
 import eu.inn.binders.naming.PlainConverter
 import eu.inn.config.ConfigLoader
+import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.standard._
-import eu.inn.hyperbus.serialization.{StringDeserializer, RequestHeader}
+import eu.inn.hyperbus.serialization.StringDeserializer
 import eu.inn.hyperbus.transport.ActorSystemRegistry
-import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.api.{TransportConfigurationLoader, TransportManager}
-import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import eu.inn.servicecontrol.api.{Console, Service, ServiceController, ShutdownMonitor}
 import eu.inn.servicecontrol.{ConsoleModule, ConsoleServiceController}
 
@@ -31,8 +28,8 @@ case class InputCommand(message: String) extends Commands
 @body("test-body")
 case class TestBody(content: Option[String]) extends Body
 
-@request("/test")
-case class TestRequest(body: TestBody) extends StaticGet(body)
+@request(Method.GET, "/test")
+case class TestRequest(body: TestBody) extends Request[TestBody]
 with DefinedResponse[Ok[TestBody]]
 
 class CliService(console: Console, config: Config) extends Service {

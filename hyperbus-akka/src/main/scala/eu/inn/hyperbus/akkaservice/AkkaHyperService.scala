@@ -5,6 +5,7 @@ import akka.actor.ActorRef
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.model.{Body, Response}
+import eu.inn.hyperbus.transport.api.Subscription
 
 import scala.concurrent.Future
 import scala.language.experimental.macros
@@ -14,7 +15,7 @@ import scala.reflect.macros.blackbox.Context
 // todo: fix routeTo requires import of Response and Body
 
 object AkkaHyperService {
-  def route[A](hyperBus: HyperBus, actorRef: ActorRef): List[String] = macro AkkaHyperServiceMacro.route[A]
+  def route[A](hyperBus: HyperBus, actorRef: ActorRef): Future[List[Subscription]] = macro AkkaHyperServiceMacro.route[A]
 
   def dispatch[A](actor: A): Receive = macro AkkaHyperServiceMacro.dispatch[A]
 }
@@ -23,24 +24,24 @@ private[akkaservice] object AkkaHyperServiceMacro {
 
   def route[A: c.WeakTypeTag]
   (c: Context)
-  (hyperBus: c.Expr[HyperBus], actorRef: c.Expr[ActorRef]): c.Expr[List[String]] = {
+  (hyperBus: c.Expr[HyperBus], actorRef: c.Expr[ActorRef]): c.Expr[Future[List[Subscription]]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with AkkaHyperServiceImplementation
     val r = bundle.route[A](hyperBus.tree, actorRef.tree)
-    c.Expr[List[String]](r)
+    c.Expr[Future[List[Subscription]]](r)
   }
 
   def routeTo[A: c.WeakTypeTag]
   (c: Context)
-  (actorRef: c.Expr[ActorRef]): c.Expr[List[String]] = {
+  (actorRef: c.Expr[ActorRef]): c.Expr[Future[List[Subscription]]] = {
     import c.universe._
     val r = q"""{
       val t = ${c.prefix.tree}
       AkkaHyperService.route[${weakTypeOf[A]}](t.hyperBus, $actorRef)
     }"""
-    c.Expr[List[String]](r)
+    c.Expr[Future[List[Subscription]]](r)
   }
 
   def dispatch[A: c.WeakTypeTag]
@@ -103,9 +104,9 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     val obj = q"""{
       val $hyperBusVal = $hyperBus
       val $actorVal = $actorRef
-      List(
+      Future.sequence(List(
         ..$subscriptions
-      )
+      ))
     }"""
     // println(obj)
     obj
