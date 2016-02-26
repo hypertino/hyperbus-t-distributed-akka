@@ -1,7 +1,7 @@
 package eu.inn.hyperbus
 
 import com.fasterxml.jackson.core.JsonParser
-import eu.inn.hyperbus.model.{Response, Body, Request}
+import eu.inn.hyperbus.model.{Body, Request, Response}
 
 package object serialization {
   type RequestDeserializer[T <: Request[Body]] = Function2[RequestHeader, JsonParser, T]

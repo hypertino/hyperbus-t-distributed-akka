@@ -1,29 +1,28 @@
 import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, AnyValue}
-import eu.inn.hyperbus.transport.api.{TransportManager, ClientTransport, ServerTransport, TransportRoute}
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TransportRequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.transport.api.{ClientTransport, ServerTransport, TransportManager, TransportRoute}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.concurrent.ExecutionContext
+/*
 
 @body("application/vnd+parition.json")
 case class TestPartition(data: String) extends Body
 
 @request(Method.POST, "/resources/{partitionId}")
 case class TestPostPartition1(partitionId: String, body: TestPartition) extends Request[TestPartition]
-with DefinedResponse[Ok[DynamicBody]]
+  with DefinedResponse[Ok[DynamicBody]]
 
 
 class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
-  import scala.concurrent.ExecutionContext.Implicits.global
-
   //todo: real partition test (with different suscribers)
   "HyperPartitioning " - {
-    /*"Partitioning when asking" in {
+    "Partitioning when asking" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":200,"messageId":"123"},"body":{}}"""
       )
@@ -57,7 +56,7 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
       msg.topic.valueFilters should equal(
         Filters(Map("partitionId" → SpecificValue("123")))
       )
-    }*/
+    }
   }
 
   // todo: add partition tests for Dynamic
@@ -69,3 +68,5 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
     new HyperBus(transportManager, logMessages = true)
   }
 }
+
+*/

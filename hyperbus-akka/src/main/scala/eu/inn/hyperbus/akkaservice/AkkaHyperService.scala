@@ -37,7 +37,8 @@ private[akkaservice] object AkkaHyperServiceMacro {
   (actorRef: c.Expr[ActorRef]): c.Expr[Future[List[Subscription]]] = {
     import c.universe._
     val tVar = c.freshName(TermName("t"))
-    val r = q"""{
+    val r =
+      q"""{
       val $tVar = ${c.prefix.tree}
       AkkaHyperService.route[${weakTypeOf[A]}]($tVar.hyperBus, $actorRef)
     }"""
@@ -101,7 +102,8 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       }
     }
 
-    val obj = q"""{
+    val obj =
+      q"""{
       val $hyperBusVal = $hyperBus
       val $actorVal = $actorRef
       scala.concurrent.Future.sequence(List(
@@ -135,7 +137,8 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       """
     }
 
-    val obj = q"""{
+    val obj =
+      q"""{
       import _root_.akka.pattern.pipe
       _ match {
         case ..$cases

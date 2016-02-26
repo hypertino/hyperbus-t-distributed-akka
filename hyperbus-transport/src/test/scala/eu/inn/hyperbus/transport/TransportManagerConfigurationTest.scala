@@ -4,8 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, RegexTextMatcher, AnyValue, SpecificValue}
-import eu.inn.hyperbus.transport.api.uri._
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, RegexTextMatcher, SpecificValue, TransportRequestMatcher}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -38,7 +37,8 @@ class MockServerTransport(config: Config) extends ServerTransport {
 class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with Matchers {
   "Transport Manager" - {
     "Configuration Test " in {
-      val config = ConfigFactory.parseString("""
+      val config = ConfigFactory.parseString(
+        """
         hyperbus: {
           transports: {
             mock-client.class-name: eu.inn.hyperbus.transport.MockClientTransport,
@@ -70,7 +70,7 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
             }
           ]
         }
-      """)
+        """)
 
       val sbc = TransportConfigurationLoader.fromConfig(config)
 

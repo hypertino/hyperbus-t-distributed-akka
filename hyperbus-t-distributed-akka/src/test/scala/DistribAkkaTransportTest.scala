@@ -1,4 +1,4 @@
-import java.io.{InputStream, OutputStream}
+import java.io.InputStream
 import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor.{Actor, ActorLogging}
@@ -8,12 +8,9 @@ import akka.event.LoggingReceive
 import akka.testkit.TestActorRef
 import com.fasterxml.jackson.core.JsonParser
 import com.typesafe.config.ConfigFactory
-import eu.inn.binders._
-import eu.inn.binders.json._
-import eu.inn.hyperbus.IdGenerator
-import eu.inn.hyperbus.model.{Response, Request, Method, Body}
-import eu.inn.hyperbus.model.annotations.{response, request, body}
-import eu.inn.hyperbus.serialization.{ResponseHeader, MessageDeserializer}
+import eu.inn.hyperbus.model.annotations.{body, request, response}
+import eu.inn.hyperbus.model.{Body, Method, Request, Response}
+import eu.inn.hyperbus.serialization.{MessageDeserializer, ResponseHeader}
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher

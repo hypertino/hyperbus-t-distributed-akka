@@ -8,7 +8,7 @@ import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, U
 import akka.pattern.pipe
 import eu.inn.binders.dynamic.Null
 import eu.inn.hyperbus.model.{Body, DynamicBody, DynamicRequest, Request}
-import eu.inn.hyperbus.serialization.{StringDeserializer, MessageDeserializer, RequestDeserializer}
+import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestDeserializer}
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.util.StringSerializer
@@ -18,28 +18,28 @@ import scala.concurrent.Future
 import scala.util.Random
 import scala.util.control.NonFatal
 
-private [transport] class SubscriptionManager extends Actor with ActorLogging {
-  val topicSubscriptions = mutable.Map[(String, Option[String]), (ActorRef,AtomicInteger)]()
+private[transport] class SubscriptionManager extends Actor with ActorLogging {
+  val topicSubscriptions = mutable.Map[(String, Option[String]), (ActorRef, AtomicInteger)]()
   var workerCounter = 0l
 
   def receive: Receive = {
     case subscriptionCmd: SubscriptionCommand ⇒
       val topic = subscriptionCmd.topic
       topicSubscriptions.get(topic) match {
-        case Some((actorRef,counter)) ⇒
+        case Some((actorRef, counter)) ⇒
           counter.incrementAndGet()
           actorRef forward subscriptionCmd
 
         case None ⇒
           workerCounter += 1
           val newActorRef = context.system.actorOf(Props(classOf[SubscriptionActor], topic), s"d-akka-wrkr-$workerCounter")
-          topicSubscriptions.put(topic, (newActorRef,new AtomicInteger(1)))
+          topicSubscriptions.put(topic, (newActorRef, new AtomicInteger(1)))
           newActorRef forward subscriptionCmd
       }
 
-    case cmd @ UnsubscribeCommand(subscription : DAkkaSubscription) ⇒
+    case cmd@UnsubscribeCommand(subscription: DAkkaSubscription) ⇒
       topicSubscriptions.get(subscription.topic) match {
-        case Some((actor,counter)) ⇒
+        case Some((actor, counter)) ⇒
           actor forward cmd
           if (counter.decrementAndGet() == 0) {
             actor ! ReleaseTopicCommand
@@ -53,15 +53,19 @@ private [transport] class SubscriptionManager extends Actor with ActorLogging {
 
 private[transport] trait SubscriptionCommand {
   def requestMatcher: TransportRequestMatcher
+
   def groupNameOption: Option[String]
+
   def inputDeserializer: RequestDeserializer[Request[Body]]
+
   def topic: (String, Option[String]) = {
     (requestMatcher.uri.map(_.pattern.specific) // currently only Specific url's are supported, todo: add Regex, Any, etc...
       .getOrElse(
       throw new IllegalArgumentException("requestMatcher.uri is empty")
-    ),groupNameOption)
+    ), groupNameOption)
   }
 }
+
 private[transport] case class CommandSubscription(requestMatcher: TransportRequestMatcher,
                                                   inputDeserializer: RequestDeserializer[Request[Body]],
                                                   handler: (Request[Body]) => Future[TransportResponse])
@@ -85,18 +89,24 @@ private[transport] case class UnsubscribeCommand(subscription: Subscription)
 private[transport] case object ReleaseTopicCommand
 
 @SerialVersionUID(1L) case class HyperBusRequest(content: String)
+
 @SerialVersionUID(1L) case class HyperBusResponse(content: String)
+
 @SerialVersionUID(1L) case class HandlerIsNotFound(message: String) extends RuntimeException(message)
 
-private [transport] class SubscriptionActor(topic: (String, Option[String])) extends Actor with ActorLogging {
+private[transport] class SubscriptionActor(topic: (String, Option[String])) extends Actor with ActorLogging {
+
   import context._
+
   val mediator = DistributedPubSubEx(context.system).mediator
   val handlersInProgress = mutable.Map[DAkkaSubscription, (SubscriptionCommand, ActorRef)]()
   val handlers = mutable.Map[DAkkaSubscription, SubscriptionCommand]()
   var subscribedToTopic = false
 
   log.debug(s"$self is subscribing to topic ${topic._1} @ ${topic._2}")
-  mediator ! Subscribe(topic._1, Util.getUniqGroupName(topic._2), self) // todo: test empty group behavior
+  mediator ! Subscribe(topic._1, Util.getUniqGroupName(topic._2), self)
+
+  // todo: test empty group behavior
 
   def receive: Receive = {
     case ack: SubscribeAck ⇒
@@ -109,9 +119,9 @@ private [transport] class SubscriptionActor(topic: (String, Option[String])) ext
 
     case cmd: SubscriptionCommand ⇒
       log.debug(s"$self accepted new handler: $cmd from $sender")
-      handlersInProgress += new DAkkaSubscription(cmd.topic) → (cmd, sender)
+      handlersInProgress += new DAkkaSubscription(cmd.topic) →(cmd, sender)
 
-    case cmd @ UnsubscribeCommand(subscription : DAkkaSubscription) ⇒
+    case cmd@UnsubscribeCommand(subscription: DAkkaSubscription) ⇒
       handlersInProgress.remove(subscription) match {
         case Some((_, actorRef)) ⇒
           log.debug(s"$self removing handler (in-progress): ${cmd.subscription}")
@@ -147,7 +157,7 @@ private [transport] class SubscriptionActor(topic: (String, Option[String])) ext
       handlers += pair
       sender() ! pair._1
 
-    case cmd @ UnsubscribeCommand(subscription : DAkkaSubscription) ⇒
+    case cmd@UnsubscribeCommand(subscription: DAkkaSubscription) ⇒
       handlers.remove(subscription) match {
         case Some(_) ⇒
           log.debug(s"$self removing handler: ${cmd.subscription}")
@@ -224,12 +234,14 @@ private [transport] class SubscriptionActor(topic: (String, Option[String])) ext
   }
 }
 
-private [transport] class NoRouteWatcher extends Actor {
+private[transport] class NoRouteWatcher extends Actor {
+
   import context._
+
   system.eventStream.subscribe(self, classOf[DeadLetter])
 
   override def receive: Receive = {
-    case DeadLetter( message : HyperBusRequest, messageSender, recipient ) ⇒
+    case DeadLetter(message: HyperBusRequest, messageSender, recipient) ⇒
       Future.failed(new NoTransportRouteException(recipient.toString())) pipeTo messageSender
   }
 }

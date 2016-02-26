@@ -1,8 +1,5 @@
 package eu.inn.hyperbus.model
 
-import eu.inn.hyperbus.model.annotations.method
-import eu.inn.hyperbus.transport.api.uri.Uri
-
 /*
 @method("get")
 trait Get[+B <: Body] extends Request[B] {

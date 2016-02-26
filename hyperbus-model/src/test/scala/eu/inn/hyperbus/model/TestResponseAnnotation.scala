@@ -20,6 +20,7 @@ class TestResponseAnnotation extends FreeSpec with Matchers {
     implicit val mcx = new MessagingContextFactory {
       override def newContext(): MessagingContext = new MessagingContext {
         override def correlationId: String = "abc"
+
         override def messageId: String = "123"
       }
     }

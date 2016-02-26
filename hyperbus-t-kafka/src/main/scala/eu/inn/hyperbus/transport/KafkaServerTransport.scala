@@ -2,25 +2,22 @@ package eu.inn.hyperbus.transport
 
 import java.io.ByteArrayInputStream
 import java.util.Properties
-import java.util.concurrent.{TimeUnit, ExecutorService, Executors}
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.{ExecutorService, Executors, TimeUnit}
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
-import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
 import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
-import scala.concurrent.duration._
 
 class KafkaServerTransport(
                             consumerProperties: Properties,
@@ -83,13 +80,13 @@ class KafkaServerTransport(
 
 
   class TopicSubscription[OUT](
-                           threadCount: Int,
-                           route: KafkaRoute,
-                           requestMatcher: TransportRequestMatcher,
-                           groupName: String,
-                           inputDeserializer: RequestDeserializer[Request[Body]],
-                           handler: (Request[Body]) ⇒ Future[OUT]
-                         ) extends Subscription {
+                                threadCount: Int,
+                                route: KafkaRoute,
+                                requestMatcher: TransportRequestMatcher,
+                                groupName: String,
+                                inputDeserializer: RequestDeserializer[Request[Body]],
+                                handler: (Request[Body]) ⇒ Future[OUT]
+                              ) extends Subscription {
 
     val consumer = {
       val props = consumerProperties.clone().asInstanceOf[Properties]
@@ -141,7 +138,8 @@ class KafkaServerTransport(
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = MessageDeserializer.deserializeRequestWith(inputBytes)(inputDeserializer)
-        if (requestMatcher.matchMessage(input)) { // todo: test order of matching?
+        if (requestMatcher.matchMessage(input)) {
+          // todo: test order of matching?
           handler(input)
         } else {
           if (log.isTraceEnabled) {

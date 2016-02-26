@@ -3,12 +3,17 @@ package eu.inn.hyperbus.transport.api.uri
 import scala.collection.mutable
 
 sealed trait Token
+
 case object SlashToken extends Token
+
 case class TextToken(value: String) extends Token
+
 case class ParameterToken(value: String, matchType: MatchType = RegularMatchType) extends Token
 
 sealed trait MatchType
+
 case object RegularMatchType extends MatchType
+
 case object PathMatchType extends MatchType
 
 case class UrlParserException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)

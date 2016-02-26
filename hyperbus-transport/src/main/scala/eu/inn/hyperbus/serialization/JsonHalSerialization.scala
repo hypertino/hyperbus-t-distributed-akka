@@ -11,7 +11,7 @@ class JsonHalSerializer[C <: Converter](jsonGenerator: JsonGenerator) extends Js
   //def writeEmbeddedResources[E <: Traversable[Embedded[_]]](value: E): Unit = ???
 }
 
-class JsonHalDeserializer[C <: Converter] (jsonParser: JsonParser, override val moveToNextToken: Boolean = true, override val fieldName: Option[String] = None) extends JsonDeserializerBase[C, JsonHalDeserializer[C]](jsonParser, moveToNextToken, fieldName) {
+class JsonHalDeserializer[C <: Converter](jsonParser: JsonParser, override val moveToNextToken: Boolean = true, override val fieldName: Option[String] = None) extends JsonDeserializerBase[C, JsonHalDeserializer[C]](jsonParser, moveToNextToken, fieldName) {
   protected override def createFieldDeserializer(jsonParser: JsonParser, moveToNextToken: Boolean, fieldName: Option[String]) = new JsonHalDeserializer[C](jsonParser, moveToNextToken, fieldName)
 
   //def readEmbeddedResource[E <: Embedded[_]]() : E = ???
@@ -20,5 +20,6 @@ class JsonHalDeserializer[C <: Converter] (jsonParser: JsonParser, override val 
 
 class JsonHalSerializerFactory[C <: Converter] extends SerializerFactory[C, JsonHalSerializer[C], JsonHalDeserializer[C]] {
   def createSerializer(jsonGenerator: JsonGenerator): JsonHalSerializer[C] = new JsonHalSerializer[C](jsonGenerator)
+
   def createDeserializer(jsonParser: JsonParser): JsonHalDeserializer[C] = new JsonHalDeserializer[C](jsonParser)
 }

@@ -20,7 +20,7 @@ private[hyperbus] object HyperBusMacro {
     bundle.onCommand[IN](handler)
   }
 
-  def onEvent[IN : c.WeakTypeTag]
+  def onEvent[IN: c.WeakTypeTag]
   (c: whitebox.Context)(handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
@@ -29,7 +29,7 @@ private[hyperbus] object HyperBusMacro {
     bundle.onEvent[IN](None, handler)
   }
 
-  def onEventForGroup[IN : c.WeakTypeTag]
+  def onEventForGroup[IN: c.WeakTypeTag]
   (c: whitebox.Context)(groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
@@ -81,7 +81,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val thizVal = fresh("thiz")
     val rmVal = fresh("requestMatcher")
 
-    val obj = q"""{
+    val obj =
+      q"""{
       val $thizVal = $thiz
       val $rmVal = $thizVal.macroApiImpl.requestMatcher($uriPattern, $methodGetter, $contentType)
       $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($rmVal, $requestDeserializer _) {
@@ -92,7 +93,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
     c.Expr[Future[Subscription]](obj)
   }
 
-  def onEvent[IN : c.WeakTypeTag]
+  def onEvent[IN: c.WeakTypeTag]
   (groupName: Option[c.Expr[String]], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
@@ -109,7 +110,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val rmVal = fresh("requestMatcher")
     val responseVal = fresh("response")
 
-    val obj = q"""{
+    val obj =
+      q"""{
       val $thizVal = $thiz
       val $rmVal = $thizVal.macroApiImpl.requestMatcher($uriPattern, $methodGetter, $contentType)
       $thizVal.onEvent[$requestType]($rmVal, $groupName, $requestDeserializer _) {
@@ -154,7 +156,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
       else
         q"$thizVal.ask($r, $responseDeserializerVal)"
 
-    val obj = q"""{
+    val obj =
+      q"""{
       val $thizVal = $thiz
       val $responseDeserializerVal = $thizVal.macroApiImpl.responseDeserializer(
         _: eu.inn.hyperbus.serialization.ResponseHeader,
@@ -174,7 +177,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     val thiz = c.prefix.tree
     val thizVal = fresh("thiz")
 
-    val obj = q"""{
+    val obj =
+      q"""{
       val $thizVal = $thiz
       $thizVal.publish($r)
     }"""
@@ -230,8 +234,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       tin.flatMap { t =>
         if (t.typeSymbol.typeSignature <:< tOr) {
           getResponsesIn(t.typeArgs)
-        } else
-        if (t.typeSymbol.typeSignature <:< tAsk) {
+        } else if (t.typeSymbol.typeSignature <:< tAsk) {
           Seq.empty
         } else {
           Seq(t)

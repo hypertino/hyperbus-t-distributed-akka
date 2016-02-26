@@ -1,8 +1,8 @@
 package eu.inn.hyperbus.transport.api.matchers
 
-import com.typesafe.config.{ConfigValue, Config}
+import com.typesafe.config.ConfigValue
 import eu.inn.hyperbus.transport.api.TransportRequest
-import eu.inn.hyperbus.transport.api.uri.{UriPojo, Uri}
+import eu.inn.hyperbus.transport.api.uri.{Uri, UriPojo}
 
 // todo: rename this class
 case class TransportRequestMatcher(uri: Option[Uri], headers: Map[String, TextMatcher]) {
@@ -33,19 +33,19 @@ case class TransportRequestMatcher(uri: Option[Uri], headers: Map[String, TextMa
 }
 
 object TransportRequestMatcher {
-  def apply(uri: Option[Uri]) : TransportRequestMatcher = TransportRequestMatcher(uri, Map.empty)
+  def apply(uri: Option[Uri]): TransportRequestMatcher = TransportRequestMatcher(uri, Map.empty)
 
-  private [transport] def apply(config: ConfigValue): TransportRequestMatcher = {
+  private[transport] def apply(config: ConfigValue): TransportRequestMatcher = {
     import eu.inn.binders.tconfig._
     val pojo = config.read[TransportRequestMatcherPojo]
     apply(pojo)
   }
 
-  private [transport] def apply(pojo: TransportRequestMatcherPojo): TransportRequestMatcher = {
+  private[transport] def apply(pojo: TransportRequestMatcherPojo): TransportRequestMatcher = {
     TransportRequestMatcher(pojo.uri.map(Uri.apply), pojo.headers.map { case (k, v) ⇒
       k → TextMatcher(v)
     })
   }
 }
 
-private [transport] case class TransportRequestMatcherPojo(uri: Option[UriPojo], headers: Map[String, TextMatcherPojo])
+private[transport] case class TransportRequestMatcherPojo(uri: Option[UriPojo], headers: Map[String, TextMatcherPojo])

@@ -7,13 +7,13 @@ import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
-import eu.inn.hyperbus.transport.inproc.{InprocSubscription, SubKey, HandlerWrapper}
+import eu.inn.hyperbus.transport.inproc.{HandlerWrapper, InprocSubscription, SubKey}
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Promise, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
 class InprocTransport(serialize: Boolean = false)
@@ -71,7 +71,7 @@ class InprocTransport(serialize: Boolean = false)
     }
 
     // todo: filter is redundant for inproc?
-    subscriptions.get(message.uri.pattern.specific).subRoutes.filter{subRoute ⇒
+    subscriptions.get(message.uri.pattern.specific).subRoutes.filter { subRoute ⇒
       subRoute._1.requestMatcher.matchMessage(message)
     }.foreach {
       case (subKey, subscriptionList) =>
@@ -136,7 +136,9 @@ class InprocTransport(serialize: Boolean = false)
       Future.successful {
         new PublishResult {
           def sent = Some(true)
+
           def offset = None
+
           override def toString = s"PublishResult(sent=Some(true),offset=None)"
         }
       }

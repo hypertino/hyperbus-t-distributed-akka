@@ -5,8 +5,8 @@ import eu.inn.hyperbus.serialization._
 object StandardResponse {
 
   def apply(responseHeader: ResponseHeader,
-                           responseBodyJson: com.fasterxml.jackson.core.JsonParser,
-                           bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body] = {
+            responseBodyJson: com.fasterxml.jackson.core.JsonParser,
+            bodyDeserializer: PartialFunction[ResponseHeader, ResponseBodyDeserializer]): Response[Body] = {
     val body =
       if (bodyDeserializer.isDefinedAt(responseHeader))
         bodyDeserializer(responseHeader)(responseHeader.contentType, responseBodyJson)

@@ -37,13 +37,14 @@ case class TestOuterBody(outerData: String,
                          @fieldName("_embedded") embedded: TestOuterBodyEmbedded) extends Body
 
 @request(Method.GET, "/test-outer-resource")
-case class TestOuterResource(body:TestOuterBody) extends Request[TestOuterBody]
+case class TestOuterResource(body: TestOuterBody) extends Request[TestOuterBody]
 
 class TestRequestAnnotation extends FreeSpec with Matchers {
   "Request Annotation " - {
     implicit val mcx = new MessagingContextFactory {
       override def newContext(): MessagingContext = new MessagingContext {
         override def correlationId: String = "123"
+
         override def messageId: String = "123"
       }
     }
@@ -105,7 +106,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       val inner2 = TestInnerBodyEmbedded("xyz")
       val inner3 = TestInnerBodyEmbedded("yey")
       val postO = TestOuterResource(TestOuterBody("abcde",
-        TestOuterBodyEmbedded(inner1, List(inner2,inner3))
+        TestOuterBodyEmbedded(inner1, List(inner2, inner3))
       ))
       postO.serialize(ba)
       val str = ba.toString("UTF-8")
@@ -128,7 +129,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       val inner2 = TestInnerBodyEmbedded("xyz")
       val inner3 = TestInnerBodyEmbedded("yey")
       val outerBody = TestOuterBody("abcde",
-        TestOuterBodyEmbedded(inner1, List(inner2,inner3))
+        TestOuterBodyEmbedded(inner1, List(inner2, inner3))
       )
 
       outer.body should equal(outerBody)
@@ -138,7 +139,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     "Decode DynamicRequest" in {
       val str = """{"request":{"uri":{"pattern":"/test"},"headers":{"method":["custom-method"],"contentType":["test-body-1"],"messageId":["123"]}},"body":{"resourceId":"100500"}}"""
       val request = DynamicRequest(str)
-      request shouldBe a [Request[_]]
+      request shouldBe a[Request[_]]
       request.method should equal("custom-method")
       request.uri should equal(Uri("/test"))
       request.messageId should equal("123")

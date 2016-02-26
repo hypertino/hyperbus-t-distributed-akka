@@ -6,7 +6,7 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{SpecificValue, TransportRequestMatcher, AnyValue}
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, SpecificValue, TransportRequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -97,6 +97,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     implicit val mcx = new MessagingContextFactory {
       override def newContext(): MessagingContext = new MessagingContext {
         override def correlationId: String = "123"
+
         override def messageId: String = "123"
       }
     }
@@ -315,6 +316,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
             sentEvents = sentEvents :+ message
             new PublishResult {
               def sent = None
+
               def offset = None
             }
           }
@@ -337,6 +339,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
             sentEvents = sentEvents :+ message
             new PublishResult {
               def sent = None
+
               def offset = None
             }
           }
@@ -357,7 +360,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         override def onEvent(requestMatcher: TransportRequestMatcher,
                              groupName: String,
                              inputDeserializer: RequestDeserializer[Request[Body]])
-                            (handler: (Request[Body]) => Future[Unit]): Future[Subscription] =  {
+                            (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }
@@ -377,7 +380,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         override def onEvent(requestMatcher: TransportRequestMatcher,
                              groupName: String,
                              inputDeserializer: RequestDeserializer[Request[Body]])
-                            (handler: (Request[Body]) => Future[Unit]): Future[Subscription] =  {
+                            (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer)(handler)
         }

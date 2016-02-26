@@ -4,9 +4,9 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.{Link, _}
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, AnyValue}
-import eu.inn.hyperbus.transport.api.{TransportManager, ClientTransport, TransportRoute, ServerTransport}
-import eu.inn.hyperbus.transport.api.uri.{Uri}
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TransportRequestMatcher}
+import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.transport.api.{ClientTransport, ServerTransport, TransportManager, TransportRoute}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -29,27 +29,27 @@ case class TestCreatedBody(resourceId: String,
 
 @request(Method.POST, "/resources")
 case class TestPost1(body: TestBody1) extends Request[TestBody1]
-with DefinedResponse[Created[TestCreatedBody]]
+  with DefinedResponse[Created[TestCreatedBody]]
 
 @request(Method.POST, "/resources")
 case class TestPost2(body: TestBody2) extends Request[TestBody2]
-with DefinedResponse[Created[TestCreatedBody]]
+  with DefinedResponse[Created[TestCreatedBody]]
 
 @request(Method.POST, "/resources")
 case class TestPost3(body: TestBody2) extends Request[TestBody2]
-with DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
+  with DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
 
 @request(Method.POST, "/empty")
 case class TestPostWithNoContent(body: TestBody1) extends Request[TestBody1]
-with DefinedResponse[NoContent[EmptyBody]]
+  with DefinedResponse[NoContent[EmptyBody]]
 
 @request(Method.POST, "/empty")
 case class StaticPostWithDynamicBody(body: DynamicBody) extends Request[DynamicBody]
-with DefinedResponse[NoContent[EmptyBody]]
+  with DefinedResponse[NoContent[EmptyBody]]
 
 @request(Method.POST, "/empty")
 case class StaticPostWithEmptyBody(body: EmptyBody) extends Request[EmptyBody]
-with DefinedResponse[NoContent[EmptyBody]]
+  with DefinedResponse[NoContent[EmptyBody]]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {
@@ -87,11 +87,9 @@ class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
         Future {
           if (post.body.resourceData == 1)
             Created(TestCreatedBody("100500"))
-          else
-          if (post.body.resourceData == -1)
+          else if (post.body.resourceData == -1)
             throw Conflict(ErrorBody("failed"))
-          else
-          if (post.body.resourceData == -2)
+          else if (post.body.resourceData == -2)
             Conflict(ErrorBody("failed"))
           else
             Ok(DynamicBody(Text("another result")))

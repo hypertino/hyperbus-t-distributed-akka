@@ -20,6 +20,7 @@ private[annotations] object ResponseMacro {
 }
 
 private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroImplBase {
+
   import c.universe._
 
   def updateClass(existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
@@ -41,7 +42,8 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
       t.name
     }
 
-    val newClass = q"""
+    val newClass =
+      q"""
         @eu.inn.hyperbus.model.annotations.status($status)
         case class $className[..$typeArgs](..$fieldsExceptHeaders,
                                            headers: Map[String, Seq[String]]) extends ..$bases {
@@ -51,7 +53,8 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
       """
 
     val ctxVal = fresh("ctx")
-    val companionExtra = q"""
+    val companionExtra =
+      q"""
         def apply[..$methodTypeArgs](..$fieldsExceptHeaders, headersBuilder: eu.inn.hyperbus.model.HeadersBuilder)
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames] = {
           ${className.toTermName}[..$classTypeNames](..${fieldsExceptHeaders.map(_.name)},
@@ -85,7 +88,8 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
       """
     }
 
-    c.Expr(q"""
+    c.Expr(
+      q"""
         $newClass
         $newCompanion
       """

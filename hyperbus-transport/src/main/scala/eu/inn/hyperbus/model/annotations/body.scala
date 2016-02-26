@@ -36,7 +36,8 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
     val fVal = fresh("f")
     val serializerVal = fresh("serializer")
     val deserializerVal = fresh("deserializer")
-    val newClass = q"""
+    val newClass =
+      q"""
         @eu.inn.hyperbus.model.annotations.contentType($contentType) case class $className(..$fields) extends ..$bases {
           ..$body
           def contentType = Some($contentType)
@@ -51,7 +52,8 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
       """
 
     // check requestHeader
-    val companionExtra = q"""
+    val companionExtra =
+      q"""
         def contentType = Some($contentType)
         def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
@@ -77,7 +79,8 @@ private[annotations] trait BodyAnnotationMacroImpl extends AnnotationMacroImplBa
       """
     }
 
-    c.Expr(q"""
+    c.Expr(
+      q"""
         $newClass
         $newCompanion
       """

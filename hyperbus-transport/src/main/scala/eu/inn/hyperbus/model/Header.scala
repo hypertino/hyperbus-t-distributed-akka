@@ -10,19 +10,19 @@ object Header {
   val REVISION = "revision"
 }
 
-class HeadersBuilder(private [this] val mapBuilder: mutable.Builder[(String, Seq[String]), Map[String,Seq[String]]]) {
-  def this() = this(Map.newBuilder[String,Seq[String]])
+class HeadersBuilder(private[this] val mapBuilder: mutable.Builder[(String, Seq[String]), Map[String, Seq[String]]]) {
+  def this() = this(Map.newBuilder[String, Seq[String]])
 
   def this(headers: Map[String, Seq[String]]) = this {
-    Map.newBuilder[String,Seq[String]] ++= headers
+    Map.newBuilder[String, Seq[String]] ++= headers
   }
 
-  def += (kv : (String,String)) = {
+  def +=(kv: (String, String)) = {
     mapBuilder += kv._1 → Seq(kv._2)
     this
   }
 
-  def ++= (headers: Map[String, Seq[String]]) = {
+  def ++=(headers: Map[String, Seq[String]]) = {
     mapBuilder ++= headers
     this
   }
@@ -40,7 +40,7 @@ class HeadersBuilder(private [this] val mapBuilder: mutable.Builder[(String, Seq
 
   def withContext(contextFactory: eu.inn.hyperbus.model.MessagingContextFactory) = {
     val ctxVal = contextFactory.newContext()
-    withCorrelation(ctxVal.messageId,ctxVal.correlationId)
+    withCorrelation(ctxVal.messageId, ctxVal.correlationId)
   }
 
   def withContentType(contentType: Option[String]): HeadersBuilder = {

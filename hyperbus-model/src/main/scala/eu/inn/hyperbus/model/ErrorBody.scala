@@ -44,16 +44,16 @@ object ErrorBody {
 }
 
 private[model] case class ErrorBodyContainer(code: String,
-                                                description: Option[String],
-                                                errorId: String,
-                                                extra: Value,
-                                                contentType: Option[String]) extends ErrorBody {
+                                             description: Option[String],
+                                             errorId: String,
+                                             extra: Value,
+                                             contentType: Option[String]) extends ErrorBody {
   def message = code + description.map(": " + _).getOrElse("") + ". #" + errorId
 
   def serialize(outputStream: OutputStream): Unit = {
     import eu.inn.binders._
-    import eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
-    implicit val $fVal = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
+    implicit val bindOptions = eu.inn.hyperbus.serialization.MessageSerializer.bindOptions
+    implicit val jsonSerializerFactory = new eu.inn.hyperbus.serialization.JsonHalSerializerFactory[eu.inn.binders.naming.PlainConverter]
     eu.inn.binders.json.SerializerFactory.findFactory().withStreamGenerator(outputStream) { serializer =>
       serializer.bind(this.copy(contentType = None)) // find other way to skip contentType
     }

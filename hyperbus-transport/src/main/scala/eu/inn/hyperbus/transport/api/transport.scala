@@ -2,7 +2,7 @@ package eu.inn.hyperbus.transport.api
 
 import java.io.OutputStream
 
-import eu.inn.hyperbus.model.{Request, Body}
+import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization.RequestDeserializer
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
@@ -41,7 +41,9 @@ trait PublishResult {
 
 trait ClientTransport {
   def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse]
+
   def publish(message: TransportRequest): Future[PublishResult]
+
   def shutdown(duration: FiniteDuration): Future[Boolean]
 }
 
@@ -49,7 +51,7 @@ trait Subscription
 
 trait ServerTransport {
   def onCommand(matcher: TransportRequestMatcher,
-               inputDeserializer: RequestDeserializer[Request[Body]])
+                inputDeserializer: RequestDeserializer[Request[Body]])
                (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription]
 
   def onEvent(matcher: TransportRequestMatcher,
@@ -63,4 +65,5 @@ trait ServerTransport {
 }
 
 class NoTransportRouteException(message: String) extends RuntimeException(message)
+
 class NoSuchHeaderException(header: String) extends RuntimeException(s"No such header: $header")

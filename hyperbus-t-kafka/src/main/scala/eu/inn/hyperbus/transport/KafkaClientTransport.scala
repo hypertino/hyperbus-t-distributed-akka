@@ -1,12 +1,10 @@
 package eu.inn.hyperbus.transport
 
-import java.io.ByteArrayOutputStream
 import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
-import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.StringSerializer
@@ -68,7 +66,7 @@ class KafkaClientTransport(producerProperties: Properties,
           message.uri.args.getOrElse(key,
             throw new KafkaPartitionKeyIsNotDefined(s"Argument $key is not defined for ${message.uri}")
           ).specific
-        }.foldLeft("")(_ + "," + _.replace("\\","\\\\").replace(",", "\\,"))
+        }.foldLeft("")(_ + "," + _.replace("\\", "\\\\").replace(",", "\\,"))
 
         new ProducerRecord(route.kafkaTopic, recordKey.substring(1), messageString)
       }

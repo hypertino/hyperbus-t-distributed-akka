@@ -4,15 +4,15 @@ import akka.testkit.TestActorRef
 import akka.util.Timeout
 import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.dynamic.{Null, Text}
-import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, AnyValue}
-import eu.inn.hyperbus.transport.api.uri.Uri
-import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TransportRequestMatcher}
+import eu.inn.hyperbus.transport.api.uri.Uri
+import eu.inn.hyperbus.{HyperBus, IdGenerator}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -28,15 +28,15 @@ case class AkkaTestBody2(resourceData: Long) extends Body
 
 @body("application/vnd+created-body.json")
 case class AkkaTestCreatedBody(resourceId: String,
-                           @fieldName("_links") links: LinksMap.LinksMapType = LinksMap("/resources/{resourceId}"))
+                               @fieldName("_links") links: LinksMap.LinksMapType = LinksMap("/resources/{resourceId}"))
   extends CreatedBody
 
 // with NoContentType
 
 @body("application/vnd+test-error-body.json")
 case class AkkaTestErrorBody(code: String,
-                         description: Option[String] = None,
-                         errorId: String = IdGenerator.create()) extends ErrorBody {
+                             description: Option[String] = None,
+                             errorId: String = IdGenerator.create()) extends ErrorBody {
   def message = code + description.map(": " + _).getOrElse("")
 
   def extra = Null
@@ -45,11 +45,11 @@ case class AkkaTestErrorBody(code: String,
 
 @request(Method.POST, "/resources")
 case class AkkaTestPost1(body: AkkaTestBody1) extends Request[AkkaTestBody1]
-with DefinedResponse[Created[AkkaTestCreatedBody]]
+  with DefinedResponse[Created[AkkaTestCreatedBody]]
 
 @request(Method.POST, "/resources")
 case class AkkaTestPost3(body: AkkaTestBody2) extends Request[AkkaTestBody2]
-with DefinedResponse[(Ok[DynamicBody], Created[AkkaTestCreatedBody], NotFound[AkkaTestErrorBody])]
+  with DefinedResponse[(Ok[DynamicBody], Created[AkkaTestCreatedBody], NotFound[AkkaTestErrorBody])]
 
 class TestActor extends Actor {
   var count = 0
@@ -63,19 +63,16 @@ class TestActor extends Actor {
     }
   }
 
-  def ~> (implicit testPost3: AkkaTestPost3) = {
+  def ~>(implicit testPost3: AkkaTestPost3) = {
     count += 1
     Future {
       if (testPost3.body.resourceData == 1)
         Created(AkkaTestCreatedBody("100500"))
-      else
-      if (testPost3.body.resourceData == -1)
+      else if (testPost3.body.resourceData == -1)
         throw Conflict(ErrorBody("failed"))
-      else
-      if (testPost3.body.resourceData == -2)
+      else if (testPost3.body.resourceData == -2)
         Conflict(ErrorBody("failed"))
-      else
-      if (testPost3.body.resourceData == -3)
+      else if (testPost3.body.resourceData == -3)
         NotFound(AkkaTestErrorBody("not_found"))
       else
         Ok(DynamicBody(Text("another result")))

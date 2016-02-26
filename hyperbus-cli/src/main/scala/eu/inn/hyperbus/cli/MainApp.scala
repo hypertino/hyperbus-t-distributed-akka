@@ -30,7 +30,7 @@ case class TestBody(content: Option[String]) extends Body
 
 @request(Method.GET, "/test")
 case class TestRequest(body: TestBody) extends Request[TestBody]
-with DefinedResponse[Ok[TestBody]]
+  with DefinedResponse[Ok[TestBody]]
 
 class CliService(console: Console, config: Config) extends Service {
   console.writeln("Starting hyperbus-cli...")
@@ -148,16 +148,20 @@ class CliServiceController(service: CliService, console: Console, shutdownMonito
   }
 
   override def help(): Unit = {
-    console.writeln(s"""|Available commands: <~, <|, quit
-            |Example: <~ {"request":{"method":"get","uri":{"pattern":"/test"},"messageId":"123", "contentType": "test-body"},"body":{"content":"100500"}}""".stripMargin('|'))
+    console.writeln(
+      s"""|Available commands: <~, <|, quit
+          |Example: <~ {"request":{"method":"get","uri":{"pattern":"/test"},"messageId":"123", "contentType": "test-body"},"body":{"content":"100500"}}""".stripMargin('|'))
   }
 }
 
 class JLineConsole extends Console {
   val consoleReader = new jline.console.ConsoleReader
+
   def inputIterator(): Iterator[Option[String]] = new Iterator[Option[String]] {
     var eof = false
+
     override def hasNext: Boolean = !eof
+
     override def next(): Option[String] = {
       consoleReader.accept()
       val s = consoleReader.readLine(">")
@@ -184,10 +188,10 @@ class JLineConsole extends Console {
 }
 
 object MainApp extends ConsoleModule {
-  bind [Console] to injected [JLineConsole]
-  bind [Config] to ConfigLoader()
-  bind [CliService] to injected [CliService]
-  bind [ServiceController] to injected [CliServiceController]
+  bind[Console] to injected[JLineConsole]
+  bind[Config] to ConfigLoader()
+  bind[CliService] to injected[CliService]
+  bind[ServiceController] to injected[CliServiceController]
 
   def main(args: Array[String]): Unit = {
     inject[ServiceController].run()

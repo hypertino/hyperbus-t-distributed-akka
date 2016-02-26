@@ -32,7 +32,7 @@ object TextMatcher {
       throw new TransportConfigurationError(s"Unsupported TextMatcher: $other")
   }
 
-  private [api] def apply(pojo: TextMatcherPojo): TextMatcher = apply(pojo.value, pojo.matchType)
+  private[api] def apply(pojo: TextMatcherPojo): TextMatcher = apply(pojo.value, pojo.matchType)
 }
 
 case object AnyValue extends TextMatcher {
@@ -56,4 +56,4 @@ case class SpecificValue(value: String) extends TextMatcher {
   }
 }
 
-private [api] case class TextMatcherPojo(value: Option[String], matchType: Option[String])
+private[api] case class TextMatcherPojo(value: Option[String], matchType: Option[String])

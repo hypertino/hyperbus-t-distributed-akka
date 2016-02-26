@@ -7,7 +7,8 @@ import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestHeader}
 import eu.inn.hyperbus.transport.api.uri.Uri
 
-trait DynamicBody extends Body with Links { // todo: replace with case class!
+trait DynamicBody extends Body with Links {
+  // todo: replace with case class!
   def content: Value
 
   lazy val links: LinksMap.LinksMapType = content.__links[Option[LinksMap.LinksMapType]].getOrElse(Map.empty)

@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.model.annotations
 
-import eu.inn.hyperbus.model.{Request, Body}
+import eu.inn.hyperbus.model.Body
 import eu.inn.hyperbus.transport.api.uri.UriParser
 
 import scala.annotation.{StaticAnnotation, compileTimeOnly}
@@ -53,7 +53,8 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     } else {
       q"Map(..$uriParts)"
     }
-    val newClass = q"""
+    val newClass =
+      q"""
         @eu.inn.hyperbus.model.annotations.uri($uriPattern)
         @eu.inn.hyperbus.model.annotations.method($method)
         case class $className(..$fieldsExcept,
@@ -67,7 +68,8 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
 
     val ctxVal = fresh("ctx")
     val bodyVal = fresh("body")
-    val companionExtra = q"""
+    val companionExtra =
+      q"""
         def apply(..$fieldsExcept, headersBuilder: eu.inn.hyperbus.model.HeadersBuilder)
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className = {
           ${className.toTermName}(..${fieldsExcept.map(_.name)},
@@ -89,9 +91,11 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           //todo: extract uri parts!
 
           ${className.toTermName}(
-            ..${fieldsExcept.filterNot(_.name==bodyFieldName).map{ field ⇒
-                q"${field.name} = requestHeader.uri.args(${field.name.toString}).specific"
-            }},
+            ..${
+        fieldsExcept.filterNot(_.name == bodyFieldName).map { field ⇒
+          q"${field.name} = requestHeader.uri.args(${field.name.toString}).specific"
+        }
+      },
             $bodyFieldName = $bodyVal,
             headers = requestHeader.headers
           )
@@ -117,7 +121,8 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       """
     }
 
-    val block = c.Expr(q"""
+    val block = c.Expr(
+      q"""
         $newClass
         $newCompanion
       """

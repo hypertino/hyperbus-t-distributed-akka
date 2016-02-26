@@ -3,7 +3,7 @@ package eu.inn.hyperbus.serialization
 import java.io.OutputStream
 
 import eu.inn.binders.core.BindOptions
-import eu.inn.hyperbus.model.{Response, Body, Request}
+import eu.inn.hyperbus.model.{Body, Request, Response}
 import eu.inn.hyperbus.transport.api.uri.UriJsonSerializer
 
 object MessageSerializer {

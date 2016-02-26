@@ -1,13 +1,12 @@
 package eu.inn.hyperbus.transport
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.io.ByteArrayInputStream
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorSystem, Props}
 import akka.cluster.Cluster
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.typesafe.config.Config
-import eu.inn.hyperbus.serialization.StringDeserializer
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.distributedakka._
 import eu.inn.hyperbus.util.ConfigUtils._
@@ -34,6 +33,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
   import actorSystem._
+
   val noRouteActor = actorSystem.actorSelection("no-route-watcher").resolveOne().recover {
     case _ ⇒ actorSystem.actorOf(Props(new NoRouteWatcher), "no-route-watcher")
   }
@@ -63,7 +63,9 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
     Future.successful {
       new PublishResult {
         def sent = None
+
         def offset = None
+
         override def toString = s"PublishResult(sent=None,offset=None)"
       }
     }

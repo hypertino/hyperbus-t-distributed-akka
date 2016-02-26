@@ -61,7 +61,7 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       Thread.sleep(1000) // we need to wait until subscriptions will go acros the
       // clear counter
       cnt.set(0)
-      val f = Future.sequence (List(
+      val f = Future.sequence(List(
         transportManager.publish(MockRequest("1", MockBody("12345"))),
         transportManager.publish(MockRequest("2", MockBody("12345"))))
       )

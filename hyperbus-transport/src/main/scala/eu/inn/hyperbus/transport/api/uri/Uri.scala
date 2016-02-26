@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigValue
 import eu.inn.binders.core.{BindOptions, ImplicitDeserializer, ImplicitSerializer}
 import eu.inn.binders.json.{JsonDeserializer, JsonSerializer}
 import eu.inn.binders.naming.PlainConverter
-import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TextMatcher, TextMatcherPojo, SpecificValue}
+import eu.inn.hyperbus.transport.api.matchers.{SpecificValue, TextMatcher, TextMatcherPojo}
 
 import scala.language.postfixOps
 
@@ -16,12 +16,12 @@ case class Uri(pattern: TextMatcher, args: Map[String, TextMatcher]) {
 
   def matchArgs(other: Map[String, TextMatcher]) = Uri.matchUriParts(args, other)
 
-  private [this] def argsFormat =
+  private[this] def argsFormat =
     if (args.isEmpty) ""
-  else
-    args.mkString("#", ",", "")
+    else
+      args.mkString("#", ",", "")
 
-  private [api] def toPojoJson = {
+  private[api] def toPojoJson = {
     val m = args.map {
       case (key, value) ⇒ key → value.specific
     }
@@ -36,12 +36,12 @@ case class Uri(pattern: TextMatcher, args: Map[String, TextMatcher]) {
 }
 
 object Uri {
-  def apply(pattern: TextMatcher): Uri = Uri(pattern, Map.empty[String,TextMatcher])
+  def apply(pattern: TextMatcher): Uri = Uri(pattern, Map.empty[String, TextMatcher])
 
   def apply(pattern: String): Uri = Uri(SpecificValue(pattern))
 
   def apply(pattern: String, args: Map[String, String]): Uri = Uri(SpecificValue(pattern), args.map {
-    case (k,v) ⇒ k → SpecificValue(v)
+    case (k, v) ⇒ k → SpecificValue(v)
   })
 
   def apply(configValue: ConfigValue): Uri = {
@@ -50,7 +50,7 @@ object Uri {
     apply(pojo)
   }
 
-  private [transport] def apply(pojo: UriPojo): Uri = {
+  private[transport] def apply(pojo: UriPojo): Uri = {
     Uri(
       TextMatcher(pojo.pattern),
       pojo.args.map { args ⇒
@@ -63,7 +63,7 @@ object Uri {
     )
   }
 
-  private [transport] def apply(pojo: UriPojoJson): Uri = {
+  private[transport] def apply(pojo: UriPojoJson): Uri = {
     apply(pojo.pattern, pojo.args.getOrElse(Map.empty).map(kv ⇒ kv._1 → kv._2))
   }
 
@@ -79,6 +79,7 @@ object Uri {
 }
 
 private[transport] case class UriPojo(pattern: TextMatcherPojo, args: Option[Map[String, TextMatcherPojo]])
+
 private[transport] case class UriPojoJson(pattern: String, args: Option[Map[String, String]])
 
 // todo: use generic type instead PlainConverter

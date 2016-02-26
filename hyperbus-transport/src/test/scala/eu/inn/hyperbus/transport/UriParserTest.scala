@@ -27,7 +27,7 @@ class UriParserTest extends FreeSpec with Matchers {
       )
       p("{abc}{def}") should equal(Seq(ParameterToken("abc"), ParameterToken("def")))
       p("abcdef") should equal(Seq(TextToken("abcdef")))
-      p("abc/def") should equal(Seq(TextToken("abc"),SlashToken,TextToken("def")))
+      p("abc/def") should equal(Seq(TextToken("abc"), SlashToken, TextToken("def")))
       p("{abc:@}") should equal(Seq(ParameterToken("abc", RegularMatchType)))
       p("{abc:*}") should equal(Seq(ParameterToken("abc", PathMatchType)))
     }

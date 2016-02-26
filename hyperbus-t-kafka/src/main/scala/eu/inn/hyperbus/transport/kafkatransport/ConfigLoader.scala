@@ -4,8 +4,8 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, AnyValue}
-import eu.inn.hyperbus.transport.api.uri.{Uri}
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TransportRequestMatcher}
+import eu.inn.hyperbus.transport.api.uri.Uri
 
 object ConfigLoader {
 
@@ -52,4 +52,4 @@ object ConfigLoader {
   )
 }
 
-private [kafkatransport] case class KafkaTopicPojo(topic: String, partitionKeys: Option[List[String]])
+private[kafkatransport] case class KafkaTopicPojo(topic: String, partitionKeys: Option[List[String]])

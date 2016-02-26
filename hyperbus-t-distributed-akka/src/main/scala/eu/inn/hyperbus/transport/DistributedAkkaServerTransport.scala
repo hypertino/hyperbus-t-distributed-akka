@@ -39,14 +39,14 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                          inputDeserializer: RequestDeserializer[Request[Body]])
                         (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
-    (subscriptionManager ? CommandSubscription(requestMatcher,inputDeserializer,handler)).asInstanceOf[Future[Subscription]]
+    (subscriptionManager ? CommandSubscription(requestMatcher, inputDeserializer, handler)).asInstanceOf[Future[Subscription]]
   }
 
   override def onEvent(requestMatcher: TransportRequestMatcher,
-                                               groupName: String,
-                                               inputDeserializer: RequestDeserializer[Request[Body]])
-                                              (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
-    (subscriptionManager ? EventSubscription(requestMatcher,groupName,inputDeserializer,handler)).asInstanceOf[Future[Subscription]]
+                       groupName: String,
+                       inputDeserializer: RequestDeserializer[Request[Body]])
+                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
+    (subscriptionManager ? EventSubscription(requestMatcher, groupName, inputDeserializer, handler)).asInstanceOf[Future[Subscription]]
   }
 
   override def off(subscription: Subscription): Future[Unit] = {

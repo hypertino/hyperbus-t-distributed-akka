@@ -1,8 +1,8 @@
 package eu.inn.hyperbus.impl
 
-import eu.inn.hyperbus.model.{Header, Body, Response}
+import eu.inn.hyperbus.model.{Body, Header, Response}
 import eu.inn.hyperbus.serialization.{ResponseBodyDeserializer, ResponseHeader}
-import eu.inn.hyperbus.transport.api.matchers.{TransportRequestMatcher, AnyValue, SpecificValue}
+import eu.inn.hyperbus.transport.api.matchers.{AnyValue, SpecificValue, TransportRequestMatcher}
 import eu.inn.hyperbus.transport.api.uri._
 
 trait MacroApi {
