@@ -10,6 +10,27 @@ object Header {
   val REVISION = "revision"
 }
 
+class Headers (private [model] val v: Map[String, _ >: Seq[String]]) extends Map[String, Seq[String]] {
+  override def +[B1 >: Seq[String]](kv: (String, B1)): Map[String, B1] = new Headers(v + kv)
+  override def -(key: String): Map[String, Seq[String]] = ???
+  override def get(key: String): Option[Seq[String]] = ???
+  override def iterator: Iterator[(String, Seq[String])] = ???
+
+}
+
+object Headers {
+  def apply(map: Map[String, Seq[String]])
+           (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): Headers = {
+    new HeadersBuilder(map) withContext mcx result()
+  }
+
+  def apply(implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): Headers = {
+    new HeadersBuilder() withContext mcx result()
+  }
+
+  def unapply(headers: Headers): Option[Map[String, Seq[String]]] = Some(headers.toMap)
+}
+
 class HeadersBuilder(private[this] val mapBuilder: mutable.Builder[(String, Seq[String]), Map[String, Seq[String]]]) {
   def this() = this(Map.newBuilder[String, Seq[String]])
 
@@ -53,7 +74,7 @@ class HeadersBuilder(private[this] val mapBuilder: mutable.Builder[(String, Seq[
     this
   }
 
-  def result(): Map[String, Seq[String]] = {
-    mapBuilder.result().filterNot(_._2.isEmpty)
+  def result(): Headers = {
+    new Headers(mapBuilder.result().filterNot(_._2.isEmpty))
   }
 }

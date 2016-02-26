@@ -46,7 +46,7 @@ private[model] case class DynamicBodyContainer(contentType: Option[String], cont
 
 case class DynamicRequest(uri: Uri,
                           body: DynamicBody,
-                          headers: Map[String, Seq[String]]) extends Request[DynamicBody]
+                          headers: Headers) extends Request[DynamicBody]
 
 object DynamicRequest {
   def apply(requestHeader: RequestHeader, jsonParser: JsonParser): DynamicRequest = {

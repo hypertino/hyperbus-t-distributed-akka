@@ -52,24 +52,6 @@ trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory 
   }
 }
 
-object Headers {
-  def fromCorrelation(messageId: String, correlationId: String): Map[String, Seq[String]] = {
-    Map(
-      Header.MESSAGE_ID → Seq(messageId)) ++ {
-      if (messageId != correlationId)
-        Map(Header.CORRELATION_ID → Seq(correlationId))
-      else
-        Map.empty
-    }
-  }
-
-  def fromCorrelation(messagingContext: MessagingContext): Map[String, Seq[String]] =
-    fromCorrelation(messagingContext.messageId, messagingContext.correlationId)
-
-  def fromContentType(contentType: Option[String]): Map[String, Seq[String]] =
-    contentType.map(ct ⇒ Map(Header.CONTENT_TYPE → Seq(ct))).getOrElse(Map.empty)
-}
-
 trait Request[+B <: Body] extends Message[B] with TransportRequest {
   def method: String = header(Header.METHOD)
 
