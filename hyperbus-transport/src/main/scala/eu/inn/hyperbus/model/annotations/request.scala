@@ -38,7 +38,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
 
     val q"case class $className(..$fields) extends ..$bases { ..$body }" = existingClass
 
-    val fieldsExcept = fields.filterNot { f ⇒
+    val fieldsExceptHeaders = fields.filterNot { f ⇒
       f.name.toString == "headers"
     }
 
@@ -57,7 +57,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       q"""
         @eu.inn.hyperbus.model.annotations.uri($uriPattern)
         @eu.inn.hyperbus.model.annotations.method($method)
-        case class $className(..$fieldsExcept,
+        case class $className(..$fieldsExceptHeaders,
           headers: Map[String, Seq[String]]) extends ..$bases {
           assertMethod(${className.toTermName}.method)
           ..$body
@@ -70,9 +70,9 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     val bodyVal = fresh("body")
     val companionExtra =
       q"""
-        def apply(..$fieldsExcept, headersBuilder: eu.inn.hyperbus.model.HeadersBuilder)
+        def apply(..$fieldsExceptHeaders, headersBuilder: eu.inn.hyperbus.model.HeadersBuilder)
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className = {
-          ${className.toTermName}(..${fieldsExcept.map(_.name)},
+          ${className.toTermName}(..${fieldsExceptHeaders.map(_.name)},
             headers = headersBuilder
               .withMethod(${className.toTermName}.method)
               .withContentType(body.contentType)
@@ -81,9 +81,9 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           )
         }
 
-        def apply(..$fieldsExcept)
+        def apply(..$fieldsExceptHeaders)
           (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className =
-          apply(..${fieldsExcept.map(_.name)}, new eu.inn.hyperbus.model.HeadersBuilder)(contextFactory)
+          apply(..${fieldsExceptHeaders.map(_.name)}, new eu.inn.hyperbus.model.HeadersBuilder)(contextFactory)
 
         def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           val $bodyVal = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
@@ -92,7 +92,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
 
           ${className.toTermName}(
             ..${
-        fieldsExcept.filterNot(_.name == bodyFieldName).map { field ⇒
+        fieldsExceptHeaders.filterNot(_.name == bodyFieldName).map { field ⇒
           q"${field.name} = requestHeader.uri.args(${field.name.toString}).specific"
         }
       },

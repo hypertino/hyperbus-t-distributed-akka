@@ -65,20 +65,18 @@ object DynamicRequest {
   }
 
   def apply(requestHeader: RequestHeader, body: DynamicBody): DynamicRequest = {
-    DynamicRequest(requestHeader.uri, body, requestHeader.headers)
+    DynamicRequest(requestHeader.uri, body, Headers.plain(requestHeader.headers))
   }
 
-  def apply(uri: Uri, method: String, body: DynamicBody, headersBuilder: HeadersBuilder)
-           (implicit contextFactory: MessagingContextFactory): DynamicRequest = {
-    DynamicRequest(uri, body, headersBuilder
+  def apply(uri: Uri, method: String, body: DynamicBody, headers: Headers): DynamicRequest = {
+    DynamicRequest(uri, body, new HeadersBuilder(headers)
       .withMethod(method)
       .withContentType(body.contentType)
-      .withContext(contextFactory)
       .result())
   }
 
   def apply(uri: Uri, method: String, body: DynamicBody)
            (implicit contextFactory: MessagingContextFactory): DynamicRequest = {
-    apply(uri, method, body, new HeadersBuilder)(contextFactory)
+    apply(uri, method, body, Headers())
   }
 }

@@ -134,7 +134,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       ct.input should equal(
-        """{"request":{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"contentType":["application/vnd+test-1.json"],"messageId":["123"]}},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"uri":{"pattern":"/resources"},"headers":{"messageId":["123"],"method":["post"],"contentType":["application/vnd+test-1.json"]}},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f) { r =>
@@ -405,7 +405,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"contentType":["application/vnd+test-1.json"],"messageId":["123"]}},"body":{"resourceData":"ha ha"}}"""
+      val req = """{"request":{"uri":{"pattern":"/resources"},"headers":{"messageId":["123"],"method":["post"],"contentType":["application/vnd+test-1.json"]}},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
       msg should equal(TestPost1(TestBody1("ha ha")))
@@ -416,6 +416,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         val ba = new ByteArrayOutputStream()
         r.serialize(ba)
         val s = ba.toString("UTF-8")
+        println(s)
         s should equal(
           """{"response":{"status":409,"headers":{"messageId":["123"]}},"body":{"code":"failed","errorId":"abcde12345"}}"""
         )

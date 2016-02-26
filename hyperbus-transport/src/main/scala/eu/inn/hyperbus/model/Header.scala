@@ -10,25 +10,36 @@ object Header {
   val REVISION = "revision"
 }
 
-class Headers (private [model] val v: Map[String, _ >: Seq[String]]) extends Map[String, Seq[String]] {
-  override def +[B1 >: Seq[String]](kv: (String, B1)): Map[String, B1] = new Headers(v + kv)
-  override def -(key: String): Map[String, Seq[String]] = ???
-  override def get(key: String): Option[Seq[String]] = ???
-  override def iterator: Iterator[(String, Seq[String])] = ???
-
+class Headers (private [this] val v: Map[String, Seq[String]]) extends Map[String, Seq[String]] {
+  override def +[B1 >: Seq[String]](kv: (String, B1)): Map[String, B1] = new Headers(v + (kv._1 → seqOf(kv._2)))
+  override def -(key: String): Map[String, Seq[String]] = new Headers(v - key)
+  override def get(key: String): Option[Seq[String]] = v.get(key)
+  override def iterator: Iterator[(String, Seq[String])] = v.iterator
+  private def seqOf[B1 >: Seq[String]](b1: B1): Seq[String] = b1.asInstanceOf[Seq[String]] // todo: there have to be a better way
 }
 
 object Headers {
+  def apply(vargs: (String, Seq[String])*)
+           (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): Headers = {
+    val builder = new HeadersBuilder()
+    builder ++= vargs
+    builder withContext mcx result()
+  }
+
   def apply(map: Map[String, Seq[String]])
            (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): Headers = {
     new HeadersBuilder(map) withContext mcx result()
   }
 
-  def apply(implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): Headers = {
+  def apply()(implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): Headers = {
     new HeadersBuilder() withContext mcx result()
   }
 
-  def unapply(headers: Headers): Option[Map[String, Seq[String]]] = Some(headers.toMap)
+  def unapply(headers: Headers): Option[Map[String, Seq[String]]] = Some(headers)
+
+  def plain(headers: Map[String, Seq[String]]): Headers = {
+    new HeadersBuilder(headers) result()
+  }
 }
 
 class HeadersBuilder(private[this] val mapBuilder: mutable.Builder[(String, Seq[String]), Map[String, Seq[String]]]) {
@@ -44,6 +55,11 @@ class HeadersBuilder(private[this] val mapBuilder: mutable.Builder[(String, Seq[
   }
 
   def ++=(headers: Map[String, Seq[String]]) = {
+    mapBuilder ++= headers
+    this
+  }
+
+  def ++=(headers: Seq[(String, Seq[String])]) = {
     mapBuilder ++= headers
     this
   }
