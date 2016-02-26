@@ -11,8 +11,6 @@ import scala.concurrent.Future
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-// todo: fix routeTo requires import of Response and Body
-
 object AkkaHyperService {
   def route[A](hyperBus: HyperBus, actorRef: ActorRef): Future[List[Subscription]] = macro AkkaHyperServiceMacro.route[A]
 

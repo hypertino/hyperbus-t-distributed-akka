@@ -79,42 +79,42 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         }
       }
 
-      val id = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
+      val idf = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
         }
       }
-      id.futureValue shouldNot be(null)
+      val id = idf.futureValue
 
-      val id2 = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
+      val id2f = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
         }
       }
-      id2.futureValue shouldNot be(null)
+      val id2 = id2f.futureValue
 
-      val id3 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
+      val id3f = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
-      id3.futureValue shouldNot be(null)
+      val id3 = id3f.futureValue
 
-      val id4 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
+      val id4f = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
-      id4.futureValue shouldNot be(null)
+      val id4 = id4f.futureValue
 
-      val id5 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub2", MockRequest.apply) { case msg: MockRequest =>
+      val id5f = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub2", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
-      id5.futureValue shouldNot be(null)
+      val id5 = id5f.futureValue
 
       Thread.sleep(500) // we need to wait until subscriptions will go acros the
 
@@ -125,32 +125,30 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         msg.asInstanceOf[MockResponse].body.test should equal("54321")
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(3)
+      }
 
-        /*
-        todo: this doesn't work for some reason, maybe it's bug in DistributedPubSub
-        todo: find a way to know if the subscription is complete? future?
-
-        transportManager.off(id)
-        transportManager.off(id2)
-        transportManager.off(id3)
-        transportManager.off(id4)
-        transportManager.off(id5)
+      transportManager.off(id).futureValue
+      transportManager.off(id2).futureValue
+      transportManager.off(id3).futureValue
+      transportManager.off(id4).futureValue
+      transportManager.off(id5).futureValue
 
 
-        Thread.sleep(1000)
 
-        val f2: Future[MockResponse] = transportManager.ask(MockRequest("/topic/{abc}", "12345"), MockResponseDeserializer)
+      val f2: Future[TransportResponse] = transportManager.ask(MockRequest(MockBody("12345")), responseDeserializer)
 
-        whenReady(f2.failed, timeout(Span(10, Seconds))) { e =>
-          e.printStackTrace()
-          e shouldBe a[NoTransportRouteException]
-        }*/
+      /*
+      Thread.sleep(6000)
+      todo: this is not working for some reason, route isn't deleted after unsubscribe?
+      whenReady(f2.failed, timeout(Span(10, Seconds))) { e =>
+        e shouldBe a[NoTransportRouteException]
+      }
+      */
 
-        val f3: Future[TransportResponse] = transportManager.ask(MockNotExistingRequest(MockBody("12345")), responseDeserializer)
+      val f3: Future[TransportResponse] = transportManager.ask(MockNotExistingRequest(MockBody("12345")), responseDeserializer)
 
-        whenReady(f3.failed, timeout(Span(1, Seconds))) { e =>
-          e shouldBe a[NoTransportRouteException]
-        }
+      whenReady(f3.failed, timeout(Span(1, Seconds))) { e =>
+        e shouldBe a[NoTransportRouteException]
       }
     }
 

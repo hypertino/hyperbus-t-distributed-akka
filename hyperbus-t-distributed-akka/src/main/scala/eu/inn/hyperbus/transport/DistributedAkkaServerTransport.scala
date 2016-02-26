@@ -22,15 +22,14 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                                      implicit val timeout: Timeout = Util.defaultTimeout)
   extends ServerTransport {
 
-  private def this(actorSystemWrapper: ActorSystemWrapper, logMessages: Boolean) =
+  private def this(actorSystemWrapper: ActorSystemWrapper, timeout: Timeout) =
     this(actorSystemWrapper.actorSystem, Some(actorSystemWrapper.key))
 
   def this(config: Config) = this(
-    actorSystem = ActorSystemRegistry.addRef(config).actorSystem,
+    actorSystemWrapper = ActorSystemRegistry.addRef(config),
     timeout = new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
 
-  protected[this] val subscriptions = new TrieMap[String, ActorRef]
   protected[this] val cluster = Cluster(actorSystem)
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
   protected[this] val subscriptionManager = actorSystem.actorOf(Props(classOf[distributedakka.SubscriptionManager]), "d-akka-subscription-mgr")
@@ -56,25 +55,16 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
     log.info("Shutting down DistributedAkkaServerTransport...")
     import actorSystem.dispatcher
-    val actorStopFutures = subscriptions.map(s ⇒
-      gracefulStop(s._2, duration) recover {
-        case t: Throwable ⇒
-          log.error("Shutting down distributed akka", t)
-          false
-      }
-    )
-
-    Future.sequence(actorStopFutures) map { list ⇒
-      val result = list.forall(_ == true)
-      subscriptions.clear()
-      //cluster.down(cluster.selfAddress)
-      Thread.sleep(500) // todo: replace this with event, wait while cluster.leave completes
-
+    gracefulStop(subscriptionManager, duration) recover {
+      case t: Throwable ⇒
+        log.error("Shutting down distributed akka", t)
+        false
+    } map { result ⇒
       actorSystemRegistryKey foreach { key ⇒
         log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name}) key: $key")
         ActorSystemRegistry.release(key)(duration)
       }
-      true
+      result
     }
   }
 }
