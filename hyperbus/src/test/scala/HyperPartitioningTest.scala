@@ -1,13 +1,4 @@
-import eu.inn.hyperbus.HyperBus
-import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TransportRequestMatcher}
-import eu.inn.hyperbus.transport.api.uri.Uri
-import eu.inn.hyperbus.transport.api.{ClientTransport, ServerTransport, TransportManager, TransportRoute}
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{FreeSpec, Matchers}
 
-import scala.concurrent.ExecutionContext
 /*
 
 @body("application/vnd+parition.json")

@@ -9,7 +9,7 @@ sealed trait TextMatcher {
   def matchText(other: TextMatcher): Boolean
 
   def specific: String = this match {
-    case SpecificValue(value) ⇒ value
+    case Specific(value) ⇒ value
     case _ ⇒ throw new UnsupportedOperationException(s"Specific value expected but got $getClass")
   }
 }
@@ -21,12 +21,12 @@ object TextMatcher {
   }
 
   def apply(value: Option[String], matchType: Option[String]): TextMatcher = matchType match {
-    case Some("Any") ⇒ AnyValue
-    case Some("Regex") ⇒ RegexTextMatcher(value.getOrElse(
-      throw new TransportConfigurationError("Please provide value for Regex TextMatcher"))
+    case Some("Any") ⇒ Any
+    case Some("Regex") ⇒ RegexMatcher(value.getOrElse(
+      throw new TransportConfigurationError("Please provide value for Regex matcher"))
     )
-    case Some("Specific") | None ⇒ SpecificValue(value.getOrElse(
-      throw new TransportConfigurationError("Please provide value for Specific TextMatcher"))
+    case Some("Specific") | None ⇒ Specific(value.getOrElse(
+      throw new TransportConfigurationError("Please provide value for Specific matcher"))
     )
     case other ⇒
       throw new TransportConfigurationError(s"Unsupported TextMatcher: $other")
@@ -35,23 +35,23 @@ object TextMatcher {
   private[api] def apply(pojo: TextMatcherPojo): TextMatcher = apply(pojo.value, pojo.matchType)
 }
 
-case object AnyValue extends TextMatcher {
+case object Any extends TextMatcher {
   def matchText(other: TextMatcher) = true
 }
 
-case class RegexTextMatcher(value: String) extends TextMatcher {
+case class RegexMatcher(value: String) extends TextMatcher {
   lazy val valueRegex = new Regex(value)
 
   def matchText(other: TextMatcher) = other match {
-    case SpecificValue(otherValue) ⇒ valueRegex.findFirstMatchIn(otherValue).isDefined
-    case RegexTextMatcher(otherRegexValue) ⇒ otherRegexValue == value
+    case Specific(otherValue) ⇒ valueRegex.findFirstMatchIn(otherValue).isDefined
+    case RegexMatcher(otherRegexValue) ⇒ otherRegexValue == value
     case _ ⇒ other.matchText(this)
   }
 }
 
-case class SpecificValue(value: String) extends TextMatcher {
+case class Specific(value: String) extends TextMatcher {
   def matchText(other: TextMatcher) = other match {
-    case SpecificValue(otherValue) ⇒ otherValue == value
+    case Specific(otherValue) ⇒ otherValue == value
     case _ ⇒ other.matchText(this)
   }
 }

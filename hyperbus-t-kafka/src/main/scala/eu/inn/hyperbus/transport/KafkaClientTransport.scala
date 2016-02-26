@@ -4,7 +4,7 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.StringSerializer
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-case class KafkaRoute(requestMatcher: TransportRequestMatcher,
+case class KafkaRoute(requestMatcher: RequestMatcher,
                       kafkaTopic: String,
                       kafkaPartitionKeys: List[String])
 

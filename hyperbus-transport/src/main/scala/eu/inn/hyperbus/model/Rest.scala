@@ -5,6 +5,7 @@ import java.io.OutputStream
 import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.serialization.MessageSerializer
 import eu.inn.hyperbus.transport.api.{TransportMessage, TransportRequest, TransportResponse}
+import eu.inn.hyperbus.util.StringSerializer
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 
@@ -40,6 +41,16 @@ trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory 
   def correlationId = headerOption(Header.CORRELATION_ID).getOrElse(messageId)
 
   def newContext() = MessagingContext(correlationId)
+
+  override def toString = {
+    s"${getClass.getName}[${body.getClass.getName}]:$serializeToString"
+  }
+
+  private def serializeToString = {
+    val os = new java.io.ByteArrayOutputStream()
+    serialize(os)
+    os.toString(StringSerializer.defaultEncoding)
+  }
 }
 
 object Headers {

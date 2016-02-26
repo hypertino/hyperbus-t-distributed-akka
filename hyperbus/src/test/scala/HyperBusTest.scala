@@ -6,7 +6,7 @@ import eu.inn.hyperbus.HyperBus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{AnyValue, SpecificValue, TransportRequestMatcher}
+import eu.inn.hyperbus.transport.api.matchers.{Any, Specific, RequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
@@ -55,7 +55,7 @@ class ServerTransportTest extends ServerTransport {
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
 
-  override def onCommand(matcher: TransportRequestMatcher,
+  override def onCommand(matcher: RequestMatcher,
                          inputDeserializer: RequestDeserializer[Request[Body]])
                         (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
@@ -66,7 +66,7 @@ class ServerTransportTest extends ServerTransport {
     }
   }
 
-  override def onEvent(matcher: TransportRequestMatcher,
+  override def onEvent(matcher: RequestMatcher,
                        groupName: String,
                        inputDeserializer: RequestDeserializer[Request[Body]])
                       (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
@@ -279,9 +279,9 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "~> dynamic request (server)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null, st)
-      hyperBus.onCommand(TransportRequestMatcher(
+      hyperBus.onCommand(RequestMatcher(
         Some(Uri("/test")),
-        Map(Header.METHOD → SpecificValue(Method.GET)))
+        Map(Header.METHOD → Specific(Method.GET)))
       ) { request =>
         Future {
           NoContent(EmptyBody)
@@ -357,7 +357,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "|> static request subscription (server)" in {
       var receivedEvents = 0
       val serverTransport = new ServerTransportTest() {
-        override def onEvent(requestMatcher: TransportRequestMatcher,
+        override def onEvent(requestMatcher: RequestMatcher,
                              groupName: String,
                              inputDeserializer: RequestDeserializer[Request[Body]])
                             (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
@@ -377,7 +377,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
     "|> dynamic request subscription (server)" in {
       var receivedEvents = 0
       val serverTransport = new ServerTransportTest() {
-        override def onEvent(requestMatcher: TransportRequestMatcher,
+        override def onEvent(requestMatcher: RequestMatcher,
                              groupName: String,
                              inputDeserializer: RequestDeserializer[Request[Body]])
                             (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
@@ -388,9 +388,9 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val hyperBus = newHyperBus(null, serverTransport)
 
       hyperBus.onEvent(
-        TransportRequestMatcher(
+        RequestMatcher(
           Some(Uri("/test")),
-          Map(Header.METHOD → SpecificValue(Method.GET))),
+          Map(Header.METHOD → Specific(Method.GET))),
         Some("group1")
       ) { request: DynamicRequest => Future {} }
       receivedEvents should equal(1)
@@ -472,8 +472,8 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
   }
 
   def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
-    val cr = List(TransportRoute(ct, TransportRequestMatcher(Some(Uri(AnyValue)))))
-    val sr = List(TransportRoute(st, TransportRequestMatcher(Some(Uri(AnyValue)))))
+    val cr = List(TransportRoute(ct, RequestMatcher(Some(Uri(Any)))))
+    val sr = List(TransportRoute(st, RequestMatcher(Some(Uri(Any)))))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
     new HyperBus(transportManager, Some("group1"), logMessages = true)
   }

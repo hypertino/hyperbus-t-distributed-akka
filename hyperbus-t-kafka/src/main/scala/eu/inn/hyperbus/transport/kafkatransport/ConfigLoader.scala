@@ -4,7 +4,7 @@ import java.util.Properties
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TransportRequestMatcher}
+import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
 
 object ConfigLoader {
@@ -17,9 +17,9 @@ object ConfigLoader {
     routesConfigList.map { config ⇒
       val kafkaTopic = config.read[KafkaTopicPojo]("kafka")
       val matcher = if (config.hasPath("match"))
-        TransportRequestMatcher(config.getValue("match"))
+        RequestMatcher(config.getValue("match"))
       else
-        TransportRequestMatcher(Some(Uri(AnyValue)))
+        RequestMatcher(Some(Uri(Any)))
       KafkaRoute(matcher, kafkaTopic.topic, kafkaTopic.partitionKeys.getOrElse(List.empty))
     }.toList
   }

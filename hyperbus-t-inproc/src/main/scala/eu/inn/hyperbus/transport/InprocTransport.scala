@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.inproc.{HandlerWrapper, InprocSubscription, SubKey}
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.Subscriptions
@@ -85,7 +85,6 @@ class InprocTransport(serialize: Boolean = false)
 
             val matched = !serialize || subKey.requestMatcher.matchMessage(messageForSubscriber)
 
-            // todo: log if not matched?
             if (matched) {
               commandHandlerFound = true
               subscriber.handler(messageForSubscriber) map { case response ⇒
@@ -155,7 +154,7 @@ class InprocTransport(serialize: Boolean = false)
     _ask(message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
   }
 
-  override def onCommand(matcher: TransportRequestMatcher,
+  override def onCommand(matcher: RequestMatcher,
                          inputDeserializer: RequestDeserializer[Request[Body]])
                         (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
@@ -170,7 +169,7 @@ class InprocTransport(serialize: Boolean = false)
     Future.successful(InprocSubscription(id))
   }
 
-  override def onEvent(matcher: TransportRequestMatcher,
+  override def onEvent(matcher: RequestMatcher,
                        groupName: String,
                        inputDeserializer: RequestDeserializer[Request[Body]])
                       (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {

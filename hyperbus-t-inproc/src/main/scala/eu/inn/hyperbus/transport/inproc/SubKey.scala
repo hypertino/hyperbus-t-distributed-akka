@@ -1,5 +1,5 @@
 package eu.inn.hyperbus.transport.inproc
 
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 
-private[transport] case class SubKey(groupName: Option[String], requestMatcher: TransportRequestMatcher)
+private[transport] case class SubKey(groupName: Option[String], requestMatcher: RequestMatcher)

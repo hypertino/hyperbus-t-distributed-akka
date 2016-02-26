@@ -6,7 +6,7 @@ import eu.inn.hyperbus.impl.MacroApi
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.util.LogUtils
 import org.slf4j.LoggerFactory
 
@@ -25,12 +25,12 @@ class HyperBus(val transportManager: TransportManager,
 
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def onEvent(requestMatcher: TransportRequestMatcher, groupName: Option[String])
+  def onEvent(requestMatcher: RequestMatcher, groupName: Option[String])
              (handler: (DynamicRequest) => Future[Unit]): Future[Subscription] = {
     onEvent[DynamicRequest](requestMatcher, groupName, DynamicRequest.apply)(handler)
   }
 
-  def onCommand(requestMatcher: TransportRequestMatcher)
+  def onCommand(requestMatcher: RequestMatcher)
                (handler: DynamicRequest => Future[_ <: Response[Body]]): Future[Subscription] = {
     onCommand[Response[Body], DynamicRequest](requestMatcher, DynamicRequest.apply)(handler)
   }
@@ -102,7 +102,7 @@ class HyperBus(val transportManager: TransportManager,
     transportManager.publish(request)
   }
 
-  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
+  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                                               requestDeserializer: RequestDeserializer[REQ])
                                                              (handler: (REQ) => Future[RESP]): Future[Subscription] = {
 
@@ -110,7 +110,7 @@ class HyperBus(val transportManager: TransportManager,
     transportManager.onCommand(requestMatcher, subscription.requestDeserializer)(subscription.underlyingHandler)
   }
 
-  def onEvent[REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
+  def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                     groupName: Option[String],
                                     requestDeserializer: RequestDeserializer[REQ])
                                    (handler: (REQ) => Future[Unit]): Future[Subscription] = {
@@ -168,7 +168,7 @@ class HyperBus(val transportManager: TransportManager,
 
   protected def responseSerializerNotFound(response: Response[Body]) = log.error("Can't serialize response: {}", response)
 
-  protected def getRouteKey(requestMatcher: TransportRequestMatcher, groupName: Option[String]) = {
+  protected def getRouteKey(requestMatcher: RequestMatcher, groupName: Option[String]) = {
     if (requestMatcher.uri.isEmpty)
       throw new IllegalArgumentException(s"uri is not set on matcher: $requestMatcher")
     val specificUri = requestMatcher.uri.get.pattern.specific // todo: implement other filters?

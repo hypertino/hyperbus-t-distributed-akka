@@ -4,7 +4,7 @@ import eu.inn.hyperbus.impl.MacroApi
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -35,11 +35,11 @@ trait HyperBusApi {
 
   def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult]
 
-  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
+  def onCommand[RESP <: Response[Body], REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                                               requestDeserializer: RequestDeserializer[REQ])
                                                              (handler: (REQ) => Future[RESP]): Future[Subscription]
 
-  def onEvent[REQ <: Request[Body]](requestMatcher: TransportRequestMatcher,
+  def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                     groupName: Option[String],
                                     requestDeserializer: RequestDeserializer[REQ])
                                    (handler: (REQ) => Future[Unit]): Future[Subscription]

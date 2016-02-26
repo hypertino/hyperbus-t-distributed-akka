@@ -1,7 +1,7 @@
 package eu.inn.hyperbus.transport.api
 
 import com.typesafe.config.{Config, ConfigFactory}
-import eu.inn.hyperbus.transport.api.matchers.{AnyValue, TransportRequestMatcher}
+import eu.inn.hyperbus.transport.api.matchers.{RequestMatcher, Any}
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.util.ConfigUtils
 
@@ -44,9 +44,9 @@ object TransportConfigurationLoader {
     ).asInstanceOf[T]
 
     val matcher = if (config.hasPath("match"))
-      TransportRequestMatcher(config.getValue("match"))
+      RequestMatcher(config.getValue("match"))
     else
-      TransportRequestMatcher(Some(Uri(AnyValue)))
+      RequestMatcher(Some(Uri(Any)))
     TransportRoute[T](transport, matcher)
   }
 

@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigFactory
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.{Body, Method, Request}
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
@@ -37,21 +37,21 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
 
-      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
+      transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
         case msg: MockRequest => Future {
           msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
 
-      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
+      transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
         case msg: MockRequest => Future {
           msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
 
-      transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply) {
+      transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply) {
         case msg: MockRequest => Future {
           msg.body.test should equal("12345")
           cnt.incrementAndGet()

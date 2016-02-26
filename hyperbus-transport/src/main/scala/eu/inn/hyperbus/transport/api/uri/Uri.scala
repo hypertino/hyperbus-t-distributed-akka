@@ -4,7 +4,7 @@ import com.typesafe.config.ConfigValue
 import eu.inn.binders.core.{BindOptions, ImplicitDeserializer, ImplicitSerializer}
 import eu.inn.binders.json.{JsonDeserializer, JsonSerializer}
 import eu.inn.binders.naming.PlainConverter
-import eu.inn.hyperbus.transport.api.matchers.{SpecificValue, TextMatcher, TextMatcherPojo}
+import eu.inn.hyperbus.transport.api.matchers.{Specific, TextMatcher, TextMatcherPojo}
 
 import scala.language.postfixOps
 
@@ -38,10 +38,10 @@ case class Uri(pattern: TextMatcher, args: Map[String, TextMatcher]) {
 object Uri {
   def apply(pattern: TextMatcher): Uri = Uri(pattern, Map.empty[String, TextMatcher])
 
-  def apply(pattern: String): Uri = Uri(SpecificValue(pattern))
+  def apply(pattern: String): Uri = Uri(Specific(pattern))
 
-  def apply(pattern: String, args: Map[String, String]): Uri = Uri(SpecificValue(pattern), args.map {
-    case (k, v) ⇒ k → SpecificValue(v)
+  def apply(pattern: String, args: Map[String, String]): Uri = Uri(Specific(pattern), args.map {
+    case (k, v) ⇒ k → Specific(v)
   })
 
   def apply(configValue: ConfigValue): Uri = {

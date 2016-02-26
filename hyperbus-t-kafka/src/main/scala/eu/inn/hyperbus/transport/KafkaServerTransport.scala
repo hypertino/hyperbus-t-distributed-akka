@@ -8,7 +8,7 @@ import com.typesafe.config.Config
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
 import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}
@@ -33,11 +33,11 @@ class KafkaServerTransport(
   protected[this] val subscriptions = new TrieMap[Subscription, TopicSubscription[_]]
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
-  def onCommand(matcher: TransportRequestMatcher,
+  def onCommand(matcher: RequestMatcher,
                 inputDeserializer: RequestDeserializer[Request[Body]])
                (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = ???
 
-  def onEvent(matcher: TransportRequestMatcher,
+  def onEvent(matcher: RequestMatcher,
               groupName: String,
               inputDeserializer: RequestDeserializer[Request[Body]])
              (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
@@ -82,7 +82,7 @@ class KafkaServerTransport(
   class TopicSubscription[OUT](
                                 threadCount: Int,
                                 route: KafkaRoute,
-                                requestMatcher: TransportRequestMatcher,
+                                requestMatcher: RequestMatcher,
                                 groupName: String,
                                 inputDeserializer: RequestDeserializer[Request[Body]],
                                 handler: (Request[Body]) ⇒ Future[OUT]

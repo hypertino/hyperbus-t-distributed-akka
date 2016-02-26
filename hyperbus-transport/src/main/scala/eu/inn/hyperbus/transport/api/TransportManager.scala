@@ -2,7 +2,7 @@ package eu.inn.hyperbus.transport.api
 
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.FiniteDuration
@@ -51,7 +51,7 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
     }
   }
 
-  def onCommand(requestMatcher: TransportRequestMatcher,
+  def onCommand(requestMatcher: RequestMatcher,
                 inputDeserializer: RequestDeserializer[Request[Body]])
                (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
@@ -66,7 +66,7 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
     }
   }
 
-  def onEvent(requestMatcher: TransportRequestMatcher,
+  def onEvent(requestMatcher: RequestMatcher,
               groupName: String,
               inputDeserializer: RequestDeserializer[Request[Body]])
              (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
@@ -83,7 +83,7 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
     }
   }
 
-  protected def lookupServerTransport(requestMatcher: TransportRequestMatcher): ServerTransport = {
+  protected def lookupServerTransport(requestMatcher: RequestMatcher): ServerTransport = {
     serverRoutes.find { route ⇒
       route.matcher.matchRequestMatcher(requestMatcher)
     } map (_.transport) getOrElse {

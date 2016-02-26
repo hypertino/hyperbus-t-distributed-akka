@@ -13,7 +13,7 @@ import eu.inn.hyperbus.model.{Body, Method, Request, Response}
 import eu.inn.hyperbus.serialization.{MessageDeserializer, ResponseHeader}
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
@@ -79,7 +79,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         }
       }
 
-      val idf = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
+      val idf = transportManager.onCommand(RequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
@@ -87,7 +87,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       }
       val id = idf.futureValue
 
-      val id2f = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
+      val id2f = transportManager.onCommand(RequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
@@ -95,21 +95,21 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       }
       val id2 = id2f.futureValue
 
-      val id3f = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
+      val id3f = transportManager.onEvent(RequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
       val id3 = id3f.futureValue
 
-      val id4f = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
+      val id4f = transportManager.onEvent(RequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
       }
       val id4 = id4f.futureValue
 
-      val id5f = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub2", MockRequest.apply) { case msg: MockRequest =>
+      val id5f = transportManager.onEvent(RequestMatcher(Some(Uri("/mock"))), "sub2", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})

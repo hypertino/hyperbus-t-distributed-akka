@@ -8,12 +8,11 @@ import com.typesafe.config.Config
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.distributedakka._
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
 
-import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
@@ -34,14 +33,14 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
   protected[this] val subscriptionManager = actorSystem.actorOf(Props(classOf[distributedakka.SubscriptionManager]), "d-akka-subscription-mgr")
 
-  override def onCommand(requestMatcher: TransportRequestMatcher,
+  override def onCommand(requestMatcher: RequestMatcher,
                          inputDeserializer: RequestDeserializer[Request[Body]])
                         (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
 
     (subscriptionManager ? CommandSubscription(requestMatcher, inputDeserializer, handler)).asInstanceOf[Future[Subscription]]
   }
 
-  override def onEvent(requestMatcher: TransportRequestMatcher,
+  override def onEvent(requestMatcher: RequestMatcher,
                        groupName: String,
                        inputDeserializer: RequestDeserializer[Request[Body]])
                       (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {

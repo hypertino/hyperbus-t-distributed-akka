@@ -4,7 +4,7 @@ import java.io.OutputStream
 
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization.RequestDeserializer
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 
 import scala.concurrent.Future
@@ -50,11 +50,11 @@ trait ClientTransport {
 trait Subscription
 
 trait ServerTransport {
-  def onCommand(matcher: TransportRequestMatcher,
+  def onCommand(matcher: RequestMatcher,
                 inputDeserializer: RequestDeserializer[Request[Body]])
                (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription]
 
-  def onEvent(matcher: TransportRequestMatcher,
+  def onEvent(matcher: RequestMatcher,
               groupName: String,
               inputDeserializer: RequestDeserializer[Request[Body]])
              (handler: (Request[Body]) => Future[Unit]): Future[Subscription] // todo: Unit -> some useful response?

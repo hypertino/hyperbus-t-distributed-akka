@@ -10,7 +10,7 @@ import eu.inn.binders.dynamic.Null
 import eu.inn.hyperbus.model.{Body, DynamicBody, DynamicRequest, Request}
 import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestDeserializer}
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.TransportRequestMatcher
+import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.util.StringSerializer
 
 import scala.collection.mutable
@@ -52,7 +52,7 @@ private[transport] class SubscriptionManager extends Actor with ActorLogging {
 }
 
 private[transport] trait SubscriptionCommand {
-  def requestMatcher: TransportRequestMatcher
+  def requestMatcher: RequestMatcher
 
   def groupNameOption: Option[String]
 
@@ -66,14 +66,14 @@ private[transport] trait SubscriptionCommand {
   }
 }
 
-private[transport] case class CommandSubscription(requestMatcher: TransportRequestMatcher,
+private[transport] case class CommandSubscription(requestMatcher: RequestMatcher,
                                                   inputDeserializer: RequestDeserializer[Request[Body]],
                                                   handler: (Request[Body]) => Future[TransportResponse])
   extends SubscriptionCommand {
   def groupNameOption = None
 }
 
-private[transport] case class EventSubscription(requestMatcher: TransportRequestMatcher,
+private[transport] case class EventSubscription(requestMatcher: RequestMatcher,
                                                 groupName: String,
                                                 inputDeserializer: RequestDeserializer[Request[Body]],
                                                 handler: (Request[Body]) => Future[Unit])
