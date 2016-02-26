@@ -29,18 +29,12 @@ object ErrorBody {
     (errorBody.code, errorBody.description, errorBody.errorId, errorBody.extra, errorBody.contentType)
   )
 
-  def deserializer(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): ErrorBody = {
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): ErrorBody = {
     import eu.inn.binders._
     eu.inn.binders.json.SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       deserializer.unbind[ErrorBodyContainer].copy(contentType = contentType)
     }
   }
-
-  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): ErrorBody = deserializer(contentType, jsonParser)
-
-  /*def apply(jsonParser : com.fasterxml.jackson.core.JsonParser): ErrorBody = {
-    apply(jsonParser, )
-  }*/
 }
 
 private[model] case class ErrorBodyContainer(code: String,

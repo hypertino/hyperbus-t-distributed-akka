@@ -8,7 +8,6 @@ import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestHeader}
 import eu.inn.hyperbus.transport.api.uri.Uri
 
 trait DynamicBody extends Body with Links {
-  // todo: replace with case class!
   def content: Value
 
   lazy val links: LinksMap.LinksMapType = content.__links[Option[LinksMap.LinksMapType]].getOrElse(Map.empty)
@@ -33,14 +32,12 @@ object DynamicBody {
 
   def apply(content: Value): DynamicBody = DynamicBodyContainer(None, content)
 
-  def deserialize(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = {
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(contentType, deserializer.unbind[Value])
     }
   }
-
-  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): DynamicBody = deserialize(contentType, jsonParser)
 
   def unapply(dynamicBody: DynamicBody) = Some((dynamicBody.contentType, dynamicBody.content))
 }
