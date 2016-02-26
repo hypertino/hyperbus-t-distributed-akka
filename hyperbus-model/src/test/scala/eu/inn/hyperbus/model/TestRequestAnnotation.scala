@@ -7,7 +7,6 @@ import eu.inn.binders.dynamic.{Obj, Text}
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.uri.Uri
-import eu.inn.hyperbus.util.StringSerializer
 import org.scalatest.{FreeSpec, Matchers}
 
 @request(Method.POST, "/test-post-1/{id}")

@@ -8,10 +8,9 @@ import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, U
 import akka.pattern.pipe
 import eu.inn.binders.dynamic.Null
 import eu.inn.hyperbus.model.{Body, DynamicBody, DynamicRequest, Request}
-import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestDeserializer}
+import eu.inn.hyperbus.serialization.{StringSerializer, MessageDeserializer, RequestDeserializer}
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
-import eu.inn.hyperbus.util.StringSerializer
 
 import scala.collection.mutable
 import scala.concurrent.Future

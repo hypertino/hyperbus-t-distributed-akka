@@ -1,4 +1,4 @@
-package eu.inn.hyperbus.util
+package eu.inn.hyperbus.serialization
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
@@ -11,7 +11,7 @@ object StringSerializer {
   def defaultEncoding: String = "UTF-8"
 }
 
-private[util] object StringSerializerImpl {
+private[serialization] object StringSerializerImpl {
   def serializeToString(c: Context)(serializable: c.Expr[Any], encoding: c.Expr[String]): c.Expr[String] = {
     import c.universe._
     val osVal = TermName(c.freshName("os"))

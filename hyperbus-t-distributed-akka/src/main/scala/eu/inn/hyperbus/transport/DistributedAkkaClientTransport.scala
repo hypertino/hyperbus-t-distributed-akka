@@ -7,10 +7,10 @@ import akka.cluster.Cluster
 import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.util.Timeout
 import com.typesafe.config.Config
+import eu.inn.hyperbus.serialization.StringSerializer
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.distributedakka._
 import eu.inn.hyperbus.util.ConfigUtils._
-import eu.inn.hyperbus.util.StringSerializer
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future

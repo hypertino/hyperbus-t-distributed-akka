@@ -3,9 +3,8 @@ package eu.inn.hyperbus.model
 import java.io.OutputStream
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.hyperbus.serialization.MessageSerializer
+import eu.inn.hyperbus.serialization.{StringSerializer, MessageSerializer}
 import eu.inn.hyperbus.transport.api.{TransportMessage, TransportRequest, TransportResponse}
-import eu.inn.hyperbus.util.StringSerializer
 
 case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
 

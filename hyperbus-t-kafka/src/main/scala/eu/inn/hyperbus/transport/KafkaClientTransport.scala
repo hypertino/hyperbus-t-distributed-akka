@@ -3,11 +3,11 @@ package eu.inn.hyperbus.transport
 import java.util.Properties
 
 import com.typesafe.config.Config
+import eu.inn.hyperbus.serialization.StringSerializer
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
 import eu.inn.hyperbus.util.ConfigUtils._
-import eu.inn.hyperbus.util.StringSerializer
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.slf4j.LoggerFactory
 

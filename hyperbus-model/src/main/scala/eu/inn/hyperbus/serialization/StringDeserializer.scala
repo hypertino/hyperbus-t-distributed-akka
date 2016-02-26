@@ -4,8 +4,6 @@ import java.io.ByteArrayInputStream
 
 import eu.inn.binders.dynamic.{Null, Value}
 import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.util.StringSerializer
-
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
