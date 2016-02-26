@@ -31,7 +31,12 @@ private[transport] class SubscriptionManager extends Actor with ActorLogging {
 
         case None ⇒
           workerCounter += 1
-          val newActorRef = context.system.actorOf(Props(classOf[SubscriptionActor], topic), s"d-akka-wrkr-$workerCounter")
+          val newActorRef = if (topic._2.isEmpty) {
+            context.system.actorOf(Props(classOf[CommandActor], topic._1), s"d-akka-cmdwrkr-$workerCounter")
+          }
+          else {
+            context.system.actorOf(Props(classOf[EventActor], topic._1, topic._2.get), s"d-akka-evntwrkr-$workerCounter")
+          }
           topicSubscriptions.put(topic, (newActorRef, new AtomicInteger(1)))
           newActorRef forward subscriptionCmd
       }
@@ -93,7 +98,10 @@ private[transport] case object ReleaseTopicCommand
 
 @SerialVersionUID(1L) case class HandlerIsNotFound(message: String) extends RuntimeException(message)
 
-private[transport] class SubscriptionActor(topic: (String, Option[String])) extends Actor with ActorLogging {
+private[transport] abstract class SubscriptionActor extends Actor with ActorLogging {
+  def topic: String
+  def groupNameOption: Option[String]
+  def handleRequest(request: Request[Body], matchedSubscriptions: Seq[SubscriptionCommand])
 
   import context._
 
@@ -102,14 +110,14 @@ private[transport] class SubscriptionActor(topic: (String, Option[String])) exte
   val handlers = mutable.Map[DAkkaSubscription, SubscriptionCommand]()
   var subscribedToTopic = false
 
-  log.debug(s"$self is subscribing to topic ${topic._1} @ ${topic._2}")
-  mediator ! Subscribe(topic._1, Util.getUniqGroupName(topic._2), self)
+  log.debug(s"$self is subscribing to topic $topic @ groupName")
+  mediator ! Subscribe(topic, Util.getUniqGroupName(groupNameOption), self)
 
   // todo: test empty group behavior
 
   def receive: Receive = {
     case ack: SubscribeAck ⇒
-      log.debug(s"$self is subscribed to topic ${topic._1} @ ${topic._2}")
+      log.debug(s"$self is subscribed to topic $topic @ groupName")
       handlersInProgress.foreach { case (subscription, (subscriptionCommand, actoref)) ⇒
         handlers += subscription -> subscriptionCommand
         actoref ! subscription
@@ -133,8 +141,8 @@ private[transport] class SubscriptionActor(topic: (String, Option[String])) exte
       }
 
     case ReleaseTopicCommand ⇒
-      log.debug(s"$self is unsubscribing from topic ${topic._1} @ ${topic._2}")
-      mediator ! Unsubscribe(topic._1, Util.getUniqGroupName(topic._2), self)
+      log.debug(s"$self is unsubscribing from topic $topic @ groupName")
+      mediator ! Unsubscribe(topic, Util.getUniqGroupName(groupNameOption), self)
 
     case UnsubscribeAck(unsubscribe) ⇒
       log.debug(s"$self is stopping...")
@@ -169,12 +177,12 @@ private[transport] class SubscriptionActor(topic: (String, Option[String])) exte
 
     case ReleaseTopicCommand ⇒
       if (handlers.isEmpty) {
-        log.debug(s"$self is unsubscribing from topic ${topic._1} @ ${topic._2}")
+        log.debug(s"$self is unsubscribing from topic $topic @ groupName")
       }
       else {
-        log.error(s"$self is unsubscribing from topic ${topic._1} @ ${topic._2} while having handlers: $handlers")
+        log.error(s"$self is unsubscribing from topic $topic @ groupName while having handlers: $handlers")
       }
-      mediator ! Unsubscribe(topic._1, Util.getUniqGroupName(topic._2), self)
+      mediator ! Unsubscribe(topic, Util.getUniqGroupName(groupNameOption), self)
 
     case UnsubscribeAck(unsubscribe) ⇒
       log.debug(s"$self is stopping...")
@@ -192,45 +200,63 @@ private[transport] class SubscriptionActor(topic: (String, Option[String])) exte
           // todo: fix or make a workaround without performance loss:
           // we assume here that all handlers provide the same deserializer
           // so currently it's not possible to subscribe to the same topic with different deserializers
-          matchedSubscriptions.headOption.map(_.inputDeserializer(requestHeader, jsonParser)).getOrElse(lookupMessage)
-        }
-
-        if (matchedSubscriptions.isEmpty) {
-          log.error(s"$self: no handler is matched for a message: $request")
-          Future.failed(HandlerIsNotFound(s"No handler were found for $request")) pipeTo sender
-        }
-        else {
-          val selectedSubscriptions = matchedSubscriptions.groupBy(_.groupNameOption).map {
-            case (group, subscriptions) ⇒
-              group → getRandomElement(subscriptions)
-          }
-
-          selectedSubscriptions.foreach { result ⇒
-            (result: @unchecked) match {
-              case (None, CommandSubscription(_, _, handler)) ⇒
-                val futureResult = handler(request) map { case response ⇒
-                  HyperBusResponse(StringSerializer.serializeToString(response))
-                }
-                futureResult.onFailure {
-                  case NonFatal(e) ⇒
-                    log.error(e, s"Handler $handler is failed on request $request")
-                }
-                futureResult pipeTo sender
-
-              case (Some(groupName), EventSubscription(_, _, _, handler)) ⇒
-                handler(request).onFailure {
-                  case NonFatal(e) ⇒
-                    log.error(e, s"Handler $handler is failed on request $request")
-                }
-            }
+          matchedSubscriptions.headOption.map(_.inputDeserializer(requestHeader, jsonParser)).getOrElse {
+            DynamicRequest(requestHeader, jsonParser) // todo: this is ignored, just to skip body, ineffective but rare?
           }
         }
+
+        handleRequest(request, matchedSubscriptions)
       }
       catch {
         case NonFatal(e) ⇒
-          log.error(e, s"Can't handler request: $content")
+          log.error(e, s"Can't handle request: $content")
       }
   }
 }
 
+private[transport] class CommandActor(val topic: String) extends SubscriptionActor {
+  import context._
 
+  def groupNameOption = None
+
+  def handleRequest(request: Request[Body], matchedSubscriptions: Seq[SubscriptionCommand]) = {
+    if (matchedSubscriptions.isEmpty) {
+      log.error(s"$self: no handler is matched for a message: $request")
+      Future.failed(HandlerIsNotFound(s"No handler were found for $request")) pipeTo sender
+    }
+    else {
+      val handler = getRandomElement(matchedSubscriptions).asInstanceOf[CommandSubscription].handler
+      val futureResult = handler(request) map { case response ⇒
+        HyperBusResponse(StringSerializer.serializeToString(response))
+      }
+      futureResult.onFailure {
+        case NonFatal(e) ⇒
+          log.error(e, s"Handler $handler is failed on request $request")
+      }
+      futureResult pipeTo sender
+    }
+  }
+}
+
+private[transport] class EventActor(val topic: String, groupName: String) extends SubscriptionActor {
+  import context._
+  def groupNameOption = Some(groupName)
+  def handleRequest(request: Request[Body], matchedSubscriptions: Seq[SubscriptionCommand]) = {
+    if (matchedSubscriptions.isEmpty) {
+      log.debug(s"$self: no event handler is matched for a message: $request")
+    }
+    else {
+      val selectedSubscriptions = matchedSubscriptions.groupBy(_.groupNameOption).map {
+        case (group, subscriptions) ⇒
+          getRandomElement(subscriptions)
+      }
+
+      selectedSubscriptions.foreach { case subscription: EventSubscription ⇒
+        subscription.handler(request).onFailure {
+          case NonFatal(e) ⇒
+            log.error(e, s"Handler ${subscription.handler} is failed on request $request")
+        }
+      }
+    }
+  }
+}

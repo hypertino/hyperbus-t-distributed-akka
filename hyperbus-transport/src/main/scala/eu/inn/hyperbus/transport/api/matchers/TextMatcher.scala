@@ -1,6 +1,7 @@
 package eu.inn.hyperbus.transport.api.matchers
 
 import com.typesafe.config.ConfigValue
+import eu.inn.binders.annotations.fieldName
 import eu.inn.hyperbus.transport.api.TransportConfigurationError
 
 import scala.util.matching.Regex
@@ -56,4 +57,4 @@ case class Specific(value: String) extends TextMatcher {
   }
 }
 
-private[api] case class TextMatcherPojo(value: Option[String], matchType: Option[String])
+private[api] case class TextMatcherPojo(value: Option[String], @fieldName("type") matchType: Option[String])

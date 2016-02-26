@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
+import scala.util.control.NonFatal
 
 class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
                                      val actorSystemRegistryKey: Option[String] = None,
@@ -54,11 +55,19 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   def shutdown(duration: FiniteDuration): Future[Boolean] = {
     log.info("Shutting down DistributedAkkaServerTransport...")
     import actorSystem.dispatcher
-    gracefulStop(subscriptionManager, duration) recover {
-      case t: Throwable ⇒
-        log.error("Shutting down distributed akka", t)
-        false
-    } map { result ⇒
+    val futureStopManager = try {
+      gracefulStop(subscriptionManager, duration) recover {
+        case t: Throwable ⇒
+          log.error("Shutting down distributed akka", t)
+          false
+      }
+    } catch {
+      case NonFatal(e) ⇒
+        log.error(s"Can't gracefully stop subscriptionManager", e)
+        Future.successful(false)
+    }
+
+    futureStopManager map { result ⇒
       actorSystemRegistryKey foreach { key ⇒
         log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name}) key: $key")
         ActorSystemRegistry.release(key)(duration)

@@ -36,7 +36,7 @@ class MockServerTransport(config: Config) extends ServerTransport {
 
 class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with Matchers {
   "Transport Manager" - {
-    "Configuration Test " in {
+    "Configuration Test" in {
       val config = ConfigFactory.parseString(
         """
         hyperbus: {
@@ -48,8 +48,8 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
             {
               match: {
                 uri: {
-                  pattern: { value: "/topic/{userId}", match-type: Specific }
-                  args: { userId: { match-type: Any } }
+                  pattern: { value: "/topic/{userId}", type: Specific }
+                  args: { userId: { type: Any } }
                 }
                 headers: {
                   method: { value: "post" }
@@ -62,8 +62,8 @@ class TransportManagerConfigurationTest extends FreeSpec with ScalaFutures with 
             {
               match: {
                 uri: {
-                  pattern: { value: "/topic/{userId}", match-type: Specific }
-                  args: { userId: { value: ".*", match-type: Regex } }
+                  pattern: { value: "/topic/{userId}", type: Specific }
+                  args: { userId: { value: ".*", type: Regex } }
                 }
               }
               transport: mock-server

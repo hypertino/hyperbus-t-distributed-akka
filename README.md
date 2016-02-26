@@ -1,4 +1,5 @@
 TODO:
+    distributed akka, use protobuf: https://github.com/akka/akka/issues/18371
     + improve logging
     + reply on server if no method is handled (NoTransport alt/akka)
     + print routes on launch
