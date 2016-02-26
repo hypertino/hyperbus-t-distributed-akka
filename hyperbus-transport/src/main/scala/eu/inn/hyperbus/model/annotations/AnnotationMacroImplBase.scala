@@ -19,5 +19,5 @@ private[annotations] trait AnnotationMacroImplBase {
 
   protected def invalidAnnottee() = c.abort(c.enclosingPosition, "This annotation can only be used on class")
 
-  protected def fresh(prefix: String): TermName = newTermName(c.fresh(prefix))
+  protected def fresh(prefix: String): TermName = TermName(c.freshName(prefix))
 }

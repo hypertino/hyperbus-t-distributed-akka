@@ -196,22 +196,24 @@ private [transport] class SubscriptionActor(topic: (String, Option[String])) ext
               group → getRandomElement(subscriptions)
           }
 
-          selectedSubscriptions.foreach {
-            case (None, CommandSubscription(_, _, handler)) ⇒
-              val futureResult = handler(request) map { case response ⇒
-                HyperBusResponse(StringSerializer.serializeToString(response))
-              }
-              futureResult.onFailure {
-                case NonFatal(e) ⇒
-                  log.error(e, s"Handler $handler is failed on request $request")
-              }
-              futureResult pipeTo sender
+          selectedSubscriptions.foreach { result ⇒
+            (result: @unchecked) match {
+              case (None, CommandSubscription(_, _, handler)) ⇒
+                val futureResult = handler(request) map { case response ⇒
+                  HyperBusResponse(StringSerializer.serializeToString(response))
+                }
+                futureResult.onFailure {
+                  case NonFatal(e) ⇒
+                    log.error(e, s"Handler $handler is failed on request $request")
+                }
+                futureResult pipeTo sender
 
-            case (Some(groupName), EventSubscription(_, _, _, handler)) ⇒
-              handler(request).onFailure {
-                case NonFatal(e) ⇒
-                  log.error(e, s"Handler $handler is failed on request $request")
-              }
+              case (Some(groupName), EventSubscription(_, _, _, handler)) ⇒
+                handler(request).onFailure {
+                  case NonFatal(e) ⇒
+                    log.error(e, s"Handler $handler is failed on request $request")
+                }
+            }
           }
         }
       }

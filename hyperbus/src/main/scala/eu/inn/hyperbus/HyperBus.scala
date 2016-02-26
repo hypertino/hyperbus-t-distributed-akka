@@ -14,6 +14,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.experimental.macros
 import scala.util.Try
+import scala.util.control.NonFatal
 
 class HyperBus(val transportManager: TransportManager,
                val defaultGroupName: Option[String] = None,
@@ -65,8 +66,9 @@ class HyperBus(val transportManager: TransportManager,
       }
 
       handler(in.asInstanceOf[REQ]) recover {
-        case z: Response[_] ⇒ z
-        case t: Throwable ⇒ unhandledException(in.asInstanceOf[REQ], t)
+        case NonFatal(e) ⇒
+          log.error(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
+            "subscriptionId" → this.hashCode.toHexString), s"Failed event handling", e)
       }
     }
   }
@@ -78,14 +80,16 @@ class HyperBus(val transportManager: TransportManager,
       log.trace(Map("messageId" → request.messageId,"correlationId" → request.correlationId), s"hyperBus <~ $request")
     }
     val outputDeserializer = MessageDeserializer.deserializeResponseWith(_: InputStream)(responseDeserializer)
-    transportManager.ask(request, outputDeserializer) map {
-      case throwable: Throwable ⇒
-        throw throwable
-      case other: RESP ⇒
-        if (logMessages && log.isTraceEnabled) {
-          log.trace(Map("messageId" → other.messageId,"correlationId" → other.correlationId), s"hyperBus ~(R)~> $other")
-        }
-        other
+    transportManager.ask(request, outputDeserializer) map { r ⇒
+      (r : @unchecked) match {
+        case throwable: Throwable ⇒
+          throw throwable
+        case other ⇒
+          if (logMessages && log.isTraceEnabled) {
+            log.trace(Map("messageId" → other.messageId, "correlationId" → other.correlationId), s"hyperBus ~(R)~> $other")
+          }
+          other.asInstanceOf[RESP]
+      }
     }
   }
 

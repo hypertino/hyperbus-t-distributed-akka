@@ -11,7 +11,7 @@ object StringSerializer {
 private [util] object StringSerializerImpl {
   def serializeToString(c: Context)(serializable: c.Expr[Any], encoding: c.Expr[String]): c.Expr[String] = {
     import c.universe._
-    val osVal = newTermName(c.fresh("os"))
+    val osVal = TermName(c.freshName("os"))
     val a = q"""{
       val $osVal = new java.io.ByteArrayOutputStream()
       $serializable.serialize($osVal)

@@ -11,7 +11,7 @@ import scala.util.matching.Regex
 private[hyperbus] object HyperBusMacro {
 
   def onCommand[IN <: Request[Body] : c.WeakTypeTag]
-  (c: blackbox.Context)
+  (c: whitebox.Context)
   (handler: c.Expr[(IN) => Future[Response[Body]]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
@@ -21,7 +21,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def onEvent[IN : c.WeakTypeTag]
-  (c: blackbox.Context)(handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
+  (c: whitebox.Context)(handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
@@ -30,7 +30,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def onEventForGroup[IN : c.WeakTypeTag]
-  (c: blackbox.Context)(groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
+  (c: whitebox.Context)(groupName: c.Expr[String], handler: c.Expr[(IN) => Future[Unit]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
@@ -49,7 +49,7 @@ private[hyperbus] object HyperBusMacro {
   }
 
   def publish[IN <: Request[Body] : c.WeakTypeTag]
-  (c: blackbox.Context)
+  (c: whitebox.Context)
   (request: c.Expr[IN]): c.Tree = {
     val c0: c.type = c
     val bundle = new {
@@ -60,7 +60,7 @@ private[hyperbus] object HyperBusMacro {
 }
 
 private[hyperbus] trait HyperBusMacroImplementation {
-  val c: blackbox.Context
+  val c: whitebox.Context
 
   import c.universe._
 
@@ -72,8 +72,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     if (requestType.companion == null) {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
-    val requestDeserializer = requestType.companion.declaration(TermName("apply"))
-    val methodGetter = requestType.companion.declaration(TermName("method"))
+    val requestDeserializer = requestType.companion.decl(TermName("apply"))
+    val methodGetter = requestType.companion.decl(TermName("method"))
     val uriPattern = getUriAnnotation(requestType)
     val bodySymbol = getBodySymbol(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
@@ -99,8 +99,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     if (requestType.companion == null) {
       c.abort(c.enclosingPosition, s"Can't find companion object for $requestType (required to deserialize)")
     }
-    val requestDeserializer = requestType.companion.declaration(TermName("apply"))
-    val methodGetter = requestType.companion.declaration(TermName("method"))
+    val requestDeserializer = requestType.companion.decl(TermName("apply"))
+    val methodGetter = requestType.companion.decl(TermName("method"))
     val uriPattern = getUriAnnotation(requestType)
     val bodySymbol = getBodySymbol(requestType)
     val contentType: Option[String] = getContentTypeAnnotation(bodySymbol)
@@ -138,7 +138,7 @@ private[hyperbus] trait HyperBusMacroImplementation {
       t.typeSymbol.typeSignature =:= dynamicBodyTypeSig
     } map { body =>
       val ta = getContentTypeAnnotation(body)
-      val deserializer = body.companion.declaration(TermName("apply"))
+      val deserializer = body.companion.decl(TermName("apply"))
       if (ta.isEmpty)
         c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
       cq"""$ta => $deserializer _"""
@@ -262,5 +262,5 @@ private[hyperbus] trait HyperBusMacroImplementation {
     }
   }
 
-  private def fresh(prefix: String): TermName = newTermName(c.fresh(prefix))
+  private def fresh(prefix: String): TermName = TermName(c.freshName(prefix))
 }

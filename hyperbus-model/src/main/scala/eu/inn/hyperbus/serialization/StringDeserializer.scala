@@ -48,9 +48,9 @@ object StringDeserializer {
 private [serialization] object StringDeserializerImpl {
   def request[T: c.WeakTypeTag](c: Context)(input: c.Expr[String], encoding: c.Expr[String]): c.Expr[T] = {
     import c.universe._
-    val isVal = newTermName(c.fresh("is"))
+    val isVal = TermName(c.freshName("is"))
     val typ = weakTypeOf[T]
-    val deserializer = typ.companion.declaration(TermName("apply"))
+    val deserializer = typ.companion.decl(TermName("apply"))
     if (typ.companion == null) {
       c.abort(c.enclosingPosition, s"Can't find companion object for $typ (required to deserialize)")
     }

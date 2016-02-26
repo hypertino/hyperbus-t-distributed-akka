@@ -12,7 +12,7 @@ import scala.language.experimental.macros
 
 // todo: document API
 trait HyperBusApi {
-  def <~[REQ <: Request[Body]](request: REQ) = macro HyperBusMacro.ask[REQ]
+  def <~[REQ <: Request[Body]](request: REQ): Any = macro HyperBusMacro.ask[REQ]
   def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
   def |>[REQ <: Request[Body]](handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperBusMacro.onEvent[REQ]
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): Future[Subscription] = macro HyperBusMacro.onCommand[REQ]

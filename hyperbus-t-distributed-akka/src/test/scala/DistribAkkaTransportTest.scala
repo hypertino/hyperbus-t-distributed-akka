@@ -88,32 +88,36 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
           MockResponse(MockBody(msg.body.test.reverse))
         }
       }
-      println(id.futureValue)
+      id.futureValue shouldNot be(null)
 
       val id2 = transportManager.onCommand(TransportRequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
         }
-      } futureValue
+      }
+      id2.futureValue shouldNot be(null)
 
       val id3 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
-      } futureValue
+      }
+      id3.futureValue shouldNot be(null)
 
       val id4 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub1", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
-      } futureValue
+      }
+      id4.futureValue shouldNot be(null)
 
       val id5 = transportManager.onEvent(TransportRequestMatcher(Some(Uri("/mock"))), "sub2", MockRequest.apply) { case msg: MockRequest =>
         msg.body.test should equal("12345")
         cnt.incrementAndGet()
         Future.successful({})
-      } futureValue
+      }
+      id5.futureValue shouldNot be(null)
 
       Thread.sleep(500) // we need to wait until subscriptions will go acros the
 

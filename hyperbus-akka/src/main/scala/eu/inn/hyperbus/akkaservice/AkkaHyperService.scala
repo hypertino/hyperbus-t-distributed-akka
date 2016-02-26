@@ -178,5 +178,5 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     }
   }
 
-  private def fresh(prefix: String): TermName = newTermName(c.fresh(prefix))
+  private def fresh(prefix: String): TermName = TermName(c.freshName(prefix))
 }
