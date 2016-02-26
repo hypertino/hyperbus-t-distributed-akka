@@ -18,7 +18,6 @@ trait EntityWithHeaders {
   def header(name: String): String = headerOption(name).getOrElse(throw new NoSuchHeaderException(name))
 }
 
-// todo: toString with JSON and class info
 trait TransportMessage extends EntityWithHeaders {
   def messageId: String
 
