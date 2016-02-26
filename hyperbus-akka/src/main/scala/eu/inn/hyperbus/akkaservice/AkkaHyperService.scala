@@ -11,7 +11,6 @@ import scala.concurrent.Future
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-// todo: hyperbus macros hygiene!!!
 // todo: fix routeTo requires import of Response and Body
 
 object AkkaHyperService {
@@ -37,9 +36,10 @@ private[akkaservice] object AkkaHyperServiceMacro {
   (c: Context)
   (actorRef: c.Expr[ActorRef]): c.Expr[Future[List[Subscription]]] = {
     import c.universe._
+    val tVar = c.freshName(TermName("t"))
     val r = q"""{
-      val t = ${c.prefix.tree}
-      AkkaHyperService.route[${weakTypeOf[A]}](t.hyperBus, $actorRef)
+      val $tVar = ${c.prefix.tree}
+      AkkaHyperService.route[${weakTypeOf[A]}]($tVar.hyperBus, $actorRef)
     }"""
     c.Expr[Future[List[Subscription]]](r)
   }
@@ -104,7 +104,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
     val obj = q"""{
       val $hyperBusVal = $hyperBus
       val $actorVal = $actorRef
-      Future.sequence(List(
+      scala.concurrent.Future.sequence(List(
         ..$subscriptions
       ))
     }"""

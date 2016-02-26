@@ -113,8 +113,8 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
       val groupActorRef = TestActorRef[TestGroupActor]
 
       implicit val timeout = Timeout(20.seconds)
-      hyperBus.routeTo[TestActor](actorRef).futureValue.map(println)
-      hyperBus.routeTo[TestGroupActor](groupActorRef).futureValue.map(println)
+      hyperBus.routeTo[TestActor](actorRef).futureValue.foreach(println)
+      hyperBus.routeTo[TestGroupActor](groupActorRef).futureValue.foreach(println)
 
       val f1 = hyperBus <~ AkkaTestPost1(AkkaTestBody1("ha ha"))
 
