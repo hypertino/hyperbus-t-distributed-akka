@@ -33,7 +33,7 @@ case class MockRequest(body: MockBody) extends Request[MockBody]
 case class MockNotExistingRequest(body: MockBody) extends Request[MockBody]
 
 @response(200)
-case class MockResponse(body: MockBody) extends Response[MockBody]
+case class MockResponse[B <: MockBody](body: B) extends Response[B]
 
 class TestActorX extends Actor with ActorLogging {
   val membersUp = new AtomicInteger(0)
@@ -121,8 +121,8 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       val f: Future[TransportResponse] = transportManager.ask(MockRequest(MockBody("12345")), responseDeserializer)
 
       whenReady(f, timeout(Span(5, Seconds))) { msg =>
-        msg shouldBe a[MockResponse]
-        msg.asInstanceOf[MockResponse].body.test should equal("54321")
+        msg shouldBe a[MockResponse[_]]
+        msg.asInstanceOf[MockResponse[MockBody]].body.test should equal("54321")
         Thread.sleep(500) // give chance to increment to another service (in case of wrong implementation)
         cnt.get should equal(3)
       }

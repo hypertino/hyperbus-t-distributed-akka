@@ -31,8 +31,8 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
 
     val q"case class $className[..$typeArgs](..$fields) extends ..$bases { ..$body }" = existingClass
 
-    val fieldsExceptHeaders = fields.filterNot { f ⇒
-      f.name == "headers"
+    if (typeArgs.size != 1) {
+      c.abort(c.enclosingPosition, "One type parameter is expected for a response: [T <: Body]")
     }
 
     val methodTypeArgs = typeArgs.map { t: TypeDef ⇒
@@ -41,35 +41,78 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     val classTypeNames = typeArgs.map { t: TypeDef ⇒
       t.name
     }
+    val upperBound = typeArgs.head.asInstanceOf[TypeDef].rhs match {
+      case TypeBoundsTree(lower, upper) ⇒ upper
+      case _ ⇒ c.abort(c.enclosingPosition, "Type bounds aren't found: [T <: Body]")
+    }
+
+    val fieldsExceptHeaders = fields.filterNot(_.name.decodedName.toString == "headers")
+
+    val bodyField: ValDef = fields.find(_.name.decodedName.toString == "body").getOrElse {
+      c.abort(c.enclosingPosition, "body field is not found")
+    }
+
+    val equalExpr = fieldsExceptHeaders.map(_.name).foldLeft(q"(o.headers == this.headers)") { (cap, name) ⇒
+      q"(o.$name == this.$name) && $cap"
+    }
+
+    val cases = fieldsExceptHeaders.map(_.name).zipWithIndex.map { case (name, idx) ⇒
+      cq"$idx => this.$name"
+    } :+ cq"${fieldsExceptHeaders.size} => this.headers"
 
     val newClass =
       q"""
         @eu.inn.hyperbus.model.annotations.status($status)
-        case class $className[..$typeArgs](..$fieldsExceptHeaders,
-                                           headers: Map[String, Seq[String]]) extends ..$bases {
-          ..$body
+        class $className[..$typeArgs](..$fieldsExceptHeaders,
+          val headers: Map[String,Seq[String]], plain__init: Boolean)
+          extends ..$bases {
           def status: Int = ${className.toTermName}.status
+
+          def copy[S <: $upperBound](body: S = this.body, headers: Map[String, Seq[String]] = this.headers)
+            (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): $className[S] = {
+            ${className.toTermName}[S](body, eu.inn.hyperbus.model.Headers.plain(headers))
+          }
+
+          def canEqual(other: Any): Boolean = other.isInstanceOf[$className[..$classTypeNames]]
+
+
         }
       """
+    /**
+    override def equals(other: Any) = this.eq(other.asInstanceOf[AnyRef]) ||{
+            other match {
+              case o @ ${className.toTermName}.unapply[MockBody](
+                ..${fieldsExceptHeaders.map(f ⇒ q"${f.name}")},
+                headers
+              ) if $equalExpr ⇒ other.asInstanceOf[$className].canEqual(this)
+              case _ => false
+            }
+          }
 
+
+      */
     val ctxVal = fresh("ctx")
     val companionExtra =
       q"""
-        def apply[..$methodTypeArgs](..$fieldsExceptHeaders, headersBuilder: eu.inn.hyperbus.model.HeadersBuilder)
-          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames] = {
-          ${className.toTermName}[..$classTypeNames](..${fieldsExceptHeaders.map(_.name)},
-            headers = headersBuilder
-              .withContext(contextFactory)
+        def status: Int = $status
+
+        def apply[..$methodTypeArgs](..$fieldsExceptHeaders, headers: eu.inn.hyperbus.model.Headers):
+          $className[..$classTypeNames] = {
+          new $className[..$classTypeNames](..${fieldsExceptHeaders.map(_.name)},
+            headers = new eu.inn.hyperbus.model.HeadersBuilder(headers)
               .withContentType(body.contentType)
-              .result()
+              .result(),
+            plain__init = false
           )
         }
 
         def apply[..$methodTypeArgs](..$fieldsExceptHeaders)
-          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames]
-          = apply(..${fieldsExceptHeaders.map(_.name)}, new eu.inn.hyperbus.model.HeadersBuilder)(contextFactory)
+          (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): $className[..$classTypeNames]
+          = apply(..${fieldsExceptHeaders.map(_.name)}, eu.inn.hyperbus.model.Headers()(mcx))
 
-        def status: Int = $status
+        def unapply[..$methodTypeArgs](response: $className[..$classTypeNames]) = Some(
+          (..${fieldsExceptHeaders.map(f ⇒ q"response.${f.name}")},response.headers)
+        )
     """
 
     val newCompanion = clzCompanion map { existingCompanion =>
@@ -88,11 +131,15 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
       """
     }
 
-    c.Expr(
-      q"""
+    val block = q"""
         $newClass
         $newCompanion
       """
+
+    //println(block)
+
+    c.Expr(
+      block
     )
   }
 }

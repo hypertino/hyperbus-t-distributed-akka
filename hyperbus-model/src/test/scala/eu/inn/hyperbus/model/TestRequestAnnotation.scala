@@ -13,7 +13,7 @@ import org.scalatest.{FreeSpec, Matchers}
 case class TestPost1(id: String, body: TestBody1) extends Request[TestBody1]
 
 object TestPost1 {
-  def apply(id: String, x: String): TestPost1 = TestPost1(id, TestBody1(x))
+  def apply(id: String, x: String, headers: Headers): TestPost1 = TestPost1(id, TestBody1(x), headers)
 }
 
 @body("test-inner-body")
@@ -50,12 +50,12 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
 
     "TestPost1 should serialize" in {
       val post1 = TestPost1("155", TestBody1("abcde"))
-      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"method":["post"],"contentType":["test-body-1"],"messageId":["123"]}},"body":{"data":"abcde"}}""")
+      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-body-1"]}},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should serialize with headers" in {
-      val post1 = TestPost1("155", TestBody1("abcde"), new HeadersBuilder(Map("test" → Seq("a"))))
-      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"method":["post"],"test":["a"],"contentType":["test-body-1"],"messageId":["123"]}},"body":{"data":"abcde"}}""")
+      val post1 = TestPost1("155", TestBody1("abcde"), Headers("test" → Seq("a")))
+      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"test":["a"],"messageId":["123"],"method":["post"],"contentType":["test-body-1"]}},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should deserialize" in {
@@ -78,7 +78,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     }
 
     "TestPost1 should deserialize from String" in {
-      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"method":["post"],"contentType":["test-body-1"],"messageId":["123"]}},"body":{"data":"abcde"}}"""
+      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-body-1"]}},"body":{"data":"abcde"}}"""
       val post1 = StringDeserializer.request[TestPost1](str)
       val post2 = TestPost1("155", TestBody1("abcde"))
       post1 should equal(post2)
@@ -109,7 +109,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       ))
       postO.serialize(ba)
       val str = ba.toString("UTF-8")
-      str should equal("""{"request":{"uri":{"pattern":"/test-outer-resource"},"headers":{"method":["get"],"contentType":["test-outer-body"],"messageId":["123"]}},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}""")
+      str should equal("""{"request":{"uri":{"pattern":"/test-outer-resource"},"headers":{"messageId":["123"],"method":["get"],"contentType":["test-outer-body"]}},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":true}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":true}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":true}}}]}}}""")
     }
 
     "TestOuterPost should deserialize" in {
@@ -145,6 +145,19 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       request.correlationId should equal("123")
       //request.body.contentType should equal(Some())
       request.body should equal(DynamicBody(Some("test-body-1"), Obj(Map("resourceId" -> Text("100500")))))
+    }
+
+    "hashCode, equals, product" in {
+      val post1 = TestPost1("155", TestBody1("abcde"))
+      val post2 = TestPost1("155", TestBody1("abcde"))
+      val post3 = TestPost1("155", TestBody1("abcdef"))
+      post1 should equal(post2)
+      post1.hashCode() should equal(post2.hashCode())
+      post1 shouldNot equal(post3)
+      post1.hashCode() shouldNot equal(post3.hashCode())
+      post1.productElement(0) should equal("155")
+      post1.productElement(1) should equal(TestBody1("abcde"))
+      post1.productElement(2) shouldBe a[Map[_,_]]
     }
   }
 }

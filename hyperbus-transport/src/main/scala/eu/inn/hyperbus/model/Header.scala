@@ -10,7 +10,7 @@ object Header {
   val REVISION = "revision"
 }
 
-class Headers (private [this] val v: Map[String, Seq[String]]) extends Map[String, Seq[String]] {
+class Headers private[model] (private [this] val v: Map[String, Seq[String]]) extends Map[String, Seq[String]] {
   override def +[B1 >: Seq[String]](kv: (String, B1)): Map[String, B1] = new Headers(v + (kv._1 → seqOf(kv._2)))
   override def -(key: String): Map[String, Seq[String]] = new Headers(v - key)
   override def get(key: String): Option[Seq[String]] = v.get(key)

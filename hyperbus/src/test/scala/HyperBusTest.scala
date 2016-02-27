@@ -111,7 +111,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
-        """{"request":{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"contentType":["application/vnd+test-1.json"],"messageId":["123"]}},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"uri":{"pattern":"/resources"},"headers":{"messageId":["123"],"method":["post"],"contentType":["application/vnd+test-1.json"]}},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f) { r =>
@@ -153,7 +153,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPostWithNoContent(TestBody1("empty"))
 
       ct.input should equal(
-        """{"request":{"uri":{"pattern":"/empty"},"headers":{"method":["post"],"contentType":["application/vnd+test-1.json"],"messageId":["123"]}},"body":{"resourceData":"empty"}}"""
+        """{"request":{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["post"],"contentType":["application/vnd+test-1.json"]}},"body":{"resourceData":"empty"}}"""
       )
 
       whenReady(f) { r =>
@@ -171,7 +171,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ StaticPostWithDynamicBody(DynamicBody(Text("ha ha")))
 
       ct.input should equal(
-        """{"request":{"uri":{"pattern":"/empty"},"headers":{"method":["post"],"messageId":["123"]}},"body":"ha ha"}"""
+        """{"request":{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["post"]}},"body":"ha ha"}"""
       )
 
       whenReady(f) { r =>
@@ -189,7 +189,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody)
 
       ct.input should equal(
-        """{"request":{"uri":{"pattern":"/empty"},"headers":{"method":["post"],"contentType":["no-content"],"messageId":["123"]}},"body":null}"""
+        """{"request":{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["post"],"contentType":["no-content"]}},"body":null}"""
       )
 
       whenReady(f) { r =>
@@ -207,7 +207,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       val f = hyperBus <~ TestPost1(TestBody1("ha ha"))
 
       ct.input should equal(
-        """{"request":{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"contentType":["application/vnd+test-1.json"],"messageId":["123"]}},"body":{"resourceData":"ha ha"}}"""
+        """{"request":{"uri":{"pattern":"/resources"},"headers":{"messageId":["123"],"method":["post"],"contentType":["application/vnd+test-1.json"]}},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f.failed) { r =>

@@ -53,53 +53,96 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     } else {
       q"Map(..$uriParts)"
     }
+
+    val equalExpr = fieldsExceptHeaders.map(_.name).foldLeft(q"(o.headers == this.headers)") { (cap, name) ⇒
+      q"(o.$name == this.$name) && $cap"
+    }
+
+    val cases = fieldsExceptHeaders.map(_.name).zipWithIndex.map { case (name, idx) ⇒
+      cq"$idx => this.$name"
+    } :+ cq"${fieldsExceptHeaders.size} => this.headers"
+
     val newClass =
       q"""
         @eu.inn.hyperbus.model.annotations.uri($uriPattern)
         @eu.inn.hyperbus.model.annotations.method($method)
-        case class $className(..$fieldsExceptHeaders,
-          headers: Map[String, Seq[String]]) extends ..$bases {
+        class $className(..$fieldsExceptHeaders,
+          val headers: Map[String,Seq[String]], plain__init: Boolean)
+          extends ..$bases with scala.Product {
           assertMethod(${className.toTermName}.method)
           ..$body
           import eu.inn.hyperbus.transport.api.uri._
           lazy val uri = Uri(${className.toTermName}.uriPattern, $uriPartsMap)
+
+          def copy(
+            ..${fieldsExceptHeaders.map { case ValDef(_, name, tpt, _) ⇒
+              q"val $name: $tpt = this.$name"
+            }},
+            headers: Map[String, Seq[String]] = this.headers): $className = {
+            ${className.toTermName}(..${fieldsExceptHeaders.map(_.name)}, eu.inn.hyperbus.model.Headers.plain(headers))
+          }
+
+          def canEqual(other: Any): Boolean = other.isInstanceOf[$className]
+
+          override def equals(other: Any) = this.eq(other.asInstanceOf[AnyRef]) ||{
+            other match {
+              case o @ ${className.toTermName}(
+                ..${fieldsExceptHeaders.map(f ⇒ q"${f.name}")},
+                headers
+              ) if $equalExpr ⇒ other.asInstanceOf[$className].canEqual(this)
+              case _ => false
+            }
+          }
+
+          override def hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+          override def productArity: Int = ${fieldsExceptHeaders.size + 1}
+          override def productElement(n: Int): Any = n match {
+            case ..$cases
+          }
         }
       """
+
+
 
     val ctxVal = fresh("ctx")
     val bodyVal = fresh("body")
     val companionExtra =
       q"""
-        def apply(..$fieldsExceptHeaders, headersBuilder: eu.inn.hyperbus.model.HeadersBuilder)
-          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className = {
-          ${className.toTermName}(..${fieldsExceptHeaders.map(_.name)},
-            headers = headersBuilder
+        def apply(..$fieldsExceptHeaders, headers: eu.inn.hyperbus.model.Headers): $className = {
+          new $className(..${fieldsExceptHeaders.map(_.name)},
+            headers = new eu.inn.hyperbus.model.HeadersBuilder(headers)
               .withMethod(${className.toTermName}.method)
               .withContentType(body.contentType)
-              .withContext(contextFactory)
-              .result()
+              .result(),
+            plain__init = false
           )
         }
 
         def apply(..$fieldsExceptHeaders)
-          (implicit contextFactory: eu.inn.hyperbus.model.MessagingContextFactory): $className =
-          apply(..${fieldsExceptHeaders.map(_.name)}, new eu.inn.hyperbus.model.HeadersBuilder)(contextFactory)
+          (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): $className =
+          apply(..${fieldsExceptHeaders.map(_.name)}, eu.inn.hyperbus.model.Headers()(mcx))
 
         def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           val $bodyVal = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
 
           //todo: extract uri parts!
 
-          ${className.toTermName}(
+          new $className(
             ..${
-        fieldsExceptHeaders.filterNot(_.name == bodyFieldName).map { field ⇒
-          q"${field.name} = requestHeader.uri.args(${field.name.toString}).specific"
-        }
-      },
+              fieldsExceptHeaders.filterNot(_.name == bodyFieldName).map { field ⇒
+                q"${field.name} = requestHeader.uri.args(${field.name.toString}).specific"
+              }
+            },
             $bodyFieldName = $bodyVal,
-            headers = requestHeader.headers
+            headers = requestHeader.headers,
+            plain__init = true
           )
         }
+
+        def unapply(request: $className) = Some((
+          ..${fieldsExceptHeaders.map(f ⇒ q"request.${f.name}")},
+          request.headers
+        ))
 
         def uriPattern = $uriPattern
         def method: String = $method
