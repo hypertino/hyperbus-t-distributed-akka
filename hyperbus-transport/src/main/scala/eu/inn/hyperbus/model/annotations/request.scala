@@ -98,6 +98,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           override def productArity: Int = ${fieldsExceptHeaders.size + 1}
           override def productElement(n: Int): Any = n match {
             case ..$cases
+            case _ => throw new IndexOutOfBoundsException(n.toString())
           }
         }
       """

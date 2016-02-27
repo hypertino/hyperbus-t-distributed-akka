@@ -44,8 +44,6 @@ class TestResponseAnnotation extends FreeSpec with Matchers {
     }
 
     "hashCode, equals, product" in {
-      // todo: this is not implemented yet
-
       val r1 =  Created(TestCreatedBody("100500"))
       val r2 =  Created(TestCreatedBody("100500"))
       val r3 =  Created(TestCreatedBody("1005001"))
@@ -53,9 +51,16 @@ class TestResponseAnnotation extends FreeSpec with Matchers {
       r1.hashCode() should equal(r2.hashCode())
       r1 shouldNot equal(r3)
       r1.hashCode() shouldNot equal(r3.hashCode())
-      //r1.productElement(0) should equal("155")
-      //r1.productElement(1) should equal(TestBody1("abcde"))
-      //r1.productElement(2) shouldBe a[Map[_,_]]
+      r1.productElement(0) shouldBe a[TestCreatedBody]
+      r1.productElement(1) shouldBe a[Map[_,_]]
+
+      val o: Any = r1
+      o match {
+        case Created(body,headers) ⇒
+          body shouldBe a[TestCreatedBody]
+          headers shouldBe a[Map[_,_]]
+        case _ ⇒ fail("unapply didn't matched for a response")
+      }
     }
   }
 }

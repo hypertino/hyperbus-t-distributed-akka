@@ -416,7 +416,6 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         val ba = new ByteArrayOutputStream()
         r.serialize(ba)
         val s = ba.toString("UTF-8")
-        println(s)
         s should equal(
           """{"response":{"status":409,"headers":{"messageId":["123"]}},"body":{"code":"failed","errorId":"abcde12345"}}"""
         )
