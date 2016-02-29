@@ -16,7 +16,7 @@ case object RegularMatchType extends MatchType
 
 case object PathMatchType extends MatchType
 
-case class UrlParserException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
+case class UriParserException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
 
 object UriParser {
   def extractParameters(uriPattern: String): Seq[String] = tokens(uriPattern) collect {
@@ -86,6 +86,6 @@ object UriParser {
   def matchType(s: String): MatchType = s match {
     case "*" ⇒ PathMatchType
     case "@" ⇒ RegularMatchType
-    case _ ⇒ throw new UrlParserException(s"Unexpected match type: $s")
+    case _ ⇒ throw new UriParserException(s"Unexpected match type: $s")
   }
 }
