@@ -146,7 +146,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "<~ empty (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":204,"headers":{"contentType":["no-content"],"messageId":["123"]}},"body":{}}"""
+        """{"response":{"status":204,"headers":{"messageId":["123"]}},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
@@ -164,7 +164,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "<~ static request with dynamic body (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":204,"headers":{"contentType":["no-content"],"messageId":["123"]}},"body":{}}"""
+        """{"response":{"status":204,"headers":{"messageId":["123"]}},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
@@ -182,14 +182,14 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
     "<~ static request with empty body (client)" in {
       val ct = new ClientTransportTest(
-        """{"response":{"status":204,"headers":{"contentType":["no-content"],"messageId":["123"]}},"body":{}}"""
+        """{"response":{"status":204,"headers":{"messageId":["123"]}},"body":{}}"""
       )
 
       val hyperBus = newHyperBus(ct, null)
       val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody)
 
       ct.input should equal(
-        """{"request":{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["post"],"contentType":["no-content"]}},"body":null}"""
+        """{"request":{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["post"]}},"body":null}"""
       )
 
       whenReady(f) { r =>
@@ -245,7 +245,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         }
       }
 
-      val req = """{"request":{"uri":{"pattern":"/empty"},"headers":{"method":["post"],"contentType":["no-content"],"messageId":["123"]}},"body":null}"""
+      val req = """{"request":{"uri":{"pattern":"/empty"},"headers":{"method":["post"],"messageId":["123"]}},"body":null}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
       msg should equal(StaticPostWithEmptyBody(EmptyBody))
