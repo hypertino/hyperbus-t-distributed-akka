@@ -2,27 +2,35 @@ package eu.inn.hyperbus.model
 
 import java.io.OutputStream
 
-import eu.inn.binders.dynamic.Value
+import eu.inn.binders.dynamic.{Text, Obj, Value}
 import eu.inn.hyperbus.model.annotations.contentType
 import eu.inn.hyperbus.serialization.MessageSerializer
 
-@contentType("no-content")
-trait EmptyBody extends Body
+//@contentType("")
+trait EmptyBody extends DynamicBody
 
 case object EmptyBody extends EmptyBody {
-  def contentType: Option[String] = Some(ContentType.NO_CONTENT)
+  def contentType: Option[String] = None
 
-  def serialize(outputStream: OutputStream): Unit = {
+  def content = Obj(
+    Map(
+      "code" → Text(code),
+      "errorId" → Text(errorId)
+    )
+      ++ description.map(s ⇒ "description" → Text(s))
+      ++ contentType.map(s ⇒ "contentType" → Text(s))
+      ++ {if(extra.isDefined) Some("extra" → extra) else None}
+  )
+
+  override def serialize(outputStream: OutputStream): Unit = {
     MessageSerializer.writeUtf8("null", outputStream)
   }
 
-  def deserializer(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): EmptyBody = {
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): EmptyBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       deserializer.unbind[Value]
     }
     EmptyBody
   }
-
-  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): EmptyBody = deserializer(contentType, jsonParser)
 }

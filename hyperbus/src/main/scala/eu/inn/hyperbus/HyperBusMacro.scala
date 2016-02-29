@@ -141,8 +141,8 @@ private[hyperbus] trait HyperBusMacroImplementation {
     } map { body =>
       val ta = getContentTypeAnnotation(body)
       val deserializer = body.companion.decl(TermName("apply"))
-      if (ta.isEmpty)
-        c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
+      //if (ta.isEmpty)
+      //  c.abort(c.enclosingPosition, s"@contentType is not defined for $body")
       cq"""$ta => $deserializer _"""
     }
 
