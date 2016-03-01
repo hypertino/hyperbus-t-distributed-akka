@@ -38,11 +38,12 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
 
     val q"case class $className(..$fields) extends ..$bases { ..$body }" = existingClass
 
-    val fieldsExceptHeaders = fields.filterNot { f ⇒
-      f.name.toString == "headers"
+    val classFields: Seq[ValDef] = if (fields.exists(_.name.toString == "headers")) fields else {
+      fields :+ q"val headers: Map[String,Seq[String]]"
     }
 
     val (bodyFieldName, bodyType) = getBodyField(fields)
+    //println(s"rhs = $defaultValue, ${defaultValue.isEmpty}")
 
     val uriParts = UriParser.extractParameters(uriPattern).map { arg ⇒
       q"$arg -> this.${TermName(arg)}.toString" // todo: remove toString if string, + inner fields?
@@ -54,20 +55,27 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       q"Map(..$uriParts)"
     }
 
-    val equalExpr = fieldsExceptHeaders.map(_.name).foldLeft(q"(o.headers == this.headers)") { (cap, name) ⇒
+    val equalExpr = classFields.map(_.name).foldLeft[Tree](q"true") { (cap, name) ⇒
       q"(o.$name == this.$name) && $cap"
     }
 
-    val cases = fieldsExceptHeaders.map(_.name).zipWithIndex.map { case (name, idx) ⇒
+    val cases = classFields.map(_.name).zipWithIndex.map { case (name, idx) ⇒
       cq"$idx => this.$name"
-    } :+ cq"${fieldsExceptHeaders.size} => this.headers"
+    }
+
+    val fieldsNoHeaders = classFields.filterNot(_.name.toString == "headers").map { field: ValDef ⇒
+      val ft = getFieldType(field)
+      // todo: the following is hack. due to compiler restriction, defval can't be provided as def field arg
+      // it's also possible to explore field-type if it has a default constructor, companion with apply ?
+      val rhs = if (ft.toString == "eu.inn.hyperbus.model.EmptyBody") q"eu.inn.hyperbus.model.EmptyBody" else field.rhs
+      ValDef(field.mods, field.name, field.tpt, rhs)
+    }
 
     val newClass =
       q"""
         @eu.inn.hyperbus.model.annotations.uri($uriPattern)
         @eu.inn.hyperbus.model.annotations.method($method)
-        class $className(..$fieldsExceptHeaders,
-          val headers: Map[String,Seq[String]], plain__init: Boolean)
+        class $className(..${classFields.map(stripDefaultValue)}, plain__init: Boolean)
           extends ..$bases with scala.Product {
           assertMethod(${className.toTermName}.method)
           ..$body
@@ -75,11 +83,10 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           lazy val uri = Uri(${className.toTermName}.uriPattern, $uriPartsMap)
 
           def copy(
-            ..${fieldsExceptHeaders.map { case ValDef(_, name, tpt, _) ⇒
+            ..${classFields.map { case ValDef(_, name, tpt, _) ⇒
               q"val $name: $tpt = this.$name"
-            }},
-            headers: Map[String, Seq[String]] = this.headers): $className = {
-            ${className.toTermName}(..${fieldsExceptHeaders.map(_.name)}, eu.inn.hyperbus.model.Headers.plain(headers))
+            }}): $className = {
+            ${className.toTermName}(..${fieldsNoHeaders.map(_.name)}, headers = eu.inn.hyperbus.model.Headers.plain(headers))
           }
 
           def canEqual(other: Any): Boolean = other.isInstanceOf[$className]
@@ -87,15 +94,14 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           override def equals(other: Any) = this.eq(other.asInstanceOf[AnyRef]) ||{
             other match {
               case o @ ${className.toTermName}(
-                ..${fieldsExceptHeaders.map(f ⇒ q"${f.name}")},
-                headers
+                ..${classFields.map(f ⇒ q"${f.name}")}
               ) if $equalExpr ⇒ other.asInstanceOf[$className].canEqual(this)
               case _ => false
             }
           }
 
           override def hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
-          override def productArity: Int = ${fieldsExceptHeaders.size + 1}
+          override def productArity: Int = ${classFields.size}
           override def productElement(n: Int): Any = n match {
             case ..$cases
             case _ => throw new IndexOutOfBoundsException(n.toString())
@@ -103,14 +109,32 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
         }
       """
 
+    val fieldsWithDefVal = fieldsNoHeaders.filter(_.rhs.nonEmpty) :+
+      q"val headers: eu.inn.hyperbus.model.Headers = eu.inn.hyperbus.model.Headers()(mcx)"
 
+    val defMethods = fieldsWithDefVal.map { case currentField: ValDef ⇒
+      val fmap = fieldsNoHeaders.foldLeft((Seq.empty[Tree], Seq.empty[Tree], false)) { case ((seqFields, seqVals, withDefaultValue), f) ⇒
+        val defV = withDefaultValue || f.name == currentField.name
+
+        (seqFields ++ {if (!defV) Seq(stripDefaultValue(f)) else Seq.empty},
+        seqVals :+ {if (defV) q"${f.name} = ${f.rhs}" else  q"${f.name}"},
+          defV)
+      }
+      //val name = TermName(if(fmap._1.isEmpty) "em" else "apply")
+      q"""def apply(
+            ..${fmap._1}
+         )(implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): $className =
+         apply(..${fmap._2}, headers = eu.inn.hyperbus.model.Headers()(mcx))"""
+    }
+
+    //println(defMethods)
 
     val ctxVal = fresh("ctx")
     val bodyVal = fresh("body")
     val companionExtra =
       q"""
-        def apply(..$fieldsExceptHeaders, headers: eu.inn.hyperbus.model.Headers): $className = {
-          new $className(..${fieldsExceptHeaders.map(_.name)},
+        def apply(..${fieldsNoHeaders.map(stripDefaultValue)}, headers: eu.inn.hyperbus.model.Headers): $className = {
+          new $className(..${fieldsNoHeaders.map(_.name)},
             headers = new eu.inn.hyperbus.model.HeadersBuilder(headers)
               .withMethod(${className.toTermName}.method)
               .withContentType(body.contentType)
@@ -119,9 +143,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
           )
         }
 
-        def apply(..$fieldsExceptHeaders)
-          (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): $className =
-          apply(..${fieldsExceptHeaders.map(_.name)}, eu.inn.hyperbus.model.Headers()(mcx))
+        ..$defMethods
 
         def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): $className = {
           val $bodyVal = ${bodyType.toTermName}(requestHeader.contentType, jsonParser)
@@ -130,7 +152,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
 
           new $className(
             ..${
-              fieldsExceptHeaders.filterNot(_.name == bodyFieldName).map { field ⇒
+                fieldsNoHeaders.filterNot(_.name == bodyFieldName).map { field ⇒
                 q"${field.name} = requestHeader.uri.args(${field.name.toString}).specific"
               }
             },
@@ -141,8 +163,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
         }
 
         def unapply(request: $className) = Some((
-          ..${fieldsExceptHeaders.map(f ⇒ q"request.${f.name}")},
-          request.headers
+          ..${classFields.map(f ⇒ q"request.${f.name}")}
         ))
 
         def uriPattern = $uriPattern
@@ -175,6 +196,8 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     block
   }
 
+  def stripDefaultValue(field: ValDef): ValDef = ValDef(field.mods, field.name, field.tpt, EmptyTree)
+
   def getBodyField(fields: Seq[Trees#ValDef]): (TermName, TypeName) = {
     fields.flatMap { field ⇒
       field.tpt match {
@@ -192,5 +215,11 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
     }.headOption.getOrElse {
       c.abort(c.enclosingPosition, "No Body parameter was found")
     }
+  }
+
+  def getFieldType(field: Trees#ValDef): Type = field.tpt match {
+    case i: Ident ⇒
+      val typeName = i.name.toTypeName
+      c.typecheck(q"(??? : $typeName)").tpe
   }
 }

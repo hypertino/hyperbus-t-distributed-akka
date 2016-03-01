@@ -186,7 +186,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ StaticPostWithEmptyBody(EmptyBody)
+      val f = hyperBus <~ StaticPostWithEmptyBody()
 
       ct.input should equal(
         """{"request":{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["post"]}},"body":null}"""

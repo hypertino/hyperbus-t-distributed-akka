@@ -1,12 +1,7 @@
 package eu.inn.hyperbus.model
 
-import java.io.OutputStream
+import eu.inn.binders.dynamic.{Null, Value}
 
-import eu.inn.binders.dynamic.{Null, Text, Obj, Value}
-import eu.inn.hyperbus.model.annotations.contentType
-import eu.inn.hyperbus.serialization.MessageSerializer
-
-//@contentType("")
 trait EmptyBody extends DynamicBody
 
 case object EmptyBody extends EmptyBody {
