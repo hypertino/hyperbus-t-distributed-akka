@@ -198,6 +198,24 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
+    "<~ static request with query body (client)" in {
+      val ct = new ClientTransportTest(
+        """{"response":{"status":200,"headers":{"messageId":["123"]}},"body":{"data":"abc"}}"""
+      )
+
+      val hyperBus = newHyperBus(ct, null)
+      val f = hyperBus <~ StaticGetWithQuery()
+
+      ct.input should equal(
+        """{"request":{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["get"]}},"body":null}"""
+      )
+
+      whenReady(f) { r =>
+        r shouldBe a[Ok[_]]
+        r.body shouldBe a[DynamicBody]
+      }
+    }
+
     "<~ client got exception" in {
       val ct = new ClientTransportTest(
         """{"response":{"status":409,"headers":{"messageId":["abcde12345"]}},"body":{"code":"failed","errorId":"abcde12345"}}"""

@@ -67,7 +67,11 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       val ft = getFieldType(field)
       // todo: the following is hack. due to compiler restriction, defval can't be provided as def field arg
       // it's also possible to explore field-type if it has a default constructor, companion with apply ?
-      val rhs = if (ft.toString == "eu.inn.hyperbus.model.EmptyBody") q"eu.inn.hyperbus.model.EmptyBody" else field.rhs
+      val rhs = ft.toString match {
+        case "eu.inn.hyperbus.model.EmptyBody" ⇒ q"eu.inn.hyperbus.model.EmptyBody"
+        case "eu.inn.hyperbus.model.Query" ⇒ q"eu.inn.hyperbus.model.Query()"
+        case other => field.rhs
+      }
       ValDef(field.mods, field.name, field.tpt, rhs)
     }
 
