@@ -127,11 +127,11 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         cnt.get should equal(3)
       }
 
-      transportManager.off(id).futureValue
-      transportManager.off(id2).futureValue
-      transportManager.off(id3).futureValue
-      transportManager.off(id4).futureValue
-      transportManager.off(id5).futureValue
+      transportManager.off(id).futureValue should equal(())
+      transportManager.off(id2).futureValue should equal(())
+      transportManager.off(id3).futureValue should equal(())
+      transportManager.off(id4).futureValue should equal(())
+      transportManager.off(id5).futureValue should equal(())
 
 
 

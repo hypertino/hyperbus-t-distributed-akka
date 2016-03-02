@@ -32,7 +32,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
 
   protected[this] val cluster = Cluster(actorSystem)
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
-  protected[this] val subscriptionManager = actorSystem.actorOf(Props(classOf[distributedakka.SubscriptionManager]), "d-akka-subscription-mgr")
+  protected[this] val subscriptionManager = actorSystem.actorOf(Props(classOf[distributedakka.SubscriptionManager]))
 
   override def onCommand(requestMatcher: RequestMatcher,
                          inputDeserializer: RequestDeserializer[Request[Body]])
@@ -49,7 +49,10 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   }
 
   override def off(subscription: Subscription): Future[Unit] = {
-    (subscriptionManager ? UnsubscribeCommand(subscription)).asInstanceOf[Future[Unit]]
+    import actorSystem._
+    (subscriptionManager ? UnsubscribeCommand(subscription)) map { _ ⇒
+      {} // converts to Future[Unit]
+    }
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {

@@ -18,6 +18,7 @@ import scala.util.Random
 import scala.util.control.NonFatal
 
 private[transport] class SubscriptionManager extends Actor with ActorLogging {
+  // Map of (uri-pattern, groupName) -> (SubscriptionActor, ref-counter)
   val topicSubscriptions = mutable.Map[(String, Option[String]), (ActorRef, AtomicInteger)]()
   var workerCounter = 0l
 
@@ -25,31 +26,32 @@ private[transport] class SubscriptionManager extends Actor with ActorLogging {
     case subscriptionCmd: SubscriptionCommand ⇒
       val topic = subscriptionCmd.topic
       topicSubscriptions.get(topic) match {
-        case Some((actorRef, counter)) ⇒
-          counter.incrementAndGet()
-          actorRef forward subscriptionCmd
+        case Some((subscriptionActorRef, refCounter)) ⇒
+          refCounter.incrementAndGet()
+          subscriptionActorRef forward subscriptionCmd
 
         case None ⇒
           workerCounter += 1
-          val newActorRef = if (topic._2.isEmpty) {
+          val newSubscriptionActorRef = if (topic._2.isEmpty) {
             context.system.actorOf(Props(classOf[CommandActor], topic._1), s"d-akka-cmdwrkr-$workerCounter")
           }
           else {
             context.system.actorOf(Props(classOf[EventActor], topic._1, topic._2.get), s"d-akka-evntwrkr-$workerCounter")
           }
-          topicSubscriptions.put(topic, (newActorRef, new AtomicInteger(1)))
-          newActorRef forward subscriptionCmd
+          topicSubscriptions.put(topic, (newSubscriptionActorRef, new AtomicInteger(1)))
+          newSubscriptionActorRef forward subscriptionCmd
       }
 
     case cmd@UnsubscribeCommand(subscription: DAkkaSubscription) ⇒
       topicSubscriptions.get(subscription.topic) match {
-        case Some((actor, counter)) ⇒
-          actor forward cmd
-          if (counter.decrementAndGet() == 0) {
-            actor ! ReleaseTopicCommand
+        case Some((subscriptionActorRef, refCounter)) ⇒
+          subscriptionActorRef forward cmd
+          if (refCounter.decrementAndGet() == 0) {
+            subscriptionActorRef ! ReleaseTopicCommand
             topicSubscriptions.remove(subscription.topic)
           }
         case None ⇒
+          // todo: respond with fail instead of log
           log.error(s"Invalid unsubscribe command: $cmd. Topic is not found")
       }
   }
@@ -106,6 +108,9 @@ private[transport] abstract class SubscriptionActor extends Actor with ActorLogg
   import context._
 
   val mediator = DistributedPubSubEx(context.system).mediator
+
+  // subscription handlers that are waiting to subscription of topic
+  // Subscription (marker) -> (Command, Sender actor (waits for the reply)
   val handlersInProgress = mutable.Map[DAkkaSubscription, (SubscriptionCommand, ActorRef)]()
   val handlers = mutable.Map[DAkkaSubscription, SubscriptionCommand]()
   var subscribedToTopic = false
@@ -118,9 +123,9 @@ private[transport] abstract class SubscriptionActor extends Actor with ActorLogg
   def receive: Receive = {
     case ack: SubscribeAck ⇒
       log.debug(s"$self is subscribed to topic $topic @ groupName")
-      handlersInProgress.foreach { case (subscription, (subscriptionCommand, actoref)) ⇒
+      handlersInProgress.foreach { case (subscription, (subscriptionCommand, replyToActor)) ⇒
         handlers += subscription -> subscriptionCommand
-        actoref ! subscription
+        replyToActor ! subscription
       }
       become(started)
 
@@ -132,12 +137,12 @@ private[transport] abstract class SubscriptionActor extends Actor with ActorLogg
       handlersInProgress.remove(subscription) match {
         case Some((_, actorRef)) ⇒
           log.debug(s"$self removing handler (in-progress): ${cmd.subscription}")
-          Future.failed(new RuntimeException(s"Handler subscription is canceled by off method")) pipeTo actorRef
-          sender ! cmd.subscription
+          actorRef ! Status.Failure(new RuntimeException(s"Subscription (in-progress) is canceled by off method"))
+          sender() ! subscription
 
         case None ⇒
-          log.error(s"$self is not found handler (in-progress) to remove: ${cmd.subscription}")
-          Future.failed(new RuntimeException(s"Handler is not found: ${cmd.subscription}")) pipeTo sender()
+          log.error(s"$self is not found subscription handler (in-progress) to remove: ${cmd.subscription}")
+          sender() ! Status.Failure(new RuntimeException(s"Subscription (in-progress) is not found: ${cmd.subscription}"))
       }
 
     case ReleaseTopicCommand ⇒
@@ -167,12 +172,12 @@ private[transport] abstract class SubscriptionActor extends Actor with ActorLogg
     case cmd@UnsubscribeCommand(subscription: DAkkaSubscription) ⇒
       handlers.remove(subscription) match {
         case Some(_) ⇒
-          log.debug(s"$self removing handler: ${cmd.subscription}")
-          sender() ! cmd.subscription
+          log.debug(s"$self removing subscription handler: ${cmd.subscription}")
+          sender() ! subscription
 
         case None ⇒
-          log.error(s"$self is not found handler to remove: ${cmd.subscription}")
-          Future.failed(new RuntimeException(s"Handler is not found: ${cmd.subscription}")) pipeTo sender()
+          log.error(s"$self is not found subscription handler to remove: ${cmd.subscription}")
+          sender() ! Status.Failure(new RuntimeException(s"Subscription is not found: ${cmd.subscription}"))
       }
 
     case ReleaseTopicCommand ⇒
@@ -222,7 +227,7 @@ private[transport] class CommandActor(val topic: String) extends SubscriptionAct
   def handleRequest(request: Request[Body], matchedSubscriptions: Seq[SubscriptionCommand]) = {
     if (matchedSubscriptions.isEmpty) {
       log.error(s"$self: no handler is matched for a message: $request")
-      Future.failed(HandlerIsNotFound(s"No handler were found for $request")) pipeTo sender
+      sender() ! Status.Failure(HandlerIsNotFound(s"No handler were found for $request"))
     }
     else {
       val handler = getRandomElement(matchedSubscriptions).asInstanceOf[CommandSubscription].handler
