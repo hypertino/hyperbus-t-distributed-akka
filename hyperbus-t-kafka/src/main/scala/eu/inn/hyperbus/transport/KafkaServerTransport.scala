@@ -135,6 +135,9 @@ class KafkaServerTransport(
     def consumeMessage(consumerId: String, next: kafka.message.MessageAndMetadata[Array[Byte], Array[Byte]]): Unit = {
       val message = next.message()
       lazy val messageString = new String(message, encoding)
+      if (log.isTraceEnabled) {
+        log.trace(s"Group '$groupName' got message from kafka ${next.topic}/${next.partition}${next.offset}: $messageString")
+      }
       try {
         val inputBytes = new ByteArrayInputStream(message)
         val input = MessageDeserializer.deserializeRequestWith(inputBytes)(inputDeserializer)
@@ -162,7 +165,7 @@ class KafkaServerTransport(
           val next = iterator.next()
           consumeMessage(consumerId, next)
         }
-        log.info(s"Stopping consumer #$consumerId on topic ${route.kafkaTopic}")
+        log.info(s"Stopping consumer #$consumerId with group '$groupName' on topic ${route.kafkaTopic}")
       }
       catch {
         case NonFatal(t) ⇒

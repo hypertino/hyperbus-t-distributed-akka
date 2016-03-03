@@ -80,12 +80,13 @@ class KafkaClientTransport(producerProperties: Properties,
           log.error(s"Can't send to kafka. ${route.kafkaTopic} ${if (record.key() != null) "/" + record.key} : $message", e)
         }
         else {
+          if (log.isTraceEnabled) {
+            log.trace(s"Message $message is published to ${recordMetadata.topic()} ${if (record.key() != null) "/" + record.key}: ${recordMetadata.partition()}/${recordMetadata.offset()}")
+          }
           promise.success(
             new PublishResult {
               def sent = Some(true)
-
               def offset = Some(s"${recordMetadata.partition()}/${recordMetadata.offset()}}")
-
               override def toString = s"PublishResult(sent=$sent,offset=$offset)"
             }
           )
