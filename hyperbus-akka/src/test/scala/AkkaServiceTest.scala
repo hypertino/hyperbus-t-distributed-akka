@@ -28,7 +28,7 @@ case class AkkaTestBody2(resourceData: Long) extends Body
 
 @body("application/vnd+created-body.json")
 case class AkkaTestCreatedBody(resourceId: String,
-                               @fieldName("_links") links: LinksMap.LinksMapType = LinksMap("/resources/{resourceId}"))
+                               @fieldName("_links") links: Links.LinksMap = Links("/resources/{resourceId}"))
   extends CreatedBody
 
 // with NoContentType

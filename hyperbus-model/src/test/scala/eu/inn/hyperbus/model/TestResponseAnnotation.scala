@@ -8,8 +8,8 @@ import org.scalatest.{FreeSpec, Matchers}
 
 @body("test-created-body")
 case class TestCreatedBody(resourceId: String,
-                           @fieldName("_links") links: LinksMap.LinksMapType = Map(
-                             DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = Some(true)))))
+                           @fieldName("_links") links: Links.LinksMap = Map(
+                             DefLink.LOCATION -> Left(Link("/resources/{resourceId}", templated = true))))
   extends CreatedBody
 
 // with NoContentType

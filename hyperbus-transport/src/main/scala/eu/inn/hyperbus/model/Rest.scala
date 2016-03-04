@@ -3,10 +3,13 @@ package eu.inn.hyperbus.model
 import java.io.OutputStream
 
 import eu.inn.binders.annotations.fieldName
+import eu.inn.binders.dynamic.Value
 import eu.inn.hyperbus.serialization.{StringSerializer, MessageSerializer}
 import eu.inn.hyperbus.transport.api.{TransportMessage, TransportRequest, TransportResponse}
 
-case class Link(href: String, templated: Option[Boolean] = None, @fieldName("type") typ: Option[String] = None)
+import scala.collection.mutable
+
+case class Link(href: String, templated: Boolean = false, @fieldName("type") typ: Option[String] = None)
 
 trait Body {
   def contentType: Option[String]
@@ -19,17 +22,52 @@ trait NoContentType {
 }
 
 trait Links {
-  def links: LinksMap.LinksMapType
+  def links: Links.LinksMap
 }
 
-object LinksMap {
-  type LinksMapType = Map[String, Either[Link, Seq[Link]]]
+object Links {
+  type LinksMap = Map[String, Either[Link, Seq[Link]]]
 
-  def apply(self: String): LinksMapType = Map(DefLink.SELF → Left(Link(self, templated = Some(true))))
+  def apply(selfHref: String, templated: Boolean = false, typ: Option[String] = None): LinksMap = {
+    new LinksBuilder() self(selfHref, templated, typ) result()
+  }
 
-  def apply(link: Link): LinksMapType = Map(DefLink.SELF → Left(link))
+  def location(locationHref: String, templated: Boolean = false, typ: Option[String] = None): LinksMap = {
+    new LinksBuilder() location (locationHref, templated, typ) result()
+  }
 
-  def apply(links: Map[String, Either[Link, Seq[Link]]]): LinksMapType = links
+  def apply(key: String, link: Link): LinksMap = new LinksBuilder() add(key, link) result()
+}
+
+class LinksBuilder(private [this] val args: mutable.Map[String, Either[Link, Seq[Link]]]) {
+  def this() = this(mutable.Map[String, Either[Link, Seq[Link]]]())
+
+  def self(selfHref: String, templated: Boolean = true, typ: Option[String] = None) = {
+    args += DefLink.SELF → Left(Link(selfHref, templated))
+    this
+  }
+  def location(locationHref: String, templated: Boolean = true, typ: Option[String] = None) = {
+    args += DefLink.LOCATION → Left(Link(locationHref, templated))
+    this
+  }
+  def add(key: String, href: String, templated: Boolean = true, typ: Option[String] = None): LinksBuilder = {
+    add(key, Link(href, templated, typ))
+    this
+  }
+  def add(key: String, link : Link) = {
+    args.get(key) match {
+      case Some(Left(existingLink)) ⇒
+        args += key → Right(Seq(existingLink, link))
+
+      case Some(Right(existingLinks)) ⇒
+        args += key → Right(existingLinks :+ link)
+
+      case None ⇒
+        args += key → Left(link)
+    }
+    this
+  }
+  def result(): Links.LinksMap = args.toMap
 }
 
 trait Message[+B <: Body] extends TransportMessage with MessagingContextFactory {
