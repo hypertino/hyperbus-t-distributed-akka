@@ -3,7 +3,7 @@ package eu.inn.hyperbus.model
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.{Obj, Text}
+import eu.inn.binders.dynamic._
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.uri.Uri
@@ -144,7 +144,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       request.messageId should equal("123")
       request.correlationId should equal("123")
       //request.body.contentType should equal(Some())
-      request.body should equal(DynamicBody(Some("test-body-1"), Obj(Map("resourceId" -> Text("100500")))))
+      request.body should equal(DynamicBody(Some("test-body-1"), ObjV("resourceId" -> "100500")))
     }
 
     "hashCode, equals, product" in {

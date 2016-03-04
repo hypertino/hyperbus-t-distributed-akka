@@ -14,6 +14,7 @@ import org.scalatest.{FreeSpec, Matchers}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
+import eu.inn.binders.dynamic._
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder
@@ -129,7 +130,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
         Method.POST,
         DynamicBody(
           Some("application/vnd+test-1.json"),
-          Obj(Map("resourceData" → Text("ha ha")))
+          ObjV("resourceData" → "ha ha")
         )
       )
 
@@ -366,7 +367,7 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
 
       val hyperBus = newHyperBus(clientTransport, null)
       val futureResult = hyperBus <| DynamicRequest(Uri("/resources"), Method.POST,
-        DynamicBody(Some("application/vnd+test-1.json"), Obj(Map("resourceData" → Text("ha ha")))))
+        DynamicBody(Some("application/vnd+test-1.json"), ObjV("resourceData" → "ha ha")))
       whenReady(futureResult) { r =>
         sentEvents.size should equal(1)
       }

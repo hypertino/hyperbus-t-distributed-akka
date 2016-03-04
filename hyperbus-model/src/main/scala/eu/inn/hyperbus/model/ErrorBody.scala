@@ -16,10 +16,9 @@ trait ErrorBody extends DynamicBody {
 
   def message: String
 
-  def content = Obj(
-    Map(
-      "code" → Text(code),
-      "errorId" → Text(errorId)
+  def content = Obj(Map[String,Value](
+      "code" → code,
+      "errorId" → errorId
     )
       ++ description.map(s ⇒ "description" → Text(s))
       ++ contentType.map(s ⇒ "contentType" → Text(s))
