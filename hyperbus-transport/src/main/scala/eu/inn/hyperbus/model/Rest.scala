@@ -3,8 +3,7 @@ package eu.inn.hyperbus.model
 import java.io.OutputStream
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.Value
-import eu.inn.hyperbus.serialization.{StringSerializer, MessageSerializer}
+import eu.inn.hyperbus.serialization.{MessageSerializer, StringSerializer}
 import eu.inn.hyperbus.transport.api.{TransportMessage, TransportRequest, TransportResponse}
 
 import scala.collection.mutable
@@ -64,6 +63,18 @@ class LinksBuilder(private [this] val args: mutable.Map[String, Either[Link, Seq
 
       case None ⇒
         args += key → Left(link)
+    }
+    this
+  }
+  def add(links: Seq[(String, Either[Link, Seq[Link]])]): LinksBuilder = {
+    if (args.isEmpty) {
+      args ++= links
+    }
+    else {
+      links.foreach {
+        case (k, Left(v)) ⇒ add(k, v)
+        case (k, Right(v)) ⇒ v.foreach(vi ⇒ add(k, vi))
+      }
     }
     this
   }
