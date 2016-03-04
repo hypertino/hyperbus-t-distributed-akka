@@ -18,7 +18,10 @@ trait ClientError extends ErrorResponse
 @response(Status.OK) case class Ok[+B <: Body](body: B) extends NormalResponse with Response[B]
 
 trait CreatedBody extends Body with Links {
-  def location = links(DefLink.LOCATION)
+  def location: Link = links(DefLink.LOCATION) match {
+    case Left(link) ⇒ link
+    case Right(sequence) ⇒ sequence.head
+  }
 }
 
 @response(Status.CREATED) case class Created[+B <: CreatedBody](body: B) extends NormalResponse with Response[B]
