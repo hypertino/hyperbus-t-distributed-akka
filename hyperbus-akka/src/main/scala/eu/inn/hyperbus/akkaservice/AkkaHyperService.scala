@@ -63,7 +63,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
   def route[A: c.WeakTypeTag](hyperBus: c.Tree, actorRef: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
-      c.abort(c.enclosingPosition, s"No suitable 'process' / '~>' or 'subscribe' / '|>' method is defined in ${weakTypeOf[A]}")
+      c.abort(c.enclosingPosition, s"No suitable 'onCommand' / '~>' or 'OnEvent' / '|>' method is defined in ${weakTypeOf[A]}")
     }
 
     val hyperBusVal = fresh("hyperBus")
