@@ -57,5 +57,5 @@ object Build extends sbt.Build {
   lazy val `hyperbus-t-distributed-akka` = project.in(file("hyperbus-t-distributed-akka")) dependsOn(`hyperbus-transport`, `hyperbus-model`)
   lazy val `hyperbus-t-kafka` = project.in(file("hyperbus-t-kafka")) dependsOn(`hyperbus-transport`, `hyperbus-model`)
   lazy val `hyperbus-cli` = project.in(file("hyperbus-cli")) dependsOn(`hyperbus`, `hyperbus-t-distributed-akka`)
-  lazy val `hyperbus-igen` = project.in(file("hyperbus-igen"))
+  lazy val `hyperbus-igen` = project.in(file("hyperbus-igen")) dependsOn `hyperbus-transport`
 }

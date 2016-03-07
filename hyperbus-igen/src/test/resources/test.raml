@@ -2,26 +2,36 @@
 title: Test API
 baseUri: https://test.maqdev.com
 types:
-    Status:
-        type: object
-        properties:
-            code: integer
-            description: string
-/status:
-    get:
-        responses:
-            200:
-                body:
-                    application/json:
-                        type: Status
-
-    post:
+  BookTag:
+    enum: [new,best-seller,classics]
+  BookProperties:
+    type: object
+    properties:
+      publishYear: integer
+      issn: string
+      tag: BookTag
+  Book:
+    type: object
+    properties:
+      bookId: string
+      authorId: string
+      bookName: string
+      authorName: string
+      bookProperties: BookProperties
+/authors/{authorId}/books/{bookId}:
+  uriParameters:
+    authorId: string
+    bookId: string      
+  get:
+    responses:
+      200:
         body:
-            application/json:
-                type: Status
-            application/json:
-                type: object
-
-/revault/content/{path:@}:
-    get:
-    post:
+          application/json:
+            type: Book
+  put:
+    body:
+      application/json:
+        type: Book
+    responses:
+      200:
+      201:

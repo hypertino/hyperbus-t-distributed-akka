@@ -4,6 +4,7 @@ import com.mulesoft.raml.webpack.holders.JSConsole
 import com.mulesoft.raml1.java.parser.core.JavaNodeFactory
 import com.mulesoft.raml1.java.parser.model.datamodel.DataElement
 import com.mulesoft.raml1.java.parser.path.resolver.IJavaPathResolver
+import eu.inn.hyperbus.raml.{GeneratorOptions, InterfaceGenerator}
 import eu.inn.hyperbus.raml.utils.JsToLogConsole
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -32,23 +33,8 @@ class TestSpec extends FreeSpec with Matchers {
     val api = factory.createApi("test.raml")
     api.getErrors.foreach(s ⇒ println(s"---> $s"))
 
-
-    println (" --> types: ")
-    api.types.foreach { typ: DataElement ⇒
-      println(typ.name)
-      typ.facets()
-      typ.getClass
-    }
-
-    api.resources.foreach{r ⇒ println(r.relativeUri.value)
-      r.uriParameters.foreach { up ⇒
-        println(up.name)
-        println(up.leftSide)
-        println(up.leftSideValue)
-        println(up.getClass)
-      }
-    }
-
+    val gen = new InterfaceGenerator(api, GeneratorOptions(namespace = "eu.inn.protocol"))
+    println(gen.generate())
 
     "success" should equal("success")
   }
