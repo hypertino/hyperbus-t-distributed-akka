@@ -51,7 +51,7 @@ case class StaticPostWithEmptyBody(body: EmptyBody) extends Request[EmptyBody]
   with DefinedResponse[NoContent[EmptyBody]]
 
 @request(Method.GET, "/empty")
-case class StaticGetWithQuery(body: Query) extends Request[Query]
+case class StaticGetWithQuery(body: QueryBody) extends Request[QueryBody]
   with DefinedResponse[Ok[DynamicBody]]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {

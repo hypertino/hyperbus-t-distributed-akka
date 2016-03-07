@@ -69,7 +69,7 @@ private[annotations] trait RequestAnnotationMacroImpl extends AnnotationMacroImp
       // it's also possible to explore field-type if it has a default constructor, companion with apply ?
       val rhs = ft.toString match {
         case "eu.inn.hyperbus.model.EmptyBody" ⇒ q"eu.inn.hyperbus.model.EmptyBody"
-        case "eu.inn.hyperbus.model.Query" ⇒ q"eu.inn.hyperbus.model.Query()"
+        case "eu.inn.hyperbus.model.QueryBody" ⇒ q"eu.inn.hyperbus.model.QueryBody()"
         case other => field.rhs
       }
       ValDef(field.mods, field.name, field.tpt, rhs)

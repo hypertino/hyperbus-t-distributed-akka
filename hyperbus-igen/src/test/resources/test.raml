@@ -18,10 +18,18 @@ types:
       bookName: string
       authorName: string
       bookProperties: BookProperties
+  BookTransaction:
+    type: object
+    properties:
+      transactionId: string
+  BookCreatedTransaction:
+    type: object
+    properties:
+      transactionId: string
 /authors/{authorId}/books/{bookId}:
   uriParameters:
     authorId: string
-    bookId: string      
+    bookId: string
   get:
     responses:
       200:
@@ -35,3 +43,21 @@ types:
     responses:
       200:
       201:
+/authors/{authorId}/books:
+  uriParameters:
+    authorId: string
+  get:
+    responses:
+      200:
+  post:
+    body:
+      application/json:
+    responses:
+      200:
+        body:
+          application/json:
+            type: BookTransaction
+      201:
+        body:
+          application/json:
+            type: BookCreatedTransaction

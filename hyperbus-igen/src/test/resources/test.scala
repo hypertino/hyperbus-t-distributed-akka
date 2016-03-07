@@ -22,15 +22,15 @@ object Book {
   val defaultLinks = Links(selfLinkPattern, templated = true)
 }
 
-@request("/authors/{authorId}/books/{bookId}")
+@request(Method.GET, "/authors/{authorId}/books/{bookId}")
 case class AuthorBookGet(
                           authorId: String,
                           bookId: String,
-                          body: Query
-                        ) extends Request[Query]
+                          body: QueryBody
+                        ) extends Request[QueryBody]
   with DefinedResponse[Ok[Book]]
 
-@request("/authors/{authorId}/books/{bookId}")
+@request(Method.PUT, "/authors/{authorId}/books/{bookId}")
 case class AuthorBookPut(
                           authorId: String,
                           bookId: String,

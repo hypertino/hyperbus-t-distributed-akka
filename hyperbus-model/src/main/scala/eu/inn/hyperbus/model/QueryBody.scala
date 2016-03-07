@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 
 case class SortBy(fieldName: String, descending: Boolean = false)
 
-trait Query extends DynamicBody {
+trait QueryBody extends DynamicBody {
   def toQueryString(encoding: String = "UTF-8"): String = {
     content.asMap.flatMap { case (key, value) ⇒
       value match {
@@ -47,14 +47,14 @@ trait Query extends DynamicBody {
   def filter: Obj = Obj(content.asMap.filterNot(_._1.contains(".")))
 }
 
-object Query {
-  def apply(contentType: Option[String], content: Value): Query = QueryContainer(contentType, content)
+object QueryBody {
+  def apply(contentType: Option[String], content: Value): QueryBody = QueryBodyContainer(contentType, content)
 
-  def apply(): QueryContainer = Query(Null)
+  def apply(): QueryBodyContainer = QueryBody(Null)
 
-  def apply(content: Value): QueryContainer = QueryContainer(None, content)
+  def apply(content: Value): QueryBodyContainer = QueryBodyContainer(None, content)
 
-  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): Query = {
+  def apply(contentType: Option[String], jsonParser: com.fasterxml.jackson.core.JsonParser): QueryBody = {
     import eu.inn.binders.json._
     SerializerFactory.findFactory().withJsonParser(jsonParser) { deserializer =>
       apply(contentType, deserializer.unbind[Value])
@@ -63,10 +63,10 @@ object Query {
 
   def fromQueryString(queryString: String) = new QueryBuilder() addQueryString queryString result()
 
-  def unapply(query: Query) = Some((query.contentType, query.content))
+  def unapply(query: QueryBody) = Some((query.contentType, query.content))
 }
 
-private[model] case class QueryContainer(contentType: Option[String], content: Value) extends Query
+private[model] case class QueryBodyContainer(contentType: Option[String], content: Value) extends QueryBody
 
 class QueryBuilder(private [this] val args: mutable.Map[String, Value]) {
   def this() = this(mutable.Map[String, Value]())
@@ -133,7 +133,7 @@ class QueryBuilder(private [this] val args: mutable.Map[String, Value]) {
     this
   }
 
-  def result(): Query = QueryContainer(None, Obj(args.toMap))
+  def result(): QueryBody = QueryBodyContainer(None, Obj(args.toMap))
 }
 
 object DefQuery {
