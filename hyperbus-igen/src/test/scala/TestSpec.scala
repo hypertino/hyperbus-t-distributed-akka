@@ -1,30 +1,16 @@
 import java.util
-import javax.script.ScriptEngine
 
-import com.mulesoft.raml.webpack.holders.{JSConsole, AbstractJSWrapper}
+import com.mulesoft.raml.webpack.holders.JSConsole
 import com.mulesoft.raml1.java.parser.core.JavaNodeFactory
 import com.mulesoft.raml1.java.parser.model.datamodel.DataElement
 import com.mulesoft.raml1.java.parser.path.resolver.IJavaPathResolver
-import org.scalatest.{Matchers, FreeSpec}
-import org.slf4j.LoggerFactory
+import eu.inn.hyperbus.raml.utils.JsToLogConsole
+import org.scalatest.{FreeSpec, Matchers}
 
 import scala.collection.JavaConversions
 import scala.io.Source
 
-class JsToLogConsole(engine: ScriptEngine) extends AbstractJSWrapper(engine) {
-  val log = LoggerFactory.getLogger(getClass)
-  def log(text: String) {
-    log.debug(text)
-  }
 
-  def warn(text: String) {
-    log.warn(text)
-  }
-
-  def getClassName: String = {
-    "Console"
-  }
-}
 
 
 class TestSpec extends FreeSpec with Matchers {
