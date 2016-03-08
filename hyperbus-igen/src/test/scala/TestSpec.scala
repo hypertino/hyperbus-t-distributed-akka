@@ -33,7 +33,7 @@ class TestSpec extends FreeSpec with Matchers {
     val api = factory.createApi("test.raml")
     api.getErrors.foreach(s ⇒ println(s"---> $s"))
 
-    val gen = new InterfaceGenerator(api, GeneratorOptions(namespace = "eu.inn.protocol"))
+    val gen = new InterfaceGenerator(api, GeneratorOptions(packageName = "eu.inn.protocol"))
     println(gen.generate())
 
     "success" should equal("success")

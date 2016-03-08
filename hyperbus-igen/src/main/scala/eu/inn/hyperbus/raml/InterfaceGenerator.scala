@@ -6,26 +6,12 @@ import com.mulesoft.raml1.java.parser.model.api.Api
 import com.mulesoft.raml1.java.parser.model.datamodel.{DataElement, ObjectField, StrElement}
 import com.mulesoft.raml1.java.parser.model.methodsAndResources.{Method, Resource}
 import eu.inn.binders.naming._
+import eu.inn.hyperbus.raml.utils.{DashCaseToUpperSnakeCaseConverter, DashCaseToPascalCaseConverter}
 import eu.inn.hyperbus.transport.api.uri.{TextToken, UriParser}
 import org.jibx.util.NameUtilities
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
-
-class DashCaseToUpperSnakeCaseConverter extends BaseConverter(new DashCaseParser) {
-  def createBuilder(): IdentifierBuilder = new SnakeUpperCaseBuilder()
-}
-
-class DashCaseToPascalCaseConverter extends BaseConverter(new DashCaseParser) {
-  def createBuilder(): IdentifierBuilder = new PascalCaseBuilder()
-}
-
-case class GeneratorOptions(namespace: String,
-                            contentTypePrefix: Option[String] = None,
-                            generatorInformation: Boolean = true,
-                            defaultImports:Boolean = true,
-                            customImports: Option[String] = None
-                           )
 
 class InterfaceGenerator(api: Api, options: GeneratorOptions) {
   var log = LoggerFactory.getLogger(getClass)
@@ -58,7 +44,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
   protected def generateImports(builder: StringBuilder) = {
     builder.append(
       s"""
-         |package ${options.namespace}
+         |package ${options.packageName}
          |
          |import eu.inn.binders.annotations.fieldName
          |import eu.inn.hyperbus.model._
