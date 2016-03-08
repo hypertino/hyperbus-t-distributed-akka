@@ -19,14 +19,14 @@ class TestSpec extends FreeSpec with Matchers {
     factory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
 
     factory.setPathResolver(new IJavaPathResolver {
-      override def list(path: String): util.List[String] = List("test.raml")
+      override def list(path: String): util.List[String] = List("revault.raml")
       override def content(path: String): String = {
         val source = Source.fromURL(getClass.getResource(path))
         source.getLines().mkString("\n")
       }
     })
 
-    val api = factory.createApi("test.raml")
+    val api = factory.createApi("revault.raml")
     api.getErrors.foreach(s ⇒ println(s"---> $s"))
 
     val gen = new InterfaceGenerator(api, GeneratorOptions(packageName = "eu.inn.protocol"))

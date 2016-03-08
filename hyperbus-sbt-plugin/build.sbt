@@ -1,6 +1,6 @@
 organization := "eu.inn"
 
-name := "hyperbus-igen"
+name := "hyperbus-sbt-plugin"
 
 sbtPlugin := true
 

@@ -159,14 +159,18 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     builder.append(s"""@request(Method.${method.method.toUpperCase}, "${resource.relativeUri.value}")\n""")
     val name = requestClassName(resource.relativeUri.value, method.method)
     builder.append(s"case class $name(\n")
-    generateCaseClassProperties(builder, resource.uriParameters().toSeq)
+    val uriParameters = resource.uriParameters().toSeq
+    generateCaseClassProperties(builder, uriParameters)
     val bodyType = method.method match {
       case "get" ⇒ "QueryBody"
       case "delete" ⇒ "EmptyBody"
       case _ ⇒
         method.body.headOption.flatMap(_.`type`.headOption).getOrElse("DynamicBody")
     }
-    builder.append(s",\n    body: $bodyType\n  ) extends Request[$bodyType]\n")
+    if (uriParameters.nonEmpty) {
+      builder.append(",\n")
+    }
+    builder.append(s"    body: $bodyType\n  ) extends Request[$bodyType]\n")
     val successResponses = method.responses.filter{r ⇒ val i = r.code.value.toInt; i >= 200 && i < 400}
     if (successResponses.nonEmpty) {
       if (successResponses.size > 1)
@@ -224,7 +228,13 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         builder.append(",\n    ")
       }
       isFirst = false
-      builder.append(property.name)
+      val propertyName = if (property.name.indexOf(':') >= 0) {
+        // hyperbus syntax x:@, y:*, etc
+        property.name.substring(0, property.name.indexOf(':'))
+      } else {
+        property.name
+      }
+      builder.append(propertyName)
       builder.append(": ")
       builder.append(property.`type`().headOption.map(mapType).getOrElse("Any"))
     }

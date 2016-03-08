@@ -46,18 +46,21 @@ object Raml2HyperBus extends AutoPlugin {
                                  contentPrefix: Option[String]): Seq[File] = {
 
     val outputFile = base / "r2h" / (packageName.split('.').mkString("/") + ".scala")
-    val ramlFactory = new JavaNodeFactory()
-    val existingConsole = ramlFactory.getBindings.get("console").asInstanceOf[JSConsole]
-    ramlFactory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
-
     val apiFile = if (sourceIsResource) {
       resourceDirectory / source.getPath
     } else {
       source
     }
-    val ramlApi = ramlFactory.createApi(apiFile.getAbsolutePath)
-    val generator = new InterfaceGenerator(ramlApi, GeneratorOptions(packageName, contentPrefix))
-    IO.write(outputFile, generator.generate())
-    Seq(outputFile)
+    if (!outputFile.canRead || outputFile.lastModified() < apiFile.lastModified()) {
+      val ramlFactory = new JavaNodeFactory()
+      val existingConsole = ramlFactory.getBindings.get("console").asInstanceOf[JSConsole]
+      ramlFactory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
+      val ramlApi = ramlFactory.createApi(apiFile.getAbsolutePath)
+      val generator = new InterfaceGenerator(ramlApi, GeneratorOptions(packageName, contentPrefix))
+      IO.write(outputFile, generator.generate())
+      Seq(outputFile)
+    }
+    else
+      Seq.empty
   }
 }
