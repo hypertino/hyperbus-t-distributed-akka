@@ -19,7 +19,7 @@ object Raml2HyperBus extends AutoPlugin {
   import autoImport._
 
   override val projectSettings =
-    ramlHyperBusScopedSettings(Compile) ++ ramlHyperBusScopedSettings(Test) ++ r2hDefaultSettings
+    ramlHyperBusScopedSettings(Compile) ++ /*ramlHyperBusScopedSettings(Test) ++*/ r2hDefaultSettings
 
   protected def ramlHyperBusScopedSettings(conf: Configuration): Seq[Def.Setting[_]] = inConfig(conf)(Seq(
     sourceGenerators +=  Def.task {
@@ -45,7 +45,7 @@ object Raml2HyperBus extends AutoPlugin {
                                  base: File, packageName: String,
                                  contentPrefix: Option[String]): Seq[File] = {
 
-    val outputFile = base / "r2h" / (packageName.split('.').mkString("/") + ".scala")
+    val outputFile = base / "r2h" / (packageName.split('.').mkString("/") + "/" + source.getName + ".scala")
     val apiFile = if (sourceIsResource) {
       resourceDirectory / source.getPath
     } else {
@@ -58,9 +58,7 @@ object Raml2HyperBus extends AutoPlugin {
       val ramlApi = ramlFactory.createApi(apiFile.getAbsolutePath)
       val generator = new InterfaceGenerator(ramlApi, GeneratorOptions(packageName, contentPrefix))
       IO.write(outputFile, generator.generate())
-      Seq(outputFile)
     }
-    else
-      Seq.empty
+    Seq(outputFile)
   }
 }
