@@ -112,7 +112,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         }
       }
 
-      builder.append(s"""@body("${camelToDash.convert(obj.name)}")\n""")
+      builder.append(s"""@body("${options.contentTypePrefix.getOrElse("")}${camelToDash.convert(obj.name)}")\n""")
       builder.append(s"case class ${obj.name}(\n")
       generateCaseClassProperties(builder, obj.properties)
       if (isCreatedBody || getBodyResource.isDefined) {
@@ -126,7 +126,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         builder.append(" with Links")
       }
       if (isCreatedBody) {
-        builder.append(" with Created")
+        builder.append(" with CreatedBody")
       }
       builder.append("\n\n")
 
@@ -231,25 +231,32 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
   }
 
   protected def generateEnumStrElement(builder: StringBuilder, el: StrElement) = {
-    builder.append(s"object ${el.name} extends Enumeration {\n  type ${el.name} = Value\n")
-    var isFirst = true
+    builder.append(s"object ${el.name} {\n  type StringEnum = String\n")
     el.enum_.foreach { e ⇒
-      if (isFirst) {
-        builder.append("  ")
-      }
-      else {
-        builder.append(",\n  ")
-      }
-      isFirst = false
-      builder.append(s"""val ${dashToUpper.convert(e)} = Value("$e")""")
+      builder.append(s"""  val ${dashToUpper.convert(e)} = "$e"\n""")
     }
-    builder.append("\n}\n\n")
+    builder.append(s"  lazy val values = Seq(${el.enum_.map(dashToUpper.convert).mkString(",")})\n")
+    builder.append("  lazy val valuesSet = values.toSet\n")
+    builder.append("}\n\n")
   }
 
   protected def mapType(`type`: String): String = `type` match {
-    case "integer" ⇒ "Int"
     case "string" ⇒ "String"
-    case other ⇒ other
+    case "integer" ⇒ "Long" // todo: support Int with annotations?
+    case "number" ⇒ "Double"
+    case "boolean" ⇒ "Boolean"
+    case "date" ⇒ "java.util.Date"
+    case other ⇒
+      api.types.find(_.name == `type`) match {
+        case Some(str: StrElement) ⇒
+          if (str.enum_.nonEmpty) {
+            other + ".StringEnum" // enum
+          }
+          else {
+            other
+          }
+        case _ ⇒ other
+      }
   }
 
   protected def getResponseType(code: String) = code match {

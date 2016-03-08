@@ -1,11 +1,13 @@
-object BookTag extends Enumeration {
-  type BookTag = Value
-  val NEW = Value("new")
-  val BEST_SELLER = Value("best-seller")
-  val CLASSICS = Value("classics")
+object BookTag {
+  type StringEnum = String
+  val NEW = "new"
+  val BEST_SELLER = "best-seller"
+  val CLASSICS = "classics"
+  lazy val toSeq = Set(NEW,BEST_SELLER,CLASSICS)
+  lazy val toSet = toSeq.toSeq
 }
 
-case class BookProperties(publishYear: Int, issn: String, tag: BookTag.Value)
+case class BookProperties(publishYear: Int, issn: String, tag: BookTag.StringEnum)
 
 @body("eu-inn-book")
 case class Book(
