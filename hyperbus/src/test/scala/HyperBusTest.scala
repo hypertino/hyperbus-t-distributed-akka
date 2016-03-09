@@ -273,6 +273,28 @@ class HyperBusTest extends FreeSpec with ScalaFutures with Matchers {
       }
     }
 
+    "~> (server) when request missed a contentType" in {
+      val st = new ServerTransportTest()
+      val hyperBus = newHyperBus(null, st)
+      hyperBus ~> { post: TestPost1 =>
+        Future {
+          Created(TestCreatedBody("100500"))
+        }
+      }
+
+      val req = """{"request":{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"messageId":["123"]}},"body":{"resourceData":"ha ha"}}"""
+      val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
+      val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
+      msg shouldBe a[TestPost1]
+      msg.body shouldBe a[TestBody1]
+      msg.body.asInstanceOf[TestBody1].resourceData should equal("ha ha")
+
+      val futureResult = st.sHandler(msg)
+      whenReady(futureResult) { r =>
+        r should equal(Created(TestCreatedBody("100500")))
+      }
+    }
+
     "~> static request with empty body (server)" in {
       val st = new ServerTransportTest()
       val hyperBus = newHyperBus(null, st)
