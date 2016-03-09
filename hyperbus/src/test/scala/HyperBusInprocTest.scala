@@ -13,18 +13,19 @@ import org.scalatest.{FreeSpec, Matchers}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
-@body("application/vnd+test-1.json")
+@body("test-1")
 case class TestBody1(resourceData: String) extends Body
 
-@body("application/vnd+test-2.json")
+@body("test-2")
 case class TestBody2(resourceData: Long) extends Body
 
-@body("application/vnd+created-body.json")
+@body("created-body")
 case class TestCreatedBody(resourceId: String,
                            @fieldName("_links") links: Links.LinksMap = Links.location("/resources/{resourceId}", templated = true))
   extends CreatedBody
 
-// with NoContentType
+@body
+case class TestBodyNoContentType(resourceData: String) extends Body
 
 @request(Method.POST, "/resources")
 case class TestPost1(body: TestBody1) extends Request[TestBody1]
@@ -53,6 +54,10 @@ case class StaticPostWithEmptyBody(body: EmptyBody) extends Request[EmptyBody]
 @request(Method.GET, "/empty")
 case class StaticGetWithQuery(body: QueryBody) extends Request[QueryBody]
   with DefinedResponse[Ok[DynamicBody]]
+
+@request(Method.POST, "/content-body-not-specified")
+case class StaticPostBodyWithoutContentType(body: TestBodyNoContentType) extends Request[TestBodyNoContentType]
+  with DefinedResponse[NoContent[EmptyBody]]
 
 class HyperBusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "HyperBus " - {

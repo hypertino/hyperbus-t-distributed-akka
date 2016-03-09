@@ -20,20 +20,20 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-@body("application/vnd+test-1.json")
+@body("test-1")
 case class AkkaTestBody1(resourceData: String) extends Body
 
-@body("application/vnd+test-2.json")
+@body("test-2")
 case class AkkaTestBody2(resourceData: Long) extends Body
 
-@body("application/vnd+created-body.json")
+@body("created-body")
 case class AkkaTestCreatedBody(resourceId: String,
                                @fieldName("_links") links: Links.LinksMap = Links("/resources/{resourceId}"))
   extends CreatedBody
 
 // with NoContentType
 
-@body("application/vnd+test-error-body.json")
+@body("test-error-body")
 case class AkkaTestErrorBody(code: String,
                              description: Option[String] = None,
                              errorId: String = IdGenerator.create()) extends ErrorBody {
