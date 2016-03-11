@@ -63,6 +63,15 @@ object QueryBody {
 
   def fromQueryString(queryString: String) = new QueryBuilder() addQueryString queryString result()
 
+  def fromQueryString(query: Map[String, String]) = {
+    val builder = new QueryBuilder()
+    query.foreach { kv ⇒
+      if (kv._2.isEmpty) builder.add((kv._1, Null))
+      else builder.add((kv._1, Text(kv._2)))
+    }
+    builder.result()
+  }
+
   def unapply(query: QueryBody) = Some((query.contentType, query.content))
 }
 
