@@ -6,6 +6,7 @@ import com.mulesoft.raml1.java.parser.model.api.Api
 import com.mulesoft.raml1.java.parser.model.datamodel.{DataElement, ObjectField, StrElement}
 import com.mulesoft.raml1.java.parser.model.methodsAndResources.{Method, Resource}
 import eu.inn.binders.naming._
+import eu.inn.hyperbus.raml.annotationtypes.feed
 import eu.inn.hyperbus.raml.utils.{DashCaseToUpperSnakeCaseConverter, DashCaseToPascalCaseConverter}
 import eu.inn.hyperbus.transport.api.uri.{TextToken, UriParser}
 import org.jibx.util.NameUtilities
@@ -147,6 +148,10 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     api.resources.foreach { resource ⇒
       resource.methods.foreach { method ⇒
         generateRequest(builder, method, resource)
+        if (
+          method.annotations().exists(_.value().isInstanceOf[feed])
+          || resource.annotations().exists(_.value().isInstanceOf[feed])
+        ) generateFeedRequest(builder, method, resource)
       }
     }
   }
@@ -196,6 +201,24 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
       else
         builder.append("\n  ]\n\n")
     }
+  }
+
+  protected def generateFeedRequest(builder: StringBuilder, method: Method, resource: Resource) = {
+    builder.append(s"""@request(Method.${"FEED_" + method.method.toUpperCase}, "${resource.relativeUri.value}")\n""")
+    val name = requestClassName(resource.relativeUri.value, "feed-" + method.method)
+    builder.append(s"case class $name(\n")
+    val uriParameters = resource.uriParameters().toSeq
+    generateCaseClassProperties(builder, uriParameters)
+    val bodyType = method.method match {
+      case "get" ⇒ "QueryBody"
+      case "delete" ⇒ "EmptyBody"
+      case _ ⇒
+        method.body.headOption.flatMap(_.`type`.headOption).getOrElse("DynamicBody")
+    }
+    if (uriParameters.nonEmpty) {
+      builder.append(",\n")
+    }
+    builder.append(s"    body: $bodyType\n  ) extends Request[$bodyType]\n\n")
   }
 
   protected def requestClassName(uriPattern: String, method: String): String = {

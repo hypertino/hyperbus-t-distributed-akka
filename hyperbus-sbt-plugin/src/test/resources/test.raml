@@ -29,18 +29,18 @@ types:
 annotationTypes:
   forward:
 /authors/{authorId}/books/{bookId}:
+  (forward):
+    uri: /ergoiergreog
   uriParameters:
     authorId: string
     bookId: string
   get:
-    (forward): test-forward
     responses:
       200:
         body:
           application/json:
             type: Book
   put:
-    (forward):
     body:
       application/json:
         type: Book
@@ -48,7 +48,6 @@ annotationTypes:
       200:
       201:
 /authors/{authorId}/books:
-  (forward):
   uriParameters:
     authorId: string
   get:
