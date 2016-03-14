@@ -22,6 +22,7 @@ class TestSpec extends FreeSpec with Matchers {
       override def list(path: String): util.List[String] = List("test.raml")
       override def content(path: String): String = {
         val resource = getClass.getResource(path)
+        println(path)
         if (resource == null) {
           throw new IllegalArgumentException(s"resource not found: $path")
         }
@@ -32,6 +33,8 @@ class TestSpec extends FreeSpec with Matchers {
 
     val api = factory.createApi("test.raml")
     api.getErrors.foreach(s ⇒ println(s"---> $s"))
+    api.annotations.foreach(s ⇒ println(s"A ---> $s"))
+    api.annotationTypes.foreach(s ⇒ println(s"AT ---> $s"))
 
     val gen = new InterfaceGenerator(api, GeneratorOptions(packageName = "eu.inn.protocol"))
     val result = gen.generate()

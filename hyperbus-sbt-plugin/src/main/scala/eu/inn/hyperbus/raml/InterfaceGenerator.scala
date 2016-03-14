@@ -146,16 +146,12 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
   protected def generateRequests(builder: StringBuilder) = {
     api.resources.foreach { resource ⇒
       resource.methods.foreach { method ⇒
-        method.method match {
-          //case "get" ⇒ generateGetRequest(builder, method, resource)
-          //case "delete" ⇒ generateDeleteRequest(builder, method, resource)
-          case other ⇒ generateOtherRequest(builder, method, resource)
-        }
+        generateRequest(builder, method, resource)
       }
     }
   }
 
-  protected def generateOtherRequest(builder: StringBuilder, method: Method, resource: Resource) = {
+  protected def generateRequest(builder: StringBuilder, method: Method, resource: Resource) = {
     builder.append(s"""@request(Method.${method.method.toUpperCase}, "${resource.relativeUri.value}")\n""")
     val name = requestClassName(resource.relativeUri.value, method.method)
     builder.append(s"case class $name(\n")

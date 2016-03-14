@@ -26,17 +26,21 @@ types:
     type: object
     properties:
       transactionId: string
+annotationTypes:
+  forward:
 /authors/{authorId}/books/{bookId}:
   uriParameters:
     authorId: string
     bookId: string
   get:
+    (forward): test-forward
     responses:
       200:
         body:
           application/json:
             type: Book
   put:
+    (forward):
     body:
       application/json:
         type: Book
@@ -44,6 +48,7 @@ types:
       200:
       201:
 /authors/{authorId}/books:
+  (forward):
   uriParameters:
     authorId: string
   get:
