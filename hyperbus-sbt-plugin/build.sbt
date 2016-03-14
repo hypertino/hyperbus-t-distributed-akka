@@ -24,3 +24,5 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.mockito" % "mockito-all" % "1.10.19" % "test"
 )
+
+fork in Test := true // without this RAML parser tests will fail
