@@ -26,3 +26,5 @@ libraryDependencies ++= Seq(
 )
 
 fork in Test := true // without this RAML parser tests will fail
+
+publishTo := Some("Innova plugins repo" at "http://repproxy.srv.inn.ru/artifactory/plugins-release-local")
