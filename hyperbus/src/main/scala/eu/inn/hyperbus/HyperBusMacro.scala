@@ -8,7 +8,7 @@ import scala.concurrent.Future
 import scala.reflect.macros._
 import scala.util.matching.Regex
 
-private[hyperbus] object HyperBusMacro {
+private[hyperbus] object HyperbusMacro {
 
   def onCommand[IN <: Request[Body] : c.WeakTypeTag]
   (c: whitebox.Context)
@@ -16,7 +16,7 @@ private[hyperbus] object HyperBusMacro {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
-    } with HyperBusMacroImplementation
+    } with HyperbusMacroImplementation
     bundle.onCommand[IN](handler)
   }
 
@@ -25,7 +25,7 @@ private[hyperbus] object HyperBusMacro {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
-    } with HyperBusMacroImplementation
+    } with HyperbusMacroImplementation
     bundle.onEvent[IN](None, handler)
   }
 
@@ -34,7 +34,7 @@ private[hyperbus] object HyperBusMacro {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
-    } with HyperBusMacroImplementation
+    } with HyperbusMacroImplementation
     bundle.onEvent[IN](Some(groupName), handler)
   }
 
@@ -44,7 +44,7 @@ private[hyperbus] object HyperBusMacro {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
-    } with HyperBusMacroImplementation
+    } with HyperbusMacroImplementation
     bundle.ask[IN](request)
   }
 
@@ -54,12 +54,12 @@ private[hyperbus] object HyperBusMacro {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
-    } with HyperBusMacroImplementation
+    } with HyperbusMacroImplementation
     bundle.publish[IN](request)
   }
 }
 
-private[hyperbus] trait HyperBusMacroImplementation {
+private[hyperbus] trait HyperbusMacroImplementation {
   val c: whitebox.Context
 
   import c.universe._

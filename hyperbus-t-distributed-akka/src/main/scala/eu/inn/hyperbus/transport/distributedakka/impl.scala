@@ -94,9 +94,9 @@ private[transport] case class UnsubscribeCommand(subscription: Subscription)
 
 private[transport] case object ReleaseTopicCommand
 
-@SerialVersionUID(1L) case class HyperBusRequest(content: String)
+@SerialVersionUID(1L) case class HyperbusRequest(content: String)
 
-@SerialVersionUID(1L) case class HyperBusResponse(content: String)
+@SerialVersionUID(1L) case class HyperbusResponse(content: String)
 
 @SerialVersionUID(1L) case class HandlerIsNotFound(message: String) extends RuntimeException(message)
 
@@ -193,7 +193,7 @@ private[transport] abstract class SubscriptionActor extends Actor with ActorLogg
       log.debug(s"$self is stopping...")
       context.stop(self)
 
-    case HyperBusRequest(content) ⇒
+    case HyperbusRequest(content) ⇒
       val inputBytes = new ByteArrayInputStream(content.getBytes(StringSerializer.defaultEncoding))
       var matchedSubscriptions: Seq[SubscriptionCommand] = Seq.empty
 
@@ -232,7 +232,7 @@ private[transport] class CommandActor(val topic: String) extends SubscriptionAct
     else {
       val handler = getRandomElement(matchedSubscriptions).asInstanceOf[CommandSubscription].handler
       val futureResult = handler(request) map { case response ⇒
-        HyperBusResponse(StringSerializer.serializeToString(response))
+        HyperbusResponse(StringSerializer.serializeToString(response))
       }
       futureResult.onFailure {
         case NonFatal(e) ⇒

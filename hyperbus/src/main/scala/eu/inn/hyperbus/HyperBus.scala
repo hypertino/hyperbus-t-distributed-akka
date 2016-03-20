@@ -16,10 +16,10 @@ import scala.language.experimental.macros
 import scala.util.Try
 import scala.util.control.NonFatal
 
-class HyperBus(val transportManager: TransportManager,
+class Hyperbus(val transportManager: TransportManager,
                val defaultGroupName: Option[String] = None,
                val logMessages: Boolean = true)(implicit val executionContext: ExecutionContext)
-  extends HyperBusApi {
+  extends HyperbusApi {
 
   import LogUtils._
 
@@ -41,7 +41,7 @@ class HyperBus(val transportManager: TransportManager,
     def underlyingHandler(in: TransportRequest): Future[TransportResponse] = {
       if (logMessages && log.isTraceEnabled) {
         log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
-          "subscriptionId" → this.hashCode.toHexString), s"hyperBus ~> $in")
+          "subscriptionId" → this.hashCode.toHexString), s"hyperbus ~> $in")
       }
       val futureOut = handler(in.asInstanceOf[REQ]) recover {
         case z: Response[_] ⇒ z
@@ -50,7 +50,7 @@ class HyperBus(val transportManager: TransportManager,
       if (logMessages && log.isTraceEnabled) {
         futureOut map { out ⇒
           log.trace(Map("messageId" → out.messageId, "correlationId" → out.correlationId,
-            "subscriptionId" → this.hashCode.toHexString), s"hyperBus <~(R)~  $out")
+            "subscriptionId" → this.hashCode.toHexString), s"hyperbus <~(R)~  $out")
           out
         }
       } else {
@@ -64,7 +64,7 @@ class HyperBus(val transportManager: TransportManager,
     def underlyingHandler(in: TransportRequest): Future[Unit] = {
       if (logMessages && log.isTraceEnabled) {
         log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
-          "subscriptionId" → this.hashCode.toHexString), s"hyperBus |> $in")
+          "subscriptionId" → this.hashCode.toHexString), s"hyperbus |> $in")
       }
 
       handler(in.asInstanceOf[REQ]) recover {
@@ -79,7 +79,7 @@ class HyperBus(val transportManager: TransportManager,
                                                         responseDeserializer: ResponseDeserializer[RESP]): Future[RESP] = {
 
     if (logMessages && log.isTraceEnabled) {
-      log.trace(Map("messageId" → request.messageId, "correlationId" → request.correlationId), s"hyperBus <~ $request")
+      log.trace(Map("messageId" → request.messageId, "correlationId" → request.correlationId), s"hyperbus <~ $request")
     }
     val outputDeserializer = MessageDeserializer.deserializeResponseWith(_: InputStream)(responseDeserializer)
     transportManager.ask(request, outputDeserializer) map { r ⇒
@@ -88,7 +88,7 @@ class HyperBus(val transportManager: TransportManager,
           throw throwable
         case other ⇒
           if (logMessages && log.isTraceEnabled) {
-            log.trace(Map("messageId" → other.messageId, "correlationId" → other.correlationId), s"hyperBus ~(R)~> $other")
+            log.trace(Map("messageId" → other.messageId, "correlationId" → other.correlationId), s"hyperbus ~(R)~> $other")
           }
           other.asInstanceOf[RESP]
       }
@@ -97,7 +97,7 @@ class HyperBus(val transportManager: TransportManager,
 
   def publish[REQ <: Request[Body]](request: REQ): Future[PublishResult] = {
     if (logMessages && log.isTraceEnabled) {
-      log.trace(Map("messageId" → request.messageId, "correlationId" → request.correlationId), s"hyperBus <| $request")
+      log.trace(Map("messageId" → request.messageId, "correlationId" → request.correlationId), s"hyperbus <| $request")
     }
     transportManager.publish(request)
   }
@@ -150,7 +150,7 @@ class HyperBus(val transportManager: TransportManager,
     }
   }
 
-  protected def logError(msg: String, error: HyperBusException[ErrorBody], throwable: Throwable): Unit = {
+  protected def logError(msg: String, error: HyperbusException[ErrorBody], throwable: Throwable): Unit = {
     log.error(msg + ". #" + error.body.errorId, throwable)
   }
 

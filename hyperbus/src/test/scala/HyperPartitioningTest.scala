@@ -18,8 +18,8 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
         """{"response":{"status":200,"messageId":"123"},"body":{}}"""
       )
 
-      val hyperBus = newHyperBus(ct, null)
-      val f = hyperBus <~ TestPostPartition1(TestPartition("1", "ha"), messageId = "123", correlationId = "123")
+      val hyperbus = newHyperbus(ct, null)
+      val f = hyperbus <~ TestPostPartition1(TestPartition("1", "ha"), messageId = "123", correlationId = "123")
 
       ct.inputTopic should equal(
         Topic("/resources/{partitionId}", Filters(Map("partitionId" → SpecificValue("1"))))
@@ -32,8 +32,8 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
     "Partitioning when serving" in {
       val st = new ServerTransportTest()
-      val hyperBus = newHyperBus(null, st)
-      hyperBus ~> { post: TestPostPartition1 =>
+      val hyperbus = newHyperbus(null, st)
+      hyperbus ~> { post: TestPostPartition1 =>
         Future {
           Ok(DynamicBody(Obj()))
         }
@@ -52,11 +52,11 @@ class HyperPartitioningTest extends FreeSpec with Matchers with ScalaFutures {
 
   // todo: add partition tests for Dynamic
 
-  def newHyperBus(ct: ClientTransport, st: ServerTransport) = {
+  def newHyperbus(ct: ClientTransport, st: ServerTransport) = {
     val cr = List(TransportRoute(ct, TransportRequestMatcher(Some(Uri(AnyValue)))))
     val sr = List(TransportRoute(st, TransportRequestMatcher(Some(Uri(AnyValue)))))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
-    new HyperBus(transportManager, logMessages = true)
+    new Hyperbus(transportManager, logMessages = true)
   }
 }
 

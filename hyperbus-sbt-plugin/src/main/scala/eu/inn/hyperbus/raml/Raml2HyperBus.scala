@@ -7,36 +7,36 @@ import sbt.Keys._
 import sbt._
 import sbt.plugins.JvmPlugin
 
-object Raml2HyperBus extends AutoPlugin {
+object Raml2Hyperbus extends AutoPlugin {
   override def requires = JvmPlugin
   object autoImport {
-    val ramlHyperBusSource = settingKey[File]("ramlHyperBusSource")
-    val ramlHyperBusSourceIsResource = settingKey[Boolean]("ramlHyperBusSourceIsResource")
-    val ramlHyperBusPackageName = settingKey[String]("ramlHyperBusPackageName")
-    val ramlHyperBusContentTypePrefix = settingKey[Option[String]]("ramlHyperBusContentTypePrefix")
+    val ramlHyperbusSource = settingKey[File]("ramlHyperbusSource")
+    val ramlHyperbusSourceIsResource = settingKey[Boolean]("ramlHyperbusSourceIsResource")
+    val ramlHyperbusPackageName = settingKey[String]("ramlHyperbusPackageName")
+    val ramlHyperbusContentTypePrefix = settingKey[Option[String]]("ramlHyperbusContentTypePrefix")
   }
 
   import autoImport._
 
   override val projectSettings =
-    ramlHyperBusScopedSettings(Compile) ++ /*ramlHyperBusScopedSettings(Test) ++*/ r2hDefaultSettings
+    ramlHyperbusScopedSettings(Compile) ++ /*ramlHyperbusScopedSettings(Test) ++*/ r2hDefaultSettings
 
-  protected def ramlHyperBusScopedSettings(conf: Configuration): Seq[Def.Setting[_]] = inConfig(conf)(Seq(
+  protected def ramlHyperbusScopedSettings(conf: Configuration): Seq[Def.Setting[_]] = inConfig(conf)(Seq(
     sourceGenerators +=  Def.task {
       generateFromRaml(
         resourceDirectory.value,
-        ramlHyperBusSource.value,
-        ramlHyperBusSourceIsResource.value,
+        ramlHyperbusSource.value,
+        ramlHyperbusSourceIsResource.value,
         sourceManaged.value,
-        ramlHyperBusPackageName.value,
-        ramlHyperBusContentTypePrefix.value
+        ramlHyperbusPackageName.value,
+        ramlHyperbusContentTypePrefix.value
       )
     }.taskValue
   ))
 
   protected def r2hDefaultSettings: Seq[Def.Setting[_]] = Seq(
-    ramlHyperBusContentTypePrefix := None,
-    ramlHyperBusSourceIsResource := true
+    ramlHyperbusContentTypePrefix := None,
+    ramlHyperbusSourceIsResource := true
   )
 
   protected def generateFromRaml(resourceDirectory: File,

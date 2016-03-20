@@ -12,7 +12,7 @@ import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
-import eu.inn.hyperbus.{HyperBus, IdGenerator}
+import eu.inn.hyperbus.{Hyperbus, IdGenerator}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 
@@ -94,26 +94,26 @@ class TestGroupActor extends Actor {
 
 class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
 
-  def newHyperBus = {
+  def newHyperbus = {
     val tr = new InprocTransport
     val cr = List(TransportRoute[ClientTransport](tr, RequestMatcher(Some(Uri(Any)))))
     val sr = List(TransportRoute[ServerTransport](tr, RequestMatcher(Some(Uri(Any)))))
     val transportManager = new TransportManager(cr, sr, ExecutionContext.global)
-    new HyperBus(transportManager, logMessages = true)
+    new Hyperbus(transportManager, logMessages = true)
   }
 
   "AkkaHyperService " - {
     "Send and Receive" in {
       implicit lazy val system = ActorSystem()
-      val hyperBus = newHyperBus
+      val hyperbus = newHyperbus
       val actorRef = TestActorRef[TestActor]
       val groupActorRef = TestActorRef[TestGroupActor]
 
       implicit val timeout = Timeout(20.seconds)
-      hyperBus.routeTo[TestActor](actorRef).futureValue
-      hyperBus.routeTo[TestGroupActor](groupActorRef).futureValue
+      hyperbus.routeTo[TestActor](actorRef).futureValue
+      hyperbus.routeTo[TestGroupActor](groupActorRef).futureValue
 
-      val f1 = hyperBus <~ AkkaTestPost1(AkkaTestBody1("ha ha"))
+      val f1 = hyperbus <~ AkkaTestPost1(AkkaTestBody1("ha ha"))
 
       whenReady(f1) { r =>
         //r.messageId should equal("123")
@@ -123,7 +123,7 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
         groupActorRef.underlyingActor.count should equal(1)
       }
 
-      val f2 = hyperBus <| AkkaTestPost1(AkkaTestBody1("ha ha"))
+      val f2 = hyperbus <| AkkaTestPost1(AkkaTestBody1("ha ha"))
 
       whenReady(f2) { r =>
         actorRef.underlyingActor.count should equal(2)
@@ -134,38 +134,38 @@ class AkkaHyperServiceTest extends FreeSpec with ScalaFutures with Matchers {
 
     "Send and Receive multiple responses" in {
       implicit lazy val system = ActorSystem()
-      val hyperBus = newHyperBus
+      val hyperbus = newHyperbus
       val actorRef = TestActorRef[TestActor]
       implicit val timeout = Timeout(20.seconds)
-      hyperBus.routeTo[TestActor](actorRef)
+      hyperbus.routeTo[TestActor](actorRef)
 
-      val f = hyperBus <~ AkkaTestPost3(AkkaTestBody2(1))
+      val f = hyperbus <~ AkkaTestPost3(AkkaTestBody2(1))
 
       whenReady(f) { r =>
         r shouldBe a[Created[_]]
         r.body should equal(AkkaTestCreatedBody("100500"))
       }
 
-      val f2 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(2))
+      val f2 = hyperbus <~ AkkaTestPost3(AkkaTestBody2(2))
 
       whenReady(f2) { r =>
         r shouldBe a[Ok[_]]
         r.body should equal(DynamicBody(Text("another result")))
       }
 
-      val f3 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(-1))
+      val f3 = hyperbus <~ AkkaTestPost3(AkkaTestBody2(-1))
 
       whenReady(f3.failed) { r =>
         r shouldBe a[Conflict[_]]
       }
 
-      val f4 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(-2))
+      val f4 = hyperbus <~ AkkaTestPost3(AkkaTestBody2(-2))
 
       whenReady(f4.failed) { r =>
         r shouldBe a[Conflict[_]]
       }
 
-      val f5 = hyperBus <~ AkkaTestPost3(AkkaTestBody2(-3))
+      val f5 = hyperbus <~ AkkaTestPost3(AkkaTestBody2(-3))
 
       whenReady(f5.failed) { r =>
         r shouldBe a[NotFound[_]]

@@ -11,7 +11,7 @@ private[transport] class NoRouteWatcher extends Actor {
   system.eventStream.subscribe(self, classOf[DeadLetter])
 
   override def receive: Receive = {
-    case DeadLetter(message: HyperBusRequest, messageSender, recipient) ⇒
+    case DeadLetter(message: HyperbusRequest, messageSender, recipient) ⇒
       Future.failed(new NoTransportRouteException(recipient.toString())) pipeTo messageSender
   }
 }

@@ -10,7 +10,7 @@ package object akkaservice {
 
   import language.experimental.macros
 
-  implicit class ImplicitRouter(val hyperBus: HyperBus) {
+  implicit class ImplicitRouter(val hyperbus: Hyperbus) {
     // todo: + implicit route options (groupName mapping to runtime group)
     def routeTo[A](actorRef: ActorRef): Future[List[Subscription]] = macro AkkaHyperServiceMacro.routeTo[A]
   }

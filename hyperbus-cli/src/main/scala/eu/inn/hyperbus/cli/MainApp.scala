@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import eu.inn.binders.dynamic.Text
 import eu.inn.binders.naming.PlainConverter
 import eu.inn.config.ConfigLoader
-import eu.inn.hyperbus.HyperBus
+import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.serialization.StringDeserializer
@@ -21,7 +21,7 @@ import scala.concurrent.{Await, Future}
 
 trait Commands
 
-case class InitCommand(hyperBus: HyperBus) extends Commands
+case class InitCommand(hyperbus: Hyperbus) extends Commands
 
 case class InputCommand(message: String) extends Commands
 
@@ -37,11 +37,11 @@ class CliService(console: Console, config: Config) extends Service {
 
   val transportConfiguration = TransportConfigurationLoader.fromConfig(config)
   val transportManager = new TransportManager(transportConfiguration)
-  val hyperBus = new HyperBus(transportManager, logMessages = true)
+  val hyperbus = new Hyperbus(transportManager, logMessages = true)
 
   val actorSystem = ActorSystemRegistry.get("eu-inn").get
 
-  hyperBus ~> { r: TestRequest ⇒
+  hyperbus ~> { r: TestRequest ⇒
     Future.successful {
       Ok(DynamicBody(Text(s"Received: ${r.body.content}")))
     }
@@ -50,14 +50,14 @@ class CliService(console: Console, config: Config) extends Service {
   def ask(request: String): Unit = {
     val r = StringDeserializer.request[DynamicRequest](request)
     out(s"<~$r")
-    val f = hyperBus <~ r
+    val f = hyperbus <~ r
     printResponse(f)
   }
 
   def publish(request: String): Unit = {
     val r = StringDeserializer.request[DynamicRequest](request)
     out(s"<!$r")
-    val f = hyperBus <| r
+    val f = hyperbus <| r
   }
 
   def leaveMember(protocol: String, system: String, host: String, port: String): Unit = {
@@ -117,7 +117,7 @@ class CliService(console: Console, config: Config) extends Service {
     console.writeln("Exiting...")
     val timeout = 30.seconds
     try {
-      Await.result(hyperBus.shutdown(timeout), timeout)
+      Await.result(hyperbus.shutdown(timeout), timeout)
     } catch {
       case t: Throwable ⇒
         console.writeln(t)

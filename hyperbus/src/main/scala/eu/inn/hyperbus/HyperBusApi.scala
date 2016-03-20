@@ -11,14 +11,14 @@ import scala.concurrent.duration.FiniteDuration
 import scala.language.experimental.macros
 
 // todo: document API
-trait HyperBusApi {
-  def <~[REQ <: Request[Body]](request: REQ): Any = macro HyperBusMacro.ask[REQ]
+trait HyperbusApi {
+  def <~[REQ <: Request[Body]](request: REQ): Any = macro HyperbusMacro.ask[REQ]
 
-  def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperBusMacro.publish[REQ]
+  def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperbusMacro.publish[REQ]
 
-  def |>[REQ <: Request[Body]](handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperBusMacro.onEvent[REQ]
+  def |>[REQ <: Request[Body]](handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperbusMacro.onEvent[REQ]
 
-  def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): Future[Subscription] = macro HyperBusMacro.onCommand[REQ]
+  def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): Future[Subscription] = macro HyperbusMacro.onCommand[REQ]
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
     ask(request,
@@ -44,7 +44,7 @@ trait HyperBusApi {
                                     requestDeserializer: RequestDeserializer[REQ])
                                    (handler: (REQ) => Future[Unit]): Future[Subscription]
 
-  def onEventForGroup[REQ <: Request[Body]](groupName: String, handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperBusMacro.onEventForGroup[REQ]
+  def onEventForGroup[REQ <: Request[Body]](groupName: String, handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperbusMacro.onEventForGroup[REQ]
 
   def off(subscription: Subscription): Future[Unit]
 

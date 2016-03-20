@@ -44,11 +44,11 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   override def ask(message: TransportRequest, outputDeserializer: Deserializer[TransportResponse]): Future[TransportResponse] = {
     val specificUri = message.uri.pattern.specific
     val content = StringSerializer.serializeToString(message)
-    val request = HyperBusRequest(content)
+    val request = HyperbusRequest(content)
 
     import actorSystem.dispatcher
     akka.pattern.ask(mediator, Publish(specificUri, request, sendOneMessageToEachGroup = true)) map {
-      case result: HyperBusResponse ⇒
+      case result: HyperbusResponse ⇒
         val outputBytes = new ByteArrayInputStream(result.content.getBytes(StringSerializer.defaultEncoding))
         outputDeserializer(outputBytes)
     }
@@ -57,7 +57,7 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
   override def publish(message: TransportRequest): Future[PublishResult] = {
     val specificUri = message.uri.pattern.specific
     val content = StringSerializer.serializeToString(message)
-    val request = HyperBusRequest(content)
+    val request = HyperbusRequest(content)
 
     mediator ! Publish(specificUri, request, sendOneMessageToEachGroup = true) // todo: At least one confirm?
     Future.successful {

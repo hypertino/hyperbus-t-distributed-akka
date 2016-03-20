@@ -2,7 +2,7 @@ package eu.inn.hyperbus.akkaservice
 
 import akka.actor.Actor.Receive
 import akka.actor.ActorRef
-import eu.inn.hyperbus.HyperBus
+import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.model.{Body, Response}
 import eu.inn.hyperbus.transport.api.Subscription
@@ -12,7 +12,7 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 object AkkaHyperService {
-  def route[A](hyperBus: HyperBus, actorRef: ActorRef): Future[List[Subscription]] = macro AkkaHyperServiceMacro.route[A]
+  def route[A](hyperbus: Hyperbus, actorRef: ActorRef): Future[List[Subscription]] = macro AkkaHyperServiceMacro.route[A]
 
   def dispatch[A](actor: A): Receive = macro AkkaHyperServiceMacro.dispatch[A]
 }
@@ -21,12 +21,12 @@ private[akkaservice] object AkkaHyperServiceMacro {
 
   def route[A: c.WeakTypeTag]
   (c: Context)
-  (hyperBus: c.Expr[HyperBus], actorRef: c.Expr[ActorRef]): c.Expr[Future[List[Subscription]]] = {
+  (hyperbus: c.Expr[Hyperbus], actorRef: c.Expr[ActorRef]): c.Expr[Future[List[Subscription]]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with AkkaHyperServiceImplementation
-    val r = bundle.route[A](hyperBus.tree, actorRef.tree)
+    val r = bundle.route[A](hyperbus.tree, actorRef.tree)
     c.Expr[Future[List[Subscription]]](r)
   }
 
@@ -38,7 +38,7 @@ private[akkaservice] object AkkaHyperServiceMacro {
     val r =
       q"""{
       val $tVar = ${c.prefix.tree}
-      AkkaHyperService.route[${weakTypeOf[A]}]($tVar.hyperBus, $actorRef)
+      AkkaHyperService.route[${weakTypeOf[A]}]($tVar.hyperbus, $actorRef)
     }"""
     c.Expr[Future[List[Subscription]]](r)
   }
@@ -60,13 +60,13 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
   import c.universe._
 
-  def route[A: c.WeakTypeTag](hyperBus: c.Tree, actorRef: c.Tree): c.Tree = {
+  def route[A: c.WeakTypeTag](hyperbus: c.Tree, actorRef: c.Tree): c.Tree = {
     val onMethods = extractOnMethods[A]
     if (onMethods.isEmpty) {
       c.abort(c.enclosingPosition, s"No suitable 'onCommand' / '~>' or 'OnEvent' / '|>' method is defined in ${weakTypeOf[A]}")
     }
 
-    val hyperBusVal = fresh("hyperBus")
+    val hyperbusVal = fresh("hyperbus")
     val actorVal = fresh("actorVal")
     val typ = weakTypeOf[A]
     //val defaultGroup = groupName map { s ⇒ q"Some($s)" } getOrElse q"None"
@@ -78,7 +78,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
       getGroupAnnotation(m).map { groupName ⇒
         q"""
-          $hyperBusVal.onEventForGroup[$argType]($groupName, { case $messageVal =>
+          $hyperbusVal.onEventForGroup[$argType]($groupName, { case $messageVal =>
             _root_.akka.pattern.ask($actorVal, $messageVal).mapTo[Unit]
           })
         """
@@ -93,7 +93,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
         }
 
         q"""
-          $hyperBusVal.~>[$argType]{ case $messageVal =>
+          $hyperbusVal.~>[$argType]{ case $messageVal =>
             _root_.akka.pattern.ask($actorVal, $messageVal).mapTo[$innerResultType]
           }
         """
@@ -102,7 +102,7 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
     val obj =
       q"""{
-      val $hyperBusVal = $hyperBus
+      val $hyperbusVal = $hyperbus
       val $actorVal = $actorRef
       scala.concurrent.Future.sequence(List(
         ..$subscriptions

@@ -76,72 +76,72 @@ private[model] case class DynamicCreatedBodyContainer(contentType: Option[String
 
 // ----------------- Exception base classes -----------------
 
-abstract class HyperBusException[+B <: ErrorBody](body: B)
+abstract class HyperbusException[+B <: ErrorBody](body: B)
   extends RuntimeException(body.toString) with Response[B] {
 }
 
-abstract class HyperBusServerException[+B <: ErrorBody](body: B) extends HyperBusException(body)
+abstract class HyperbusServerException[+B <: ErrorBody](body: B) extends HyperbusException(body)
 
-abstract class HyperBusClientException[+B <: ErrorBody](body: B) extends HyperBusException(body)
+abstract class HyperbusClientException[+B <: ErrorBody](body: B) extends HyperbusException(body)
 
 // ----------------- Client Error responses -----------------
 
-@response(Status.BAD_REQUEST) case class BadRequest[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.BAD_REQUEST) case class BadRequest[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.UNAUTHORIZED) case class Unauthorized[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.UNAUTHORIZED) case class Unauthorized[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.PAYMENT_REQUIRED) case class PaymentRequired[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.PAYMENT_REQUIRED) case class PaymentRequired[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.FORBIDDEN) case class Forbidden[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.FORBIDDEN) case class Forbidden[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.NOT_FOUND) case class NotFound[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.NOT_FOUND) case class NotFound[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.METHOD_NOT_ALLOWED) case class MethodNotAllowed[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.METHOD_NOT_ALLOWED) case class MethodNotAllowed[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.NOT_ACCEPTABLE) case class NotAcceptable[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.NOT_ACCEPTABLE) case class NotAcceptable[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.PROXY_AUTHENTICATION_REQUIRED) case class ProxyAuthenticationRequired[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.PROXY_AUTHENTICATION_REQUIRED) case class ProxyAuthenticationRequired[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.REQUEST_TIMEOUT) case class RequestTimeout[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.REQUEST_TIMEOUT) case class RequestTimeout[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.CONFLICT) case class Conflict[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.CONFLICT) case class Conflict[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.GONE) case class Gone[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.GONE) case class Gone[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.LENGTH_REQUIRED) case class LengthRequired[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.LENGTH_REQUIRED) case class LengthRequired[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.PRECONDITION_FAILED) case class PreconditionFailed[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.PRECONDITION_FAILED) case class PreconditionFailed[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.REQUEST_ENTITY_TOO_LARGE) case class RequestEntityTooLarge[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.REQUEST_ENTITY_TOO_LARGE) case class RequestEntityTooLarge[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.REQUEST_URI_TOO_LONG) case class RequestUriTooLong[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.REQUEST_URI_TOO_LONG) case class RequestUriTooLong[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.UNSUPPORTED_MEDIA_TYPE) case class UnsupportedMediaType[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.UNSUPPORTED_MEDIA_TYPE) case class UnsupportedMediaType[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.REQUESTED_RANGE_NOT_SATISFIABLE) case class RequestedRangeNotSatisfiable[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.REQUESTED_RANGE_NOT_SATISFIABLE) case class RequestedRangeNotSatisfiable[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.EXPECTATION_FAILED) case class ExpectationFailed[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.EXPECTATION_FAILED) case class ExpectationFailed[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.UNPROCESSABLE_ENTITY) case class UnprocessableEntity[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.UNPROCESSABLE_ENTITY) case class UnprocessableEntity[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.LOCKED) case class Locked[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.LOCKED) case class Locked[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.FAILED_DEPENDENCY) case class FailedDependency[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.FAILED_DEPENDENCY) case class FailedDependency[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
-@response(Status.TOO_MANY_REQUEST) case class TooManyRequest[+B <: ErrorBody](body: B) extends HyperBusClientException(body)
+@response(Status.TOO_MANY_REQUEST) case class TooManyRequest[+B <: ErrorBody](body: B) extends HyperbusClientException(body)
 
 // ----------------- Server Error responses -----------------
 
-@response(Status.INTERNAL_SERVER_ERROR) case class InternalServerError[+B <: ErrorBody](body: B) extends HyperBusServerException(body)
+@response(Status.INTERNAL_SERVER_ERROR) case class InternalServerError[+B <: ErrorBody](body: B) extends HyperbusServerException(body)
 
-@response(Status.NOT_IMPLEMENTED) case class NotImplemented[+B <: ErrorBody](body: B) extends HyperBusServerException(body)
+@response(Status.NOT_IMPLEMENTED) case class NotImplemented[+B <: ErrorBody](body: B) extends HyperbusServerException(body)
 
-@response(Status.BAD_GATEWAY) case class BadGateway[+B <: ErrorBody](body: B) extends HyperBusServerException(body)
+@response(Status.BAD_GATEWAY) case class BadGateway[+B <: ErrorBody](body: B) extends HyperbusServerException(body)
 
-@response(Status.SERVICE_UNAVAILABLE) case class ServiceUnavailable[+B <: ErrorBody](body: B) extends HyperBusServerException(body)
+@response(Status.SERVICE_UNAVAILABLE) case class ServiceUnavailable[+B <: ErrorBody](body: B) extends HyperbusServerException(body)
 
-@response(Status.GATEWAY_TIMEOUT) case class GatewayTimeout[+B <: ErrorBody](body: B) extends HyperBusServerException(body)
+@response(Status.GATEWAY_TIMEOUT) case class GatewayTimeout[+B <: ErrorBody](body: B) extends HyperbusServerException(body)
 
-@response(Status.HTTP_VERSION_NOT_SUPPORTED) case class HttpVersionNotSupported[+B <: ErrorBody](body: B) extends HyperBusServerException(body)
+@response(Status.HTTP_VERSION_NOT_SUPPORTED) case class HttpVersionNotSupported[+B <: ErrorBody](body: B) extends HyperbusServerException(body)
 
-@response(Status.INSUFFICIENT_STORAGE) case class InsufficientStorage[+B <: ErrorBody](body: B) extends HyperBusServerException(body)
+@response(Status.INSUFFICIENT_STORAGE) case class InsufficientStorage[+B <: ErrorBody](body: B) extends HyperbusServerException(body)
