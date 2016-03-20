@@ -5,10 +5,8 @@ import eu.inn.hyperbus.transport.api.TransportRequest
 import eu.inn.hyperbus.transport.api.uri.{Uri, UriPojo}
 
 case class RequestMatcher(uri: Option[Uri], headers: Map[String, TextMatcher]) {
-
-  // strict matching for concrete message
   def matchMessage(message: TransportRequest): Boolean = {
-    uri.exists(_.matchUri(message.uri)) &&
+    (uri.isEmpty || uri.get.matchUri(message.uri)) &&
       headers.map { case (headerName, headerMatcher) ⇒
         message.headers.get(headerName).map { header ⇒
           header.exists(headerText ⇒ headerMatcher.matchText(Specific(headerText)))
@@ -25,7 +23,7 @@ case class RequestMatcher(uri: Option[Uri], headers: Map[String, TextMatcher]) {
         other.headers.get(headerName).map { header ⇒
           headerMatcher.matchText(header)
         } getOrElse {
-          true
+          false
         }
       }.forall(r => r)
   }
