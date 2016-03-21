@@ -7,9 +7,10 @@ import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.time.{Seconds, Millis, Span}
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
 
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -18,6 +19,12 @@ case class MockBody(test: String) extends Body
 
 @request(Method.POST, "/mock/{partitionId}")
 case class MockRequest(partitionId: String, body: MockBody) extends Request[MockBody]
+
+@request(Method.POST, "/mock1/{partitionId}")
+case class MockRequest1(partitionId: String, body: MockBody) extends Request[MockBody]
+
+@request(Method.POST, "/mock2/{partitionId}")
+case class MockRequest2(partitionId: String, body: MockBody) extends Request[MockBody]
 
 class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with BeforeAndAfter with Eventually {
   var transportManager: TransportManager = null
@@ -67,26 +74,30 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 
       val cnt = new AtomicInteger(0)
 
-      transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
+      val fsubs = mutable.MutableList[Future[Subscription]]()
+
+      fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
         case msg: MockRequest => Future {
           msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
 
-      transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
+      fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
         case msg: MockRequest => Future {
           msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
 
-      transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply) {
+      fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply) {
         case msg: MockRequest => Future {
           msg.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
+
+      val subs = fsubs.map(_.futureValue)
 
       Thread.sleep(1000) // we need to wait until subscriptions will go acros the
       // clear counter
@@ -98,7 +109,54 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       }
       Thread.sleep(1000) // give chance to increment to another service (in case of wrong implementation)
       cnt.get should equal(4)
+
+      subs.foreach(transportManager.off)
     }
+  }
+
+  "Publish and then Subscribe with Same Group/Topic but different URI" in {
+    import ExecutionContext.Implicits.global
+    Thread.sleep(1000)
+
+    val cnt = new AtomicInteger(0)
+
+    val fsubs = mutable.MutableList[Future[Subscription]]()
+
+    fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock1/{partitionId}"))), "sub1", MockRequest1.apply) {
+      case msg: MockRequest1 => Future {
+        msg.body.test should equal("12345")
+        cnt.incrementAndGet()
+      }
+    }
+
+    fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock2/{partitionId}"))), "sub1", MockRequest2.apply) {
+      case msg: MockRequest2 => Future {
+        msg.body.test should equal("54321")
+        cnt.incrementAndGet()
+      }
+    }
+    val subs = fsubs.map(_.futureValue)
+
+    Thread.sleep(1000) // we need to wait until subscriptions will go acros the
+
+    val f = Future.sequence(List(
+      transportManager.publish(MockRequest1("1", MockBody("12345"))),
+      transportManager.publish(MockRequest2("2", MockBody("54321"))))
+    )
+
+    val publishResults = f.futureValue
+    publishResults.foreach { publishResult ⇒
+      publishResult.sent should equal(Some(true))
+      publishResult.offset shouldNot equal(None)
+    }
+
+    eventually {
+      cnt.get should equal(2)
+    }
+    Thread.sleep(1000) // give chance to increment to another service (in case of wrong implementation)
+    cnt.get should equal(2)
+
+    subs.foreach(transportManager.off)
   }
 }
 

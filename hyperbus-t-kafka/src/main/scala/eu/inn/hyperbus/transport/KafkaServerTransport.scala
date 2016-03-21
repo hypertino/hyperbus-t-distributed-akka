@@ -1,23 +1,19 @@
 package eu.inn.hyperbus.transport
 
-import java.io.ByteArrayInputStream
 import java.util.Properties
-import java.util.concurrent.{ExecutorService, Executors, TimeUnit}
 
 import com.typesafe.config.Config
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
-import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
+import eu.inn.hyperbus.transport.kafkatransport._
 import eu.inn.hyperbus.util.ConfigUtils._
-import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}
 import org.slf4j.LoggerFactory
 
-import scala.collection.concurrent.TrieMap
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 
 class KafkaServerTransport(
                             consumerProperties: Properties,
@@ -30,39 +26,64 @@ class KafkaServerTransport(
     encoding = config.getOptionString("encoding") getOrElse "UTF-8"
   )(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
 
-  protected[this] val subscriptions = new TrieMap[Subscription, TopicSubscription[_]]
+  protected[this] val subscriptions = mutable.Map[TopicSubscriptionKey, TopicSubscription]()
+  protected[this] val lock = new Object
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
-  def onCommand(matcher: RequestMatcher,
-                inputDeserializer: RequestDeserializer[Request[Body]])
-               (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = ???
+  override def onCommand(matcher: RequestMatcher,
+                         inputDeserializer: RequestDeserializer[Request[Body]])
+                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = ???
 
-  def onEvent(matcher: RequestMatcher,
-              groupName: String,
-              inputDeserializer: RequestDeserializer[Request[Body]])
-             (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
+  override def onEvent(matcher: RequestMatcher,
+                       groupName: String,
+                       inputDeserializer: RequestDeserializer[Request[Body]])
+                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
 
     routes.find(r ⇒ r.requestMatcher.matchRequestMatcher(matcher)) map { route ⇒
+      val key = TopicSubscriptionKey(route.kafkaTopic, route.kafkaPartitionKeys, groupName)
+      val underlyingSubscription = UnderlyingSubscription(matcher, inputDeserializer, handler)
+      lock.synchronized {
+        subscriptions.get(key) match {
+          case Some(subscription) ⇒
+            val nextId = subscription.addUnderlying(underlyingSubscription)
+            Future.successful(KafkaTransportSubscription(key, nextId))
 
-      val subscription = new TopicSubscription[Unit](1, /*todo: per topic thread count*/
-        route, matcher, groupName, inputDeserializer, handler
-      )
-      subscriptions.put(subscription, subscription)
-      subscription.run()
-      Future.successful(subscription)
+          case None ⇒
+            val subscription = new TopicSubscription(consumerProperties, encoding, 1, /*todo: per topic thread count*/
+              route, groupName)
+            subscriptions.put(key, subscription)
+            val nextId = subscription.addUnderlying(underlyingSubscription)
+            subscription.run()
+            Future.successful(KafkaTransportSubscription(key, nextId))
+        }
+      }
     } getOrElse {
       Future.failed(new NoTransportRouteException(s"Kafka consumer (server). matcher: $matcher"))
     }
   }
 
   override def off(subscription: Subscription): Future[Unit] = {
-    subscriptions.remove(subscription) match {
-      case Some(topicSubscription) ⇒ Future {
-        topicSubscription.stop(0.seconds)
-      }
-
-      case None ⇒
-        Future.failed(new IllegalArgumentException(s"Subscription not found: $subscription"))
+    subscription match {
+      case kafkaS: KafkaTransportSubscription ⇒
+        val notFoundException = new IllegalArgumentException(s"Subscription not found: $subscription")
+        lock.synchronized {
+          subscriptions.get(kafkaS.key) match {
+            case Some(s) ⇒
+              if (s.removeUnderlying(kafkaS.underlyingId)) { // last subscription, terminate kafka subscription
+                subscriptions.remove(kafkaS.key)
+                Future {
+                  s.stop(1.seconds)
+                }
+              }
+              else {
+                Future.successful{}
+              }
+            case None ⇒
+              Future.failed(notFoundException)
+          }
+        }
+      case _ ⇒
+        Future.failed(new IllegalArgumentException(s"Expected KafkaTransportSubscription instead of: $subscription"))
     }
   }
 
@@ -77,101 +98,12 @@ class KafkaServerTransport(
       true
     }
   }
-
-
-  class TopicSubscription[OUT](
-                                threadCount: Int,
-                                route: KafkaRoute,
-                                requestMatcher: RequestMatcher,
-                                groupName: String,
-                                inputDeserializer: RequestDeserializer[Request[Body]],
-                                handler: (Request[Body]) ⇒ Future[OUT]
-                              ) extends Subscription {
-
-    val consumer = {
-      val props = consumerProperties.clone().asInstanceOf[Properties]
-      val groupId = props.getProperty("group.id")
-      val newGroupId = if (groupId != null) {
-        groupId + "." + groupName
-      }
-      else {
-        groupName
-      }
-      props.setProperty("group.id", newGroupId)
-      Consumer.create(new ConsumerConfig(props))
-    }
-    @volatile var threadPool: ExecutorService = null
-
-    def run(): Unit = {
-      threadPool = Executors.newFixedThreadPool(threadCount)
-      val consumerMap = consumer.createMessageStreams(Map(route.kafkaTopic → threadCount))
-      val streams = consumerMap(route.kafkaTopic)
-
-      streams.map { stream ⇒
-        threadPool.submit(new Runnable {
-          override def run(): Unit = consumeStream(stream)
-        })
-      }
-    }
-
-    def stop(duration: FiniteDuration): Unit = {
-      consumer.commitOffsets
-      consumer.shutdown()
-      val t = threadPool
-      if (t != null) {
-        t.shutdown()
-        if (duration.toMillis > 0) {
-          try {
-            t.awaitTermination(duration.toMillis, TimeUnit.MILLISECONDS)
-          }
-          catch {
-            case t: InterruptedException ⇒ // .. do nothing
-          }
-        }
-        threadPool = null
-      }
-    }
-
-    def consumeMessage(consumerId: String, next: kafka.message.MessageAndMetadata[Array[Byte], Array[Byte]]): Unit = {
-      val message = next.message()
-      lazy val messageString = new String(message, encoding)
-      if (log.isTraceEnabled) {
-        log.trace(s"Group '$groupName' got message from kafka ${next.topic}/${next.partition}${next.offset}: $messageString")
-      }
-      try {
-        val inputBytes = new ByteArrayInputStream(message)
-        val input = MessageDeserializer.deserializeRequestWith(inputBytes)(inputDeserializer)
-        if (requestMatcher.matchMessage(input)) {
-          // todo: test order of matching?
-          handler(input)
-        } else {
-          if (log.isTraceEnabled) {
-            log.trace(s"Consumer #$consumerId. Skipped message from partiton#${next.partition}: $messageString")
-          }
-        }
-      }
-      catch {
-        case NonFatal(e) ⇒
-          log.error(s"Consumer #$consumerId can't deserialize message from partiton#${next.partition}: $messageString", e)
-      }
-    }
-
-    private def consumeStream(stream: KafkaStream[Array[Byte], Array[Byte]]): Unit = {
-      val consumerId = Thread.currentThread().getName
-      log.info(s"Starting consumer #$consumerId on topic ${route.kafkaTopic} -> $requestMatcher}")
-      try {
-        val iterator = stream.iterator()
-        while (iterator.hasNext()) {
-          val next = iterator.next()
-          consumeMessage(consumerId, next)
-        }
-        log.info(s"Stopping consumer #$consumerId with group '$groupName' on topic ${route.kafkaTopic}")
-      }
-      catch {
-        case NonFatal(t) ⇒
-          log.error(s"Consumer #$consumerId failed", t)
-      }
-    }
-  }
-
 }
+
+
+
+
+
+
+
+

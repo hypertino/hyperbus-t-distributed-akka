@@ -5,8 +5,7 @@ import java.util.Properties
 import com.typesafe.config.Config
 import eu.inn.hyperbus.serialization.StringSerializer
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
-import eu.inn.hyperbus.transport.kafkatransport.ConfigLoader
+import eu.inn.hyperbus.transport.kafkatransport.{ConfigLoader, KafkaPartitionKeyIsNotDefined, KafkaRoute}
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.slf4j.LoggerFactory
@@ -14,11 +13,9 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
-case class KafkaRoute(requestMatcher: RequestMatcher,
-                      kafkaTopic: String,
-                      kafkaPartitionKeys: List[String])
 
-class KafkaPartitionKeyIsNotDefined(message: String) extends RuntimeException(message)
+
+
 
 class KafkaClientTransport(producerProperties: Properties,
                            routes: List[KafkaRoute],
