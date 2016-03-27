@@ -112,7 +112,7 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
 }
 
 trait Response[+B <: Body] extends Message[B] with TransportResponse {
-  def status: Int
+  def statusCode: Int
 
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeResponse(this, outputStream)
 }

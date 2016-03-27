@@ -50,16 +50,16 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
 
     "TestPost1 should serialize" in {
       val post1 = TestPost1("155", TestBody1("abcde"))
-      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-body-1"]}},"body":{"data":"abcde"}}""")
+      StringSerializer.serializeToString(post1) should equal("""{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-body-1"]},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should serialize with headers" in {
       val post1 = TestPost1("155", TestBody1("abcde"), Headers("test" → Seq("a")))
-      StringSerializer.serializeToString(post1) should equal("""{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"test":["a"],"messageId":["123"],"method":["post"],"contentType":["test-body-1"]}},"body":{"data":"abcde"}}""")
+      StringSerializer.serializeToString(post1) should equal("""{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"test":["a"],"messageId":["123"],"method":["post"],"contentType":["test-body-1"]},"body":{"data":"abcde"}}""")
     }
 
     "TestPost1 should deserialize" in {
-      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"method":["post"],"contentType":["test-body-1"],"messageId":["123"]}},"body":{"data":"abcde"}}"""
+      val str = """{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"method":["post"],"contentType":["test-body-1"],"messageId":["123"]},"body":{"data":"abcde"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val post1 = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         requestHeader.uri should equal(Uri("/test-post-1/{id}", Map("id" → "155")))
@@ -78,14 +78,14 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     }
 
     "TestPost1 should deserialize from String" in {
-      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-body-1"]}},"body":{"data":"abcde"}}"""
+      val str = """{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-body-1"]},"body":{"data":"abcde"}}"""
       val post1 = StringDeserializer.request[TestPost1](str)
       val post2 = TestPost1("155", TestBody1("abcde"))
       post1 should equal(post2)
     }
 
     "TestPost1 should deserialize with headers" in {
-      val str = """{"request":{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"method":["post"],"contentType":["test-body-1"],"messageId":["123"],"test":["a"]}},"body":{"data":"abcde"}}"""
+      val str = """{"uri":{"pattern":"/test-post-1/{id}","args":{"id":"155"}},"headers":{"method":["post"],"contentType":["test-body-1"],"messageId":["123"],"test":["a"]},"body":{"data":"abcde"}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val post1 = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         TestPost1(requestHeader, jsonParser)
@@ -109,11 +109,11 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
       ))
       postO.serialize(ba)
       val str = ba.toString("UTF-8")
-      str should equal("""{"request":{"uri":{"pattern":"/test-outer-resource"},"headers":{"messageId":["123"],"method":["get"],"contentType":["test-outer-body"]}},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":false}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":false}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":false}}}]}}}""")
+      str should equal("""{"uri":{"pattern":"/test-outer-resource"},"headers":{"messageId":["123"],"method":["get"],"contentType":["test-outer-body"]},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":false}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":false}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":false}}}]}}}""")
     }
 
     "TestOuterPost should deserialize" in {
-      val str = """{"request":{"uri":{"pattern":"/test-outer-resource"},"headers":{"method":["get"],"contentType":["test-outer-body"],"messageId":["123"]}},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":false}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":false}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":false}}}]}}}"""
+      val str = """{"uri":{"pattern":"/test-outer-resource"},"headers":{"method":["get"],"contentType":["test-outer-body"],"messageId":["123"]},"body":{"outerData":"abcde","_embedded":{"simple":{"innerData":"eklmn","_links":{"self":{"href":"/test-inner-resource","templated":false}}},"collection":[{"innerData":"xyz","_links":{"self":{"href":"/test-inner-resource","templated":false}}},{"innerData":"yey","_links":{"self":{"href":"/test-inner-resource","templated":false}}}]}}}"""
       val bi = new ByteArrayInputStream(str.getBytes("UTF-8"))
       val outer = MessageDeserializer.deserializeRequestWith(bi) { (requestHeader, jsonParser) ⇒
         requestHeader.uri should equal(Uri("/test-outer-resource"))
@@ -136,7 +136,7 @@ class TestRequestAnnotation extends FreeSpec with Matchers {
     }
 
     "Decode DynamicRequest" in {
-      val str = """{"request":{"uri":{"pattern":"/test"},"headers":{"method":["custom-method"],"contentType":["test-body-1"],"messageId":["123"]}},"body":{"resourceId":"100500"}}"""
+      val str = """{"uri":{"pattern":"/test"},"headers":{"method":["custom-method"],"contentType":["test-body-1"],"messageId":["123"]},"body":{"resourceId":"100500"}}"""
       val request = DynamicRequest(str)
       request shouldBe a[Request[_]]
       request.method should equal("custom-method")

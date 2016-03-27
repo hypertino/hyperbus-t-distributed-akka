@@ -5,7 +5,7 @@ import java.io.InputStream
 import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import eu.inn.binders.core.BindOptions
 import eu.inn.hyperbus.model.{Body, Request, Response}
-import eu.inn.hyperbus.transport.api.uri.UriJsonDeserializer
+import eu.inn.hyperbus.transport.api.uri.{Uri, UriJsonDeserializer}
 
 object MessageDeserializer {
 
@@ -22,21 +22,31 @@ object MessageDeserializer {
       expect(jp, JsonToken.START_OBJECT)
       expect(jp, JsonToken.FIELD_NAME)
       val fieldName = jp.getCurrentName
-      val requestHeader =
-        if (fieldName == "request") {
+      val uri =
+        if (fieldName == "uri") {
           factory.withJsonParser(jp) { deserializer =>
-            deserializer.unbind[RequestHeader]
+            deserializer.unbind[Uri]
           }
         } else {
-          throw DeserializeException(s"'request' field expected, but found: '$fieldName'")
+          throw DeserializeException(s"'uri' field expected, but found: '$fieldName'")
         }
       expect(jp, JsonToken.FIELD_NAME)
       val fieldName2 = jp.getCurrentName
-      val result =
-        if (fieldName2 == "body") {
-          deserializer(requestHeader, jp)
+      val headers =
+        if (fieldName2 == "headers") {
+          factory.withJsonParser(jp) { deserializer =>
+            deserializer.unbind[Map[String,Seq[String]]]
+          }
         } else {
-          throw DeserializeException(s"'body' field expected, but found: '$fieldName'")
+          throw DeserializeException(s"'headers' field expected, but found: '$fieldName2'")
+        }
+      expect(jp, JsonToken.FIELD_NAME)
+      val fieldName3 = jp.getCurrentName
+      val result =
+        if (fieldName3 == "body") {
+          deserializer(RequestHeader(uri, headers), jp)
+        } else {
+          throw DeserializeException(s"'body' field expected, but found: '$fieldName3'")
         }
       expect(jp, JsonToken.END_OBJECT)
       result
@@ -53,21 +63,33 @@ object MessageDeserializer {
       expect(jp, JsonToken.START_OBJECT)
       expect(jp, JsonToken.FIELD_NAME)
       val fieldName = jp.getCurrentName
-      val responseHeader =
-        if (fieldName == "response") {
+      val statusCode =
+        if (fieldName == "status") {
           factory.withJsonParser(jp) { deserializer =>
-            deserializer.unbind[ResponseHeader]
+            deserializer.unbind[Int]
           }
         } else {
-          throw DeserializeException(s"'response' field expected, but found: '$fieldName'")
+          throw DeserializeException(s"'status' field expected, but found: '$fieldName'")
         }
+
       expect(jp, JsonToken.FIELD_NAME)
       val fieldName2 = jp.getCurrentName
-      val result =
-        if (fieldName2 == "body") {
-          deserializer(responseHeader, jp)
+      val headers =
+        if (fieldName2 == "headers") {
+          factory.withJsonParser(jp) { deserializer =>
+            deserializer.unbind[Map[String,Seq[String]]]
+          }
         } else {
-          throw DeserializeException(s"'body' field expected, but found: '$fieldName'")
+          throw DeserializeException(s"'headers' field expected, but found: '$fieldName2'")
+        }
+
+      expect(jp, JsonToken.FIELD_NAME)
+      val fieldName3 = jp.getCurrentName
+      val result =
+        if (fieldName3 == "body") {
+          deserializer(ResponseHeader(statusCode, headers), jp)
+        } else {
+          throw DeserializeException(s"'body' field expected, but found: '$fieldName3'")
         }
       expect(jp, JsonToken.END_OBJECT)
       result

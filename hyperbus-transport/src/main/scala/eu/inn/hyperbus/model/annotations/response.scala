@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 @compileTimeOnly("enable macro paradise to expand macro annotations")
-class response(status: Int) extends StaticAnnotation {
+class response(statusCode: Int) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro ResponseMacro.response
 }
 
@@ -24,8 +24,8 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
   import c.universe._
 
   def updateClass(existingClass: ClassDef, clzCompanion: Option[ModuleDef] = None): c.Expr[Any] = {
-    val status = c.prefix.tree match {
-      case q"new response($status)" => c.Expr(status)
+    val statusCode = c.prefix.tree match {
+      case q"new response($statusCode)" => c.Expr(statusCode)
       case _ ⇒ c.abort(c.enclosingPosition, "Please provide arguments for @response annotation")
     }
 
@@ -59,11 +59,11 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     // S -> fresh term
     val newClass =
       q"""
-        @eu.inn.hyperbus.model.annotations.status($status)
+        @eu.inn.hyperbus.model.annotations.statusCode($statusCode)
         class $className[..$typeArgs](..$fieldsExceptHeaders,
           val headers: Map[String,Seq[String]], plain__init: Boolean)
           extends ..$bases with scala.Product {
-          def status: Int = ${className.toTermName}.status
+          def statusCode: Int = ${className.toTermName}.statusCode
 
           def copy[S <: $upperBound](body: S = this.body, headers: Map[String, Seq[String]] = this.headers)
             (implicit mcx: eu.inn.hyperbus.model.MessagingContextFactory): $className[S] = {
@@ -93,7 +93,7 @@ private[annotations] trait ResponseAnnotationMacroImpl extends AnnotationMacroIm
     val ctxVal = fresh("ctx")
     val companionExtra =
       q"""
-        def status: Int = $status
+        def statusCode: Int = $statusCode
 
         def apply[..$methodTypeArgs](..$fieldsExceptHeaders, headers: eu.inn.hyperbus.model.Headers):
           $className[..$classTypeNames] = {

@@ -2,4 +2,4 @@ package eu.inn.hyperbus.model.annotations
 
 import scala.annotation.StaticAnnotation
 
-class status(v: Int) extends StaticAnnotation
+class statusCode(v: Int) extends StaticAnnotation

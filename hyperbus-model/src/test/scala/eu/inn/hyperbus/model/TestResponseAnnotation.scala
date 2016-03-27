@@ -31,7 +31,7 @@ class TestResponseAnnotation extends FreeSpec with Matchers {
       msg.serialize(ba)
       val s = ba.toString("UTF8")
       //println(s)
-      s should equal("""{"response":{"status":201,"headers":{"messageId":["123"],"correlationId":["abc"],"contentType":["test-created-body"]}},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
+      s should equal("""{"status":201,"headers":{"messageId":["123"],"correlationId":["abc"],"contentType":["test-created-body"]},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
     }
 
     "Serialize Response with headers" in {
@@ -40,7 +40,7 @@ class TestResponseAnnotation extends FreeSpec with Matchers {
       msg.serialize(ba)
       val s = ba.toString("UTF8")
       //println(s)
-      s should equal("""{"response":{"status":201,"headers":{"test":["a"],"messageId":["123"],"correlationId":["abc"],"contentType":["test-created-body"]}},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
+      s should equal("""{"status":201,"headers":{"test":["a"],"messageId":["123"],"correlationId":["abc"],"contentType":["test-created-body"]},"body":{"resourceId":"100500","_links":{"location":{"href":"/resources/{resourceId}","templated":true}}}}""")
     }
 
     "hashCode, equals, product" in {

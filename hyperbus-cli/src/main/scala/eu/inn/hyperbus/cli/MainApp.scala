@@ -97,7 +97,7 @@ class CliService(console: Console, config: Config) extends Service {
   }
 
   private def outx(r: Response[Body]): Unit = {
-    console.writeln(s"<- ${r.getClass.getName}:{ ${r.status} @ ${r.body.contentType}\n----------")
+    console.writeln(s"<- ${r.getClass.getName}:{ ${r.statusCode} @ ${r.body.contentType}\n----------")
     outx(r.body)
     console.writeln("----------")
   }

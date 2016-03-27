@@ -72,6 +72,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
     "Send and Receive" in {
       import ExecutionContext.Implicits.global
       val cnt = new AtomicInteger(0)
+      implicit val patienceConfig = PatienceConfig(scaled(Span(5, Seconds)))
 
       val responseDeserializer = (input: InputStream) ⇒ {
         MessageDeserializer.deserializeResponseWith(input) { (responseHeader: ResponseHeader, responseBodyJson: JsonParser) ⇒
