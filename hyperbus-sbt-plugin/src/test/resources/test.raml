@@ -4,12 +4,14 @@ baseUri: https://test.maqdev.com
 types:
   BookTag:
     enum: [new,best-seller,classics]
+
   BookProperties:
     type: object
     properties:
       publishYear: integer
       issn: string
       tag: BookTag
+
   Book:
     type: object
     properties:
@@ -18,19 +20,34 @@ types:
       bookName: string
       authorName: string
       bookProperties: BookProperties
+
   BookTransaction:
     type: object
     properties:
       transactionId: string
+
   BookCreatedTransaction:
     type: object
     properties:
       transactionId: string
-annotationTypes:
-  forward:
+
+  Click:
+    type: object
+    properties:
+      clickUrl: string
+
+  ClickConfirmation:
+    type: object
+    properties:
+      id: string
+
+  ClicksInformation:
+    type: object
+    properties:
+      count: integer
+
+
 /authors/{authorId}/books/{bookId}:
-  (forward):
-    uri: /ergoiergreog
   uriParameters:
     authorId: string
     bookId: string
@@ -47,6 +64,7 @@ annotationTypes:
     responses:
       200:
       201:
+
 /authors/{authorId}/books:
   uriParameters:
     authorId: string
@@ -65,3 +83,22 @@ annotationTypes:
         body:
           application/json:
             type: BookCreatedTransaction
+
+/clicks:
+  post:
+    body:
+      application/json:
+        type: Click
+    responses:
+      201:
+        body:
+          application/json:
+            type: ClickConfirmation
+
+/clicks/{clickUrl}:
+  uriParameters:
+    clickUrl: string
+  get:
+    body:
+      application/json:
+        type: ClicksInformation

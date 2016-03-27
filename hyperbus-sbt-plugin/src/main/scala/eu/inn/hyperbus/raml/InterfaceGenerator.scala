@@ -15,10 +15,18 @@ import org.slf4j.LoggerFactory
 import scala.collection.JavaConversions._
 
 class InterfaceGenerator(api: Api, options: GeneratorOptions) {
-  var log = LoggerFactory.getLogger(getClass)
-  val dashToUpper = new DashCaseToUpperSnakeCaseConverter
-  val dashToPascal = new DashCaseToPascalCaseConverter
-  val camelToDash = new CamelCaseToDashCaseConverter
+  protected val log = LoggerFactory.getLogger(getClass)
+  protected val dashToUpper = new DashCaseToUpperSnakeCaseConverter
+  protected val dashToPascal = new DashCaseToPascalCaseConverter
+  protected val camelToDash = new CamelCaseToDashCaseConverter
+
+  protected val messageReservedWords = Set(
+    "uri", "messageId", "correlationId", "headers", "headerOption", "header", "serialize", "body", "statusCode", "contentType"
+  )
+
+  protected val bodyReservedWords = Set(
+    "contentType", "links"
+  )
 
   def generate(): String = {
     val builder = new StringBuilder
@@ -86,6 +94,9 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
           response.body.exists { body ⇒
             body.`type`.contains(obj.name)
           }
+        } ||
+        method.body.exists { body ⇒
+          body.`type`.contains(obj.name)
         }
       }
     }
@@ -109,6 +120,14 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
               response.body.exists { body ⇒
                 body.`type`.contains(obj.name)
               }
+          }
+        }
+      }
+
+      if (isBody) {
+        obj.properties.foreach { prop ⇒
+          if (bodyReservedWords.contains(prop.name)) {
+            throw new RamlSyntaxException(s"Can't generate class '${obj.name}': '${prop.name}' is a reserved word for a Body")
           }
         }
       }
@@ -161,6 +180,13 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     val name = requestClassName(resource.relativeUri.value, method.method)
     builder.append(s"case class $name(\n")
     val uriParameters = resource.uriParameters().toSeq
+
+    uriParameters.foreach { prop ⇒
+      if (messageReservedWords.contains(prop.name)) {
+        throw new RamlSyntaxException(s"Can't generate class '$name' for ${resource.relativeUri.value}: '${prop.name}' is a reserved word for a Request/Response")
+      }
+    }
+
     generateCaseClassProperties(builder, uriParameters)
     val bodyType = method.method match {
       case "get" ⇒ "QueryBody"
@@ -208,6 +234,13 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     val name = requestClassName(resource.relativeUri.value, "feed-" + method.method)
     builder.append(s"case class $name(\n")
     val uriParameters = resource.uriParameters().toSeq
+
+    uriParameters.foreach { prop ⇒
+      if (messageReservedWords.contains(prop.name)) {
+        throw new RamlSyntaxException(s"Can't generate class '$name' for ${resource.relativeUri.value}: '${prop.name}' is a reserved word for a Request/Response")
+      }
+    }
+
     generateCaseClassProperties(builder, uriParameters)
     val bodyType = method.method match {
       case "get" ⇒ "QueryBody"
@@ -309,3 +342,4 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     case _ ⇒ "???"
   }
 }
+
