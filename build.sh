@@ -33,7 +33,7 @@ SBT_RESULT=0
 set +e
 
 if [ -n "$publish" ] ; then
-	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test publish1
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test publish
 	SBT_RESULT=$?
 fi
 
