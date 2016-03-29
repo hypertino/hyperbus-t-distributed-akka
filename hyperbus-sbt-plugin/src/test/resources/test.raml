@@ -8,7 +8,10 @@ types:
   BookProperties:
     type: object
     properties:
-      publishYear: integer
+      publishYear:
+        type: number
+        format: int16
+      sold: integer
       issn: string
       tag: BookTag
 
@@ -44,7 +47,9 @@ types:
   ClicksInformation:
     type: object
     properties:
-      count: integer
+      count:
+        type: number
+        format: long
       lastRegistered:
         type: date
         required: false

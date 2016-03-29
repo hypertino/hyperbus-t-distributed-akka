@@ -325,8 +325,16 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
           "String"
         }
 
-      case _ : IntegerElement ⇒ "Long" // todo: support Int with annotations?
-      case _ : NumberElement ⇒ "Double"
+      case _ : IntegerElement ⇒ "Int"
+      case n : NumberElement ⇒ n.format match {
+        case "int32" | "int" ⇒ "Int"
+        case "int64" | "long" ⇒ "Long"
+        case "float" ⇒ "Float"
+        case "double" ⇒ "Double"
+        case "int16" ⇒ "Short"
+        case "int8" ⇒ "Byte"
+        case _ ⇒ "Double"
+      }
       case _ : BooleanElement ⇒ "Boolean"
       case _ : DateElement ⇒ "java.util.Date"
       case a : ArrayField ⇒

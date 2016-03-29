@@ -24,7 +24,8 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
     }
 
     case class BookProperties(
-        publishYear: Long,
+        publishYear: Short,
+        sold: Int,
         issn: String,
         tag: BookTag.StringEnum
       )
