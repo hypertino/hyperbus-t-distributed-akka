@@ -16,7 +16,7 @@ done
 ZOOKEEPER_PEERS=localhost:2181
 KAFKA_PEERS=localhost:9092
 
-wget http://www.us.apache.org/dist/kafka/0.8.2.1/kafka_2.10-0.8.2.1.tgz -O kafka.tgz
+wget http://www-eu.apache.org/dist/kafka/0.8.2.2/kafka_2.9.1-0.8.2.2.tgz -O kafka.tgz
 mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
 kafka/bin/zookeeper-server-start.sh kafka/config/zookeeper.properties &
 ZOOKEEPER_PID=$!
@@ -28,10 +28,17 @@ sleep 5
 
 kafka/bin/kafka-topics.sh --create --partitions 1 --replication-factor 1 --topic hyperbus-test --zookeeper localhost:2181
 
+SBT_RESULT=0
+
+set +e
+
 if [ -n "$publish" ] ; then
-	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test publish
+	sbt 'set every projectBuildNumber := "'${patch_version:-SNAPSHOT}'"' 'set testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-h", "target/test-reports")' clean test publish1
+	SBT_RESULT=$?
 fi
 
 kill $KAFKA_PID
 sleep 5
 kill $ZOOKEEPER_PID
+
+exit $SBT_RESULT
