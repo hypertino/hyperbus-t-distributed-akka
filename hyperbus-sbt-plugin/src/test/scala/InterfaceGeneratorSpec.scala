@@ -5,6 +5,8 @@ import com.mulesoft.raml1.java.parser.core.JavaNodeFactory
 import com.mulesoft.raml1.java.parser.path.resolver.IJavaPathResolver
 import eu.inn.hyperbus.raml.utils.JsToLogConsole
 import eu.inn.hyperbus.raml.{GeneratorOptions, InterfaceGenerator}
+import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch
+import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch.{Diff, Operation}
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.collection.JavaConversions
@@ -70,6 +72,12 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         lastRegistered: Option[java.util.Date],
         firstInserted: Option[java.util.Date]
       ) extends Body
+
+    case class Author(
+      name: String,
+      books: Seq[Book],
+      clicks: Map[String,Click]
+    )
 
 
     // --------------------
@@ -153,7 +161,7 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
     factory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
 
     factory.setPathResolver(new IJavaPathResolver {
-      override def list(path: String): util.List[String] = List("test2.raml")
+      override def list(path: String): util.List[String] = List("test.raml")
       override def content(path: String): String = {
         val resource = getClass.getResource(path)
         if (resource == null) {
@@ -164,13 +172,40 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
       }
     })
 
-    val api = factory.createApi("test2.raml")
+    val api = factory.createApi("test.raml")
     api.getErrors.foreach(s ⇒ println(s"---> $s"))
 
     val gen = new InterfaceGenerator(api, GeneratorOptions(packageName = "eu.inn.raml"))
     val result = gen.generate()
 
-    normalize(result) should include(normalize(referenceValue))
     result should include("package eu.inn.raml")
+    val idx = result.indexOf("\nobject BookTag {")
+    if (idx < 0) {
+      println(result)
+      fail("RAML generator doesn't contain permanent marker")
+    }
+    val resultPermanent = result.substring(idx)
+
+    val resultPermanentNormalized = normalize(resultPermanent)
+    val referenceValueNormalized = normalize(referenceValue)
+
+    if (resultPermanentNormalized.indexOf(referenceValueNormalized) < 0) {
+      val diff = new DiffMatchPatch
+      val diffResult = diff.diffMain(resultPermanentNormalized, referenceValueNormalized, false)
+      import JavaConversions._
+      diffResult.foreach {
+        case d: Diff if d.operation == Operation.EQUAL ⇒
+          print(d.text)
+        case d: Diff if d.operation == Operation.INSERT ⇒
+          println("\n+++ ==>")
+          print(d.text)
+          println("<== +++\n")
+        case d: Diff if d.operation == Operation.DELETE ⇒
+          println("\n--- ==>")
+          print(d.text)
+          println("<== ---\n")
+      }
+      fail("RAML generator doesn't return reference text")
+    }
   }
 }

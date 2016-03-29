@@ -31,15 +31,6 @@ types:
     properties:
       transactionId: string
 
-  Author:
-    type: object
-    properties:
-      name: string
-      books:
-        type: object
-        properties:
-          []: Book
-
   Click:
     type: object
     properties:
@@ -58,6 +49,17 @@ types:
         type: date
         required: false
       firstInserted?: date
+
+  Author:
+    type: object
+    properties:
+      name: string
+      books:
+        type: Book[]
+      clicks:
+        type: object
+        properties:
+          []: Click
 
 /authors/{authorId}/books/{bookId}:
   uriParameters:

@@ -3,11 +3,11 @@ package eu.inn.hyperbus.raml
 import java.util.Date
 
 import com.mulesoft.raml1.java.parser.model.api.Api
-import com.mulesoft.raml1.java.parser.model.datamodel.{DataElement, ObjectField, StrElement}
+import com.mulesoft.raml1.java.parser.model.datamodel._
 import com.mulesoft.raml1.java.parser.model.methodsAndResources.{Method, Resource}
 import eu.inn.binders.naming._
 import eu.inn.hyperbus.raml.annotationtypes.feed
-import eu.inn.hyperbus.raml.utils.{DashCaseToUpperSnakeCaseConverter, DashCaseToPascalCaseConverter}
+import eu.inn.hyperbus.raml.utils.{DashCaseToPascalCaseConverter, DashCaseToUpperSnakeCaseConverter}
 import eu.inn.hyperbus.transport.api.uri.{TextToken, UriParser}
 import org.jibx.util.NameUtilities
 import org.slf4j.LoggerFactory
@@ -296,7 +296,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
       builder.append(": ")
       if (isOptional)
         builder.append("Option[")
-      builder.append(property.`type`().headOption.map(mapType).getOrElse("Any"))
+      builder.append(mapType(property))
       if (isOptional)
         builder.append("]")
     }
@@ -310,6 +310,45 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     builder.append(s"  lazy val values = Seq(${el.enum_.map(dashToUpper.convert).mkString(",")})\n")
     builder.append("  lazy val valuesSet = values.toSet\n")
     builder.append("}\n\n")
+  }
+
+  protected def mapType(property: DataElement): String = {
+    property match {
+      case se : StrElement ⇒
+        se.`type`().headOption.flatMap { strEnumType ⇒
+          api.types.find(_.name == strEnumType) match {
+            case Some(str: StrElement) if str.enum_.nonEmpty ⇒
+              Some(strEnumType + ".StringEnum")
+            case _ ⇒ None
+          }
+        } getOrElse {
+          "String"
+        }
+
+      case _ : IntegerElement ⇒ "Long" // todo: support Int with annotations?
+      case _ : NumberElement ⇒ "Double"
+      case _ : BooleanElement ⇒ "Boolean"
+      case _ : DateElement ⇒ "java.util.Date"
+      case a : ArrayField ⇒
+        a.`type`.headOption.map{ t ⇒
+          val it = {if(t.endsWith("[]")) t.substring(0,t.length-2) else t}
+          "Seq[" + mapType(it) + "]"
+        } getOrElse {
+          log.warn(s"Can't map array type $a")
+          "Seq[Any]"
+        }
+      case d: ObjectField ⇒ d.`type`().headOption match {
+        case Some("object")
+          if d.properties.size == 1 &&
+          d.properties.headOption.exists(_.name.startsWith("["))
+        ⇒ "Map[String," + mapType(d.properties.get(0)) + "]"
+
+        case Some(t) ⇒ t
+      }
+      case other ⇒
+        log.warn(s"Can't map type $other")
+        "Any"
+    }
   }
 
   protected def mapType(`type`: String): String = `type` match {

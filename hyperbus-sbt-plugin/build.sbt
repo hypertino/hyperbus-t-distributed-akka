@@ -22,7 +22,8 @@ libraryDependencies ++= Seq(
   "org.jibx" % "jibx-tools" % "1.2.6",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "org.mockito" % "mockito-all" % "1.10.19" % "test"
+  "org.mockito" % "mockito-all" % "1.10.19" % "test",
+  "org.bitbucket.cowwoc" % "diff-match-patch" % "1.1" % "test"
 )
 
 fork in Test := true // without this RAML parser tests will fail
