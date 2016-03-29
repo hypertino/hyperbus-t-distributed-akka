@@ -153,7 +153,7 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
     factory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
 
     factory.setPathResolver(new IJavaPathResolver {
-      override def list(path: String): util.List[String] = List("test.raml")
+      override def list(path: String): util.List[String] = List("test2.raml")
       override def content(path: String): String = {
         val resource = getClass.getResource(path)
         if (resource == null) {
@@ -164,7 +164,7 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
       }
     })
 
-    val api = factory.createApi("test.raml")
+    val api = factory.createApi("test2.raml")
     api.getErrors.foreach(s ⇒ println(s"---> $s"))
 
     val gen = new InterfaceGenerator(api, GeneratorOptions(packageName = "eu.inn.raml"))
