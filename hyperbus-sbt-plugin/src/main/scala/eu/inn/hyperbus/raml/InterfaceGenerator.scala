@@ -226,6 +226,8 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         builder.append("\n  )]\n\n")
       else
         builder.append("\n  ]\n\n")
+    } else {
+      builder.append("\n\n")
     }
   }
 
