@@ -32,20 +32,20 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     val builder = new StringBuilder
     if (options.defaultImports) {
       generateImports(builder)
-      builder.append("\n// -------------------- \n")
+      builder.append("\n// --------------------\n\n")
     }
 
     options.customImports.foreach { customImports ⇒
       builder.append(customImports)
-      builder.append("\n// -------------------- \n")
+      builder.append("\n// --------------------\n\n")
     }
 
     if (options.generatorInformation) {
       generateInformation(builder)
-      builder.append("\n// -------------------- \n")
+      builder.append("\n// --------------------\n\n")
     }
     generateTypes(builder)
-    builder.append("\n// -------------------- \n")
+    builder.append("\n// --------------------\n\n")
     generateRequests(builder)
     builder.toString
   }
@@ -280,15 +280,25 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         builder.append(",\n    ")
       }
       isFirst = false
-      val propertyName = if (property.name.indexOf(':') >= 0) {
-        // hyperbus syntax x:@, y:*, etc
-        property.name.substring(0, property.name.indexOf(':'))
-      } else {
-        property.name
+      val (propertyName, isOptional) = {
+        val pname = if (property.name.indexOf(':') >= 0) {
+          // hyperbus syntax x:@, y:*, etc
+          property.name.substring(0, property.name.indexOf(':'))
+        } else {
+          property.name
+        }
+        (
+          if (pname.endsWith("?")) pname.substring(0, pname.indexOf("?")) else pname,
+          pname.endsWith("?") || (property.required != null && !property.required)
+          )
       }
       builder.append(propertyName)
       builder.append(": ")
+      if (isOptional)
+        builder.append("Option[")
       builder.append(property.`type`().headOption.map(mapType).getOrElse("Any"))
+      if (isOptional)
+        builder.append("]")
     }
   }
 

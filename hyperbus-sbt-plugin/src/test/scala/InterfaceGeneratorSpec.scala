@@ -66,11 +66,14 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
 
     @body("clicks-information")
     case class ClicksInformation(
-        count: Long
+        count: Long,
+        lastRegistered: Option[java.util.Date],
+        firstInserted: Option[java.util.Date]
       ) extends Body
 
 
     // --------------------
+
     @request(Method.GET, "/authors/{authorId}/books/{bookId}")
     case class AuthorBookGet(
         authorId: String,
@@ -137,7 +140,7 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         (r, prevIsSpace)
       }
       else {
-        (r + c, prevIsSpace)
+        (r + c2, c2 == ' ' || c2 == '\n')
       }
     }._1
   }

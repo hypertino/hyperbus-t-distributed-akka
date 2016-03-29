@@ -45,7 +45,10 @@ types:
     type: object
     properties:
       count: integer
-
+      lastRegistered:
+        type: date
+        required: false
+      firstInserted?: date
 
 /authors/{authorId}/books/{bookId}:
   uriParameters:
