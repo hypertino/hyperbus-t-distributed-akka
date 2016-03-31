@@ -1,20 +1,20 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.inn.binders.dynamic.{Obj, Text}
+import eu.inn.binders.dynamic.{Text, _}
 import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{Any, Specific, RequestMatcher}
+import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher, Specific}
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
+import testclasses._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
-import eu.inn.binders.dynamic._
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder
@@ -109,14 +109,14 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperbus = newHyperbus(ct, null)
-      val f = hyperbus <~ TestPost1(TestBody1("ha ha"))
+      val f = hyperbus <~ testclasses.TestPost1(testclasses.TestBody1("ha ha"))
 
       ct.input should equal(
         """{"uri":{"pattern":"/resources"},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-1"]},"body":{"resourceData":"ha ha"}}"""
       )
 
       whenReady(f) { r =>
-        r.body should equal(TestCreatedBody("100500"))
+        r.body should equal(testclasses.TestCreatedBody("100500"))
       }
     }
 
@@ -151,7 +151,7 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperbus = newHyperbus(ct, null)
-      val f = hyperbus <~ TestPostWithNoContent(TestBody1("empty"))
+      val f = hyperbus <~ TestPostWithNoContent(testclasses.TestBody1("empty"))
 
       ct.input should equal(
         """{"uri":{"pattern":"/empty"},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-1"]},"body":{"resourceData":"empty"}}"""
@@ -241,7 +241,7 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
       )
 
       val hyperbus = newHyperbus(ct, null)
-      val f = hyperbus <~ TestPost1(TestBody1("ha ha"))
+      val f = hyperbus <~ testclasses.TestPost1(testclasses.TestBody1("ha ha"))
 
       ct.input should equal(
         """{"uri":{"pattern":"/resources"},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-1"]},"body":{"resourceData":"ha ha"}}"""
@@ -256,42 +256,42 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
     "~> (server)" in {
       val st = new ServerTransportTest()
       val hyperbus = newHyperbus(null, st)
-      hyperbus ~> { post: TestPost1 =>
+      hyperbus ~> { post: testclasses.TestPost1 =>
         Future {
-          Created(TestCreatedBody("100500"))
+          Created(testclasses.TestCreatedBody("100500"))
         }
       }
 
       val req = """{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"contentType":["test-1"],"messageId":["123"]},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
-      msg should equal(TestPost1(TestBody1("ha ha")))
+      msg should equal(testclasses.TestPost1(testclasses.TestBody1("ha ha")))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
-        r should equal(Created(TestCreatedBody("100500")))
+        r should equal(Created(testclasses.TestCreatedBody("100500")))
       }
     }
 
     "~> (server) when request missed a contentType" in {
       val st = new ServerTransportTest()
       val hyperbus = newHyperbus(null, st)
-      hyperbus ~> { post: TestPost1 =>
+      hyperbus ~> { post: testclasses.TestPost1 =>
         Future {
-          Created(TestCreatedBody("100500"))
+          Created(testclasses.TestCreatedBody("100500"))
         }
       }
 
       val req = """{"uri":{"pattern":"/resources"},"headers":{"method":["post"],"messageId":["123"]},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
-      msg shouldBe a[TestPost1]
-      msg.body shouldBe a[TestBody1]
-      msg.body.asInstanceOf[TestBody1].resourceData should equal("ha ha")
+      msg shouldBe a[testclasses.TestPost1]
+      msg.body shouldBe a[testclasses.TestBody1]
+      msg.body.asInstanceOf[testclasses.TestBody1].resourceData should equal("ha ha")
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
-        r should equal(Created(TestCreatedBody("100500")))
+        r should equal(Created(testclasses.TestCreatedBody("100500")))
       }
     }
 
@@ -383,7 +383,7 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
       }
 
       val hyperbus = newHyperbus(clientTransport, null)
-      val futureResult = hyperbus <| TestPost1(TestBody1("ha ha"))
+      val futureResult = hyperbus <| testclasses.TestPost1(testclasses.TestBody1("ha ha"))
       whenReady(futureResult) { r =>
         sentEvents.size should equal(1)
       }
@@ -458,7 +458,7 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
     "~> (server throw exception)" in {
       val st = new ServerTransportTest()
       val hyperbus = newHyperbus(null, st)
-      hyperbus ~> { post: TestPost1 =>
+      hyperbus ~> { post: testclasses.TestPost1 =>
         Future {
           throw Conflict(ErrorBody("failed", errorId = "abcde12345"))
         }
@@ -467,7 +467,7 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
       val req = """{"uri":{"pattern":"/resources"},"headers":{"messageId":["123"],"method":["post"],"contentType":["test-1"]},"body":{"resourceData":"ha ha"}}"""
       val ba = new ByteArrayInputStream(req.getBytes("UTF-8"))
       val msg = MessageDeserializer.deserializeRequestWith(ba)(st.sInputDeserializer)
-      msg should equal(TestPost1(TestBody1("ha ha")))
+      msg should equal(testclasses.TestPost1(testclasses.TestBody1("ha ha")))
 
       val futureResult = st.sHandler(msg)
       whenReady(futureResult) { r =>
@@ -512,7 +512,7 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
     "off test |> (server)" in {
       val st = new ServerTransportTest()
       val hyperbus = newHyperbus(null, st)
-      val id1f = hyperbus |> { request: TestPost1 => Future {} }
+      val id1f = hyperbus |> { request: testclasses.TestPost1 => Future {} }
       val id1 = id1f.futureValue
 
       st.sSubscriptionHandler shouldNot equal(null)
@@ -520,7 +520,7 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
       st.sSubscriptionHandler should equal(null)
       st.sSubscriptionId should equal("1")
 
-      val id2f = hyperbus |> { request: TestPost1 => Future {} }
+      val id2f = hyperbus |> { request: testclasses.TestPost1 => Future {} }
       val id2 = id2f.futureValue
 
       st.sSubscriptionHandler shouldNot equal(null)

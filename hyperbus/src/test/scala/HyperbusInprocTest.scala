@@ -1,63 +1,19 @@
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.Text
+import eu.inn.binders.dynamic.{Null, Text}
 import eu.inn.hyperbus.Hyperbus
+import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.{Link, _}
 import eu.inn.hyperbus.transport._
 import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
-import eu.inn.hyperbus.transport.api.{ClientTransport, ServerTransport, TransportManager, TransportRoute}
+import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
+import testclasses._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ExecutionContext, Future}
-
-@body("test-1")
-case class TestBody1(resourceData: String) extends Body
-
-@body("test-2")
-case class TestBody2(resourceData: Long) extends Body
-
-@body("created-body")
-case class TestCreatedBody(resourceId: String,
-                           @fieldName("_links") links: Links.LinksMap = Links.location("/resources/{resourceId}", templated = true))
-  extends CreatedBody
-
-@body
-case class TestBodyNoContentType(resourceData: String) extends Body
-
-@request(Method.POST, "/resources")
-case class TestPost1(body: TestBody1) extends Request[TestBody1]
-  with DefinedResponse[Created[TestCreatedBody]]
-
-@request(Method.POST, "/resources")
-case class TestPost2(body: TestBody2) extends Request[TestBody2]
-  with DefinedResponse[Created[TestCreatedBody]]
-
-@request(Method.POST, "/resources")
-case class TestPost3(body: TestBody2) extends Request[TestBody2]
-  with DefinedResponse[(Ok[DynamicBody], Created[TestCreatedBody])]
-
-@request(Method.POST, "/empty")
-case class TestPostWithNoContent(body: TestBody1) extends Request[TestBody1]
-  with DefinedResponse[NoContent[EmptyBody]]
-
-@request(Method.POST, "/empty")
-case class StaticPostWithDynamicBody(body: DynamicBody) extends Request[DynamicBody]
-  with DefinedResponse[NoContent[EmptyBody]]
-
-@request(Method.POST, "/empty")
-case class StaticPostWithEmptyBody(body: EmptyBody) extends Request[EmptyBody]
-  with DefinedResponse[NoContent[EmptyBody]]
-
-@request(Method.GET, "/empty")
-case class StaticGetWithQuery(body: QueryBody) extends Request[QueryBody]
-  with DefinedResponse[Ok[DynamicBody]]
-
-@request(Method.POST, "/content-body-not-specified")
-case class StaticPostBodyWithoutContentType(body: TestBodyNoContentType) extends Request[TestBodyNoContentType]
-  with DefinedResponse[NoContent[EmptyBody]]
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration._
 
 class HyperbusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "Hyperbus " - {
@@ -65,26 +21,42 @@ class HyperbusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
       val hyperbus = newHyperbus()
 
-      hyperbus ~> { implicit post: TestPost1 =>
+      hyperbus ~> { implicit post: testclasses.TestPost1 =>
         Future {
-          Created(TestCreatedBody("100500"))
+          Created(testclasses.TestCreatedBody("100500"))
         }
       }
 
       hyperbus ~> { implicit post: TestPost2 =>
         Future {
-          Created(TestCreatedBody(post.body.resourceData.toString))
+          Created(testclasses.TestCreatedBody(post.body.resourceData.toString))
         }
       }
 
-      val f1 = hyperbus <~ TestPost1(TestBody1("ha ha"))
+      hyperbus ~> { implicit put: TestPostWith2Responses =>
+        Future {
+          Ok(TestAnotherBody(put.body.resourceData.reverse))
+        }
+      }
+
+      val f1 = hyperbus <~ testclasses.TestPost1(testclasses.TestBody1("ha ha"))
       whenReady(f1) { r =>
-        r.body should equal(TestCreatedBody("100500"))
+        r.body should equal(testclasses.TestCreatedBody("100500"))
       }
 
       val f2 = hyperbus <~ TestPost2(TestBody2(7890))
       whenReady(f2) { r =>
-        r.body should equal(TestCreatedBody("7890"))
+        r.body should equal(testclasses.TestCreatedBody("7890"))
+      }
+
+      val f3 = hyperbus <~ TestPostWith2Responses(testclasses.TestBody1("Yey"))
+      whenReady(f3) { r =>
+        r.body should equal(TestAnotherBody("yeY"))
+      }
+
+      val f4 = hyperbus <~ SomeContentPut("/test", DynamicBody(Null)) // this should just compile, don't remove
+      intercept[NoTransportRouteException] {
+        Await.result(f4, 10.seconds)
       }
     }
 
@@ -94,7 +66,7 @@ class HyperbusInprocTest extends FreeSpec with ScalaFutures with Matchers {
       hyperbus ~> { post: TestPost3 =>
         Future {
           if (post.body.resourceData == 1)
-            Created(TestCreatedBody("100500"))
+            Created(testclasses.TestCreatedBody("100500"))
           else if (post.body.resourceData == -1)
             throw Conflict(ErrorBody("failed"))
           else if (post.body.resourceData == -2)
@@ -108,7 +80,7 @@ class HyperbusInprocTest extends FreeSpec with ScalaFutures with Matchers {
 
       whenReady(f) { r =>
         r shouldBe a[Created[_]]
-        r.body should equal(TestCreatedBody("100500"))
+        r.body should equal(testclasses.TestCreatedBody("100500"))
       }
 
       val f2 = hyperbus <~ TestPost3(TestBody2(2))
