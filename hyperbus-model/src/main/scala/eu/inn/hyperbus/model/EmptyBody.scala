@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.model
 
-import eu.inn.binders.dynamic.{Null, Value}
+import eu.inn.binders.value._
 
 trait EmptyBody extends DynamicBody
 

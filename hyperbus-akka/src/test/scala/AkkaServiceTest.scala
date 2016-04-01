@@ -3,7 +3,7 @@ import akka.actor.{Actor, ActorSystem}
 import akka.testkit.TestActorRef
 import akka.util.Timeout
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.{Null, Text}
+import eu.inn.binders.value.{Null, Text}
 import eu.inn.hyperbus.akkaservice.annotations.group
 import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
 import eu.inn.hyperbus.model._

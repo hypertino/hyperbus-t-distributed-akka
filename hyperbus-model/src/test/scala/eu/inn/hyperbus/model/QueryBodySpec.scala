@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.model
 
-import eu.inn.binders.dynamic.{LstV, Lst, Text}
+import eu.inn.binders.value.{LstV, Lst, Text}
 import org.scalatest.{Matchers, FreeSpec}
 
 class QueryBodySpec extends FreeSpec with Matchers {

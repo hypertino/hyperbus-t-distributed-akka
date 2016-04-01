@@ -1,5 +1,5 @@
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic.Text
+import eu.inn.binders.value.Text
 import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.model.{Link, _}

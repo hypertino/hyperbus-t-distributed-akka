@@ -2,7 +2,7 @@ package eu.inn.hyperbus.model
 
 import java.io.OutputStream
 
-import eu.inn.binders.dynamic.{Text, Obj, Null, Value}
+import eu.inn.binders.value._
 import eu.inn.hyperbus.IdGenerator
 
 trait ErrorBody extends DynamicBody {

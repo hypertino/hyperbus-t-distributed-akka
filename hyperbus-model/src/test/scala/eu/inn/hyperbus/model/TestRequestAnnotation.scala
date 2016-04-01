@@ -3,7 +3,7 @@ package eu.inn.hyperbus.model
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.dynamic._
+import eu.inn.binders.value._
 import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.uri.Uri

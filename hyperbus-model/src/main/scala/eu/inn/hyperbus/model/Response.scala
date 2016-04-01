@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.model
 
-import eu.inn.binders.dynamic.Value
+import eu.inn.binders.value.Value
 import eu.inn.hyperbus.model.annotations.response
 
 trait NormalResponse extends Response[Body]

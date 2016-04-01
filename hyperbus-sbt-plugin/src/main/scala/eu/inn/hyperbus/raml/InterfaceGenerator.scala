@@ -9,7 +9,6 @@ import eu.inn.binders.naming._
 import eu.inn.hyperbus.raml.annotationtypes.feed
 import eu.inn.hyperbus.raml.utils.{DashCaseToPascalCaseConverter, DashCaseToUpperSnakeCaseConverter}
 import eu.inn.hyperbus.transport.api.uri.{TextToken, UriParser}
-import org.jibx.util.NameUtilities
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
@@ -267,7 +266,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         if (index == last._2)
           s
         else
-          NameUtilities.depluralize(s)
+          English.singular(s)
     } :+ method mkString "-"
     dashToPascal.convert(dashed)
   }

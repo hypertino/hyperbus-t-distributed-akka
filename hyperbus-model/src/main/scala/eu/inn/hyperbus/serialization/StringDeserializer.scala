@@ -2,7 +2,7 @@ package eu.inn.hyperbus.serialization
 
 import java.io.ByteArrayInputStream
 
-import eu.inn.binders.dynamic.{Null, Value}
+import eu.inn.binders.value.{Null, Value}
 import eu.inn.hyperbus.model._
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context

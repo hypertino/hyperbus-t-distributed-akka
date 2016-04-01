@@ -1,7 +1,7 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.concurrent.atomic.AtomicLong
 
-import eu.inn.binders.dynamic.{Obj, Text}
+import eu.inn.binders.value.{Obj, Text}
 import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
@@ -14,7 +14,7 @@ import org.scalatest.{FreeSpec, Matchers}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
-import eu.inn.binders.dynamic._
+import eu.inn.binders.value._
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder

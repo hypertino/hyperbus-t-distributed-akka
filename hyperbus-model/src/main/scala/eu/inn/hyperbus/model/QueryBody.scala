@@ -2,7 +2,7 @@ package eu.inn.hyperbus.model
 
 import java.net.{URLDecoder, URLEncoder}
 
-import eu.inn.binders.dynamic._
+import eu.inn.binders.value._
 import scala.collection.mutable
 import scala.util.control.NonFatal
 

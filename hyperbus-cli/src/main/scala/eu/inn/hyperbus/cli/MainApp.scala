@@ -3,7 +3,7 @@ package eu.inn.hyperbus.cli
 import akka.actor.Address
 import akka.cluster.Cluster
 import com.typesafe.config.Config
-import eu.inn.binders.dynamic.Text
+import eu.inn.binders.value.Text
 import eu.inn.binders.naming.PlainConverter
 import eu.inn.config.ConfigLoader
 import eu.inn.hyperbus.Hyperbus

@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor._
 import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe, UnsubscribeAck}
 import akka.pattern.pipe
-import eu.inn.binders.dynamic.Null
+import eu.inn.binders.value.Null
 import eu.inn.hyperbus.model.{Body, DynamicBody, DynamicRequest, Request}
 import eu.inn.hyperbus.serialization.{StringSerializer, MessageDeserializer, RequestDeserializer}
 import eu.inn.hyperbus.transport.api._
