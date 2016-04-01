@@ -1,5 +1,5 @@
 import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.value.Text
+import eu.inn.binders.value.{Null, Text}
 import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{body, request}
@@ -54,7 +54,7 @@ class HyperbusInprocTest extends FreeSpec with ScalaFutures with Matchers {
         r.body should equal(TestAnotherBody("yeY"))
       }
 
-      val f4 = hyperbus <~ SomeContentPut("/test", DynamicBody(Null)) // this should just compile, don't remove
+      val f4 = hyperbus <~ SomeContentPut("/test", DynamicBody(Null)) // this should compile, don't remove
       intercept[NoTransportRouteException] {
         Await.result(f4, 10.seconds)
       }
