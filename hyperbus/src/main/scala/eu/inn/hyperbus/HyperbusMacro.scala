@@ -126,7 +126,6 @@ private[hyperbus] trait HyperbusMacroImplementation {
     val in = weakTypeOf[IN]
     val thiz = c.prefix.tree
 
-    //val url = getUriAnnotation(in)
     val responseBodyTypes = getUniqueResponseBodies(in)
 
     responseBodyTypes.groupBy(getContentTypeAnnotation(_) getOrElse "") foreach { kv =>
@@ -244,17 +243,21 @@ private[hyperbus] trait HyperbusMacroImplementation {
   }
 
   private def getUriAnnotation(t: c.Type): String =
-    getStringAnnotation(t.typeSymbol, c.typeOf[uri]).getOrElse {
+    getStringAnnotation(t, c.typeOf[uri]).getOrElse {
       c.abort(c.enclosingPosition, s"@uri annotation is not defined for $t.}")
     }
 
-  private def getContentTypeAnnotation(t: c.Type): Option[String] =
-    getStringAnnotation(t.typeSymbol, c.typeOf[contentType])
+  private def getContentTypeAnnotation(t: c.Type): Option[String] = {
+    getStringAnnotation(t, c.typeOf[contentType])
+  }
 
   private def getMethodAnnotation(t: c.Type): Option[String] =
-    getStringAnnotation(t.typeSymbol, c.typeOf[method])
+    getStringAnnotation(t, c.typeOf[method])
 
-  private def getStringAnnotation(symbol: c.Symbol, atype: c.Type): Option[String] = {
+  private def getStringAnnotation(t: c.Type, atype: c.Type): Option[String] = {
+    val typeChecked = c.typecheck(q"(??? : ${t.typeSymbol})").tpe
+    val symbol = typeChecked.typeSymbol
+
     symbol.annotations.find { a =>
       a.tree.tpe <:< atype
     } flatMap {
