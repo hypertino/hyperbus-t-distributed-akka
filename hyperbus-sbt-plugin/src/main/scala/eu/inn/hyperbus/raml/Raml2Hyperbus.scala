@@ -59,7 +59,7 @@ object Raml2Hyperbus extends AutoPlugin {
       ramlFactory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
 
       if (!apiFile.exists()) {
-        throw new FileNotFoundException()(s"File ${apiFile.getAbsolutePath} doesn't exists")
+        throw new FileNotFoundException(s"File ${apiFile.getAbsolutePath} doesn't exists")
       }
 
       val ramlApi = ramlFactory.createApi(apiFile.getAbsolutePath)

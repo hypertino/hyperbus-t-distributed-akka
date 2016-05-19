@@ -6,7 +6,7 @@ import eu.inn.binders.value._
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
-case class SortBy(fieldName: String, descending: Boolean = false)
+
 
 trait QueryBody extends DynamicBody {
   def toQueryString(encoding: String = "UTF-8"): String = {
@@ -22,28 +22,6 @@ trait QueryBody extends DynamicBody {
     } mkString "&"
   }
 
-  def pageFrom: Option[Value] = content.asMap.get(DefQuery.PAGE_FROM)
-  def pageSize: Option[Value] = content.asMap.get(DefQuery.PAGE_SIZE)
-
-  // format is defined as: "field1=asc,field2=desc" or "field1" which means asc by default
-  def sortBy: Seq[SortBy] = content.asMap.get(DefQuery.SORT_BY) match {
-    case Some(v) ⇒
-      try {
-        v.asString.split(',').map { f ⇒
-          f.split(':').toList match {
-            case head :: tail ⇒ SortBy(head,
-              descending = tail.nonEmpty && (tail.head.toLowerCase() == "descending"
-                || tail.head.toLowerCase == "desc"))
-            case other ⇒ SortBy(other.head, descending = false)
-          }
-        }
-      } catch {
-        case NonFatal(e) ⇒
-          throw new IllegalArgumentException(s"$v has an incorrect sortBy format", e)
-      }
-    case None ⇒
-      Seq.empty
-  }
   def filter: Obj = Obj(content.asMap.filterNot(_._1.contains(".")))
 }
 
@@ -92,30 +70,6 @@ class QueryBuilder(private [this] val args: mutable.Map[String, Value]) {
     this
   }
 
-  def pageFrom(value: Value): QueryBuilder = {
-    args += DefQuery.PAGE_FROM → value
-    this
-  }
-
-  def pageSize(value: Value): QueryBuilder = {
-    args += DefQuery.PAGE_SIZE → value
-    this
-  }
-
-  def sortBy(field: String, descending: Boolean = false): QueryBuilder = {
-    args += { args.get(DefQuery.SORT_BY) match {
-      case Some(v) ⇒
-        DefQuery.SORT_BY → Text(
-          v.asString + "," +  field + {if (descending)":desc" else ""}
-        )
-      case None ⇒
-        DefQuery.SORT_BY → Text(
-          field + {if (descending)":desc" else ""}
-        )
-    }}
-    this
-  }
-
   def addQueryString(queryString: String, encoding: String = "UTF-8"): QueryBuilder = {
     if (!queryString.isEmpty) {
       val q = if (queryString.charAt(0) == '?')
@@ -143,10 +97,4 @@ class QueryBuilder(private [this] val args: mutable.Map[String, Value]) {
   }
 
   def result(): QueryBody = QueryBodyContainer(None, Obj(args.toMap))
-}
-
-object DefQuery {
-  val PAGE_FROM       = "page.from"
-  val PAGE_SIZE       = "page.size"
-  val SORT_BY         = "sort.by"
 }
