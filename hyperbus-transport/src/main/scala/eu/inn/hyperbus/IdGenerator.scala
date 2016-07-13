@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 object IdGenerator {
   private val random = new SecureRandom()
-  private val base64t = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz~" // sorted by char code
+  private val base64t = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz" // sorted by char code
   private val counter = new AtomicInteger(random.nextInt(65536))
 
   def create(): String = {
