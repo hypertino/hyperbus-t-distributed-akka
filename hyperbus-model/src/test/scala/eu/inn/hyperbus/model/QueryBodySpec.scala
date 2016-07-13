@@ -23,17 +23,5 @@ class QueryBodySpec extends FreeSpec with Matchers {
       val query = new QueryBuilder() add ("x"→ "1") add ("y" → LstV("2", "3")) result()
       query.toQueryString() should equal("y=2&y=3&x=1")
     }
-
-    "sortBy should decode" in {
-      QueryBody.fromQueryString("?sort.by=field1").sortBy should equal(Seq(SortBy("field1")))
-      QueryBody.fromQueryString("?sort.by=field1%3Adesc").sortBy should equal(Seq(SortBy("field1", true)))
-      QueryBody.fromQueryString("?sort.by=field1%2Cfield2").sortBy should equal(Seq(SortBy("field1"),SortBy("field2")))
-      QueryBody.fromQueryString("?sort.by=field1%3Adesc%2Cfield2%3Aasc").sortBy should equal(Seq(SortBy("field1", true),SortBy("field2")))
-    }
-
-    "sort.by should encode to" in {
-      new QueryBuilder() sortBy("field1") result() toQueryString() should equal("sort.by=field1")
-      new QueryBuilder() sortBy("field1") sortBy("field2",true) result() toQueryString() should equal("sort.by=field1%2Cfield2%3Adesc")
-    }
   }
 }

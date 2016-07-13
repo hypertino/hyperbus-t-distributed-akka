@@ -1,6 +1,6 @@
 package eu.inn.hyperbus.raml
 
-import java.io.{File, IOException}
+import java.io.{File, FileNotFoundException}
 
 import com.mulesoft.raml.webpack.holders.JSConsole
 import com.mulesoft.raml1.java.parser.core.JavaNodeFactory
@@ -59,7 +59,7 @@ object Raml2Hyperbus extends AutoPlugin {
       ramlFactory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
 
       if (!apiFile.exists()) {
-        throw new IOException(s"File ${apiFile.getAbsolutePath} doesn't exists")
+        throw new FileNotFoundException(s"File ${apiFile.getAbsolutePath} doesn't exists")
       }
 
       val ramlApi = ramlFactory.createApi(apiFile.getAbsolutePath)
