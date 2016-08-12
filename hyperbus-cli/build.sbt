@@ -10,7 +10,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "jline" % "jline" % "2.12.1",
-  "eu.inn" %% "binders-core" % "0.12.85",
+  "eu.inn" %% "binders-core" % "0.12.93",
   "eu.inn" %% "service-control" % "0.1.16",
   "eu.inn" %% "service-config" % "0.1.3",
   "eu.inn" %% "hyperbus" % version.value,
