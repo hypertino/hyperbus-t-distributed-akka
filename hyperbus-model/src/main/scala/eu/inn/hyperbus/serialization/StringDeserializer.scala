@@ -39,10 +39,10 @@ object StringDeserializer {
 
   def dynamicResponse(input: String): Response[Body] = dynamicResponse(input, defaultEncoding)
 
-  def dynamicResponse(input: String, encoding: String): Response[Body] = {
+  def dynamicResponse(input: String, encoding: String): Response[DynamicBody] = {
     val byteStream = new ByteArrayInputStream(input.getBytes(encoding))
     MessageDeserializer.deserializeResponseWith(byteStream) { (responseHeader, responseBodyJson) =>
-      StandardResponse(responseHeader, responseBodyJson)
+      StandardResponse(responseHeader, responseBodyJson).asInstanceOf[Response[DynamicBody]]
     }
   }
 }

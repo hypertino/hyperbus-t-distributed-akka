@@ -80,13 +80,14 @@ private[hyperbus] trait HyperbusMacroImplementation {
 
     val thizVal = fresh("thiz")
     val rmVal = fresh("requestMatcher")
+    val requestVal = fresh("request")
 
     val obj =
       q"""{
       val $thizVal = $thiz
       val $rmVal = $thizVal.macroApiImpl.requestMatcher($uriPattern, $methodGetter, $contentType)
       $thizVal.onCommand[eu.inn.hyperbus.model.Response[eu.inn.hyperbus.model.Body],$requestType]($rmVal, $requestDeserializer _) {
-        response: $requestType => $handler(response)
+        $requestVal: $requestType => $handler($requestVal)
       }
     }"""
     //println(obj)
