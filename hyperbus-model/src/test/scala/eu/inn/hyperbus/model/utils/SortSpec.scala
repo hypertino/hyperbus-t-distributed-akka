@@ -11,6 +11,9 @@ class SortSpec extends FreeSpec with Matchers {
       Sort.parse("-field1") should equal(Seq(SortBy("field1", descending = true)))
       Sort.parse("field1,field2") should equal(Seq(SortBy("field1"),SortBy("field2")))
       Sort.parse("-field1,+field2") should equal(Seq(SortBy("field1", descending = true),SortBy("field2")))
+      Sort.parse("") should equal(Seq.empty)
+      Sort.parse("   ") should equal(Seq.empty)
+      Sort.parse(" -field1  , +field2") should equal(Seq(SortBy("field1", descending = true),SortBy("field2")))
     }
 
     "should decode implicit from QueryBody" in {

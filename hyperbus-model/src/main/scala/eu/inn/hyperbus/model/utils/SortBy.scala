@@ -24,18 +24,15 @@ object Sort {
   }
 
   def parse(value: String): Seq[SortBy] = {
-    value.split(',').map { f ⇒
-      if (f.startsWith("-")) {
-        SortBy(f.substring(1), descending = true)
-      }
-      else {
-        if (f.startsWith("+")) {
-          SortBy(f.substring(1), descending = false)
-        }
-        else {
-          SortBy(f, descending = false)
-        }
-      }
+    value.split(',').map(_.trim).flatMap {
+      case s if s.startsWith("+") && s.length > 1 ⇒
+        Some(SortBy(s.substring(1), descending = false))
+      case s if s.startsWith("-") && s.length > 1 ⇒
+        Some(SortBy(s.substring(1), descending = true))
+      case s if s.nonEmpty ⇒
+        Some(SortBy(s, descending = false))
+      case _ ⇒
+        None
     }
   }
 
