@@ -4,6 +4,7 @@ import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import org.slf4j.LoggerFactory
+import rx.lang.scala.Subscriber
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -66,19 +67,20 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
     }
   }
 
-  def onEvent(requestMatcher: RequestMatcher,
+  def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
               groupName: String,
-              inputDeserializer: RequestDeserializer[Request[Body]])
-             (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
+              inputDeserializer: RequestDeserializer[REQ],
+              subscriber: Subscriber[REQ]): Future[Subscription] = {
 
     val transport = lookupServerTransport(requestMatcher)
     transport.onEvent(
       requestMatcher,
       groupName,
-      inputDeserializer)(handler) map { underlyingSubscription ⇒
+      inputDeserializer,
+      subscriber) map { underlyingSubscription ⇒
 
       val subscription = TransportSubscription(transport, underlyingSubscription)
-      log.info(s"New `onEvent` subscription on $requestMatcher: #${handler.hashCode.toHexString}. $subscription")
+      log.info(s"New `onEvent` subscription on $requestMatcher: #$subscription")
       subscription
     }
   }

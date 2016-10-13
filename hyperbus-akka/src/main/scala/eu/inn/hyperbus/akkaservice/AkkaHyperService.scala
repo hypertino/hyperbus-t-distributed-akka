@@ -78,10 +78,12 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
 
       getGroupAnnotation(m).map { groupName ⇒
         q"""
-          $hyperbusVal.onEventForGroup[$argType]($groupName, { case $messageVal =>
-            _root_.akka.pattern.ask($actorVal, $messageVal).mapTo[Unit]
-          })
+          $hyperbusVal.onEventForGroup[$argType]($groupName)
         """
+        // TODO: fix it
+        //          $hyperbusVal.onEventForGroup[$argType]($groupName, { case $messageVal =>
+        //            _root_.akka.pattern.ask($actorVal, $messageVal).mapTo[Unit]
+        //          })
       } getOrElse {
         val resultType = m.returnType
         val responseBodyTypeSig = typeOf[Response[Body]]

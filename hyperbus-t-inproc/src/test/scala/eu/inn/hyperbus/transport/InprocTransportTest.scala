@@ -9,6 +9,7 @@ import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
+import rx.lang.scala.Subscriber
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
@@ -67,28 +68,28 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
       val group1 = new AtomicInteger(0)
       val group1promise = Promise[Unit]()
-      val group1Func = (msg: TransportRequest) => {
-        Future[Unit] {
+      val group1subscriber = new Subscriber[Request[Body]] {
+        override def onNext(value: Request[Body]): Unit = {
           group1.incrementAndGet()
           group1promise.success(Unit)
         }
       }
 
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]()
-      val group2Func = (msg: TransportRequest) => {
-        Future[Unit] {
+      val group2subscriber = new Subscriber[Request[Body]] {
+        override def onNext(value: Request[Body]): Unit = {
           group2.incrementAndGet()
           group2promise.success(Unit)
         }
       }
 
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null)(group2Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null)(group2Func)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null, group2subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null, group2subscriber)
 
       val f = t.ask(MockRequest(MockBody("hey")), null).asInstanceOf[Future[MockResponse[MockBody]]]
 
@@ -125,28 +126,28 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
       val group1 = new AtomicInteger(0)
       val group1promise = Promise[Unit]()
-      val group1Func = (msg: TransportRequest) => {
-        Future[Unit] {
+      val group1subscriber = new Subscriber[Request[Body]] {
+        override def onNext(value: Request[Body]): Unit = {
           group1.incrementAndGet()
           group1promise.success(Unit)
         }
       }
 
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]()
-      val group2Func = (msg: TransportRequest) => {
-        Future[Unit] {
+      val group2subscriber = new Subscriber[Request[Body]] {
+        override def onNext(value: Request[Body]): Unit = {
           group2.incrementAndGet()
           group2promise.success(Unit)
         }
       }
 
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null)(group2Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null)(group2Func)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null, group2subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null, group2subscriber)
 
       val f: Future[PublishResult] = t.publish(MockRequest(MockBody("hey")))
 
@@ -169,28 +170,28 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
       val group1 = new AtomicInteger(0)
       val group1promise = Promise[Unit]()
-      val group1Func = (msg: TransportRequest) => {
-        Future[Unit] {
+      val group1subscriber = new Subscriber[Request[Body]] {
+        override def onNext(value: Request[Body]): Unit = {
           group1.incrementAndGet()
           group1promise.success(Unit)
         }
       }
 
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null)(group1Func)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]()
-      val group2Func = (msg: TransportRequest) => {
-        Future[Unit] {
+      val group2subscriber = new Subscriber[Request[Body]] {
+        override def onNext(value: Request[Body]): Unit = {
           group2.incrementAndGet()
           group2promise.success(Unit)
         }
       }
 
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null)(group2Func)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null)(group2Func)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null, group2subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group2", null, group2subscriber)
 
       val f: Future[PublishResult] = t.publish(MockRequest(MockBody("hey")))
 

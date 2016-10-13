@@ -1,19 +1,17 @@
-import eu.inn.binders.annotations.fieldName
 import eu.inn.binders.value.{Null, Text}
 import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.model.annotations.{body, request}
 import eu.inn.hyperbus.transport._
+import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
-import eu.inn.hyperbus.transport.api._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 import testclasses._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class HyperbusInprocTest extends FreeSpec with ScalaFutures with Matchers {
   "Hyperbus " - {

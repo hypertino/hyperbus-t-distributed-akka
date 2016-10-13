@@ -2,13 +2,14 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.typesafe.config.ConfigFactory
 import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.{Body, Method, Request}
+import eu.inn.hyperbus.model.{Body, DynamicRequest, Method, Request}
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
+import rx.lang.scala.Subscriber
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -46,13 +47,11 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
 
       import ExecutionContext.Implicits.global
 
+      val subscriber1 = new Subscriber[MockRequest]() { override def onNext(value: MockRequest): Unit = {} }
+
       // read previous messages if any
-      val fsub1 = transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
-        case msg ⇒ Future {}
-      }
-      val fsub2 = transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply) {
-        case msg ⇒ Future {}
-      }
+      val fsub1 = transportManager.onEvent[MockRequest](RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply, subscriber1)
+      val fsub2 = transportManager.onEvent[MockRequest](RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply, subscriber1)
       Thread.sleep(1000)
       val sub1 = fsub1.futureValue
       val sub2 = fsub2.futureValue
@@ -75,27 +74,16 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
       val cnt = new AtomicInteger(0)
 
       val fsubs = mutable.MutableList[Future[Subscription]]()
-
-      fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
-        case msg: MockRequest => Future {
-          msg.body.test should equal("12345")
+      val subscriber2 = new Subscriber[MockRequest]() {
+        override def onNext(value: MockRequest): Unit = {
+          value.body.test should equal("12345")
           cnt.incrementAndGet()
         }
       }
 
-      fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply) {
-        case msg: MockRequest => Future {
-          msg.body.test should equal("12345")
-          cnt.incrementAndGet()
-        }
-      }
-
-      fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply) {
-        case msg: MockRequest => Future {
-          msg.body.test should equal("12345")
-          cnt.incrementAndGet()
-        }
-      }
+      fsubs += transportManager.onEvent[MockRequest](RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply, subscriber2)
+      fsubs += transportManager.onEvent[MockRequest](RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub1", MockRequest.apply, subscriber2)
+      fsubs += transportManager.onEvent[MockRequest](RequestMatcher(Some(Uri("/mock/{partitionId}"))), "sub2", MockRequest.apply, subscriber2)
 
       val subs = fsubs.map(_.futureValue)
 
@@ -121,20 +109,21 @@ class KafkaTransportTest extends FreeSpec with ScalaFutures with Matchers with B
     val cnt = new AtomicInteger(0)
 
     val fsubs = mutable.MutableList[Future[Subscription]]()
-
-    fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock1/{partitionId}"))), "sub1", MockRequest1.apply) {
-      case msg: MockRequest1 => Future {
-        msg.body.test should equal("12345")
+    val subscriber1 = new Subscriber[MockRequest1]() {
+      override def onNext(value: MockRequest1): Unit = {
+        value.body.test should equal("12345")
+        cnt.incrementAndGet()
+      }
+    }
+    val subscriber2 = new Subscriber[MockRequest2]() {
+      override def onNext(value: MockRequest2): Unit = {
+        value.body.test should equal("54321")
         cnt.incrementAndGet()
       }
     }
 
-    fsubs += transportManager.onEvent(RequestMatcher(Some(Uri("/mock2/{partitionId}"))), "sub1", MockRequest2.apply) {
-      case msg: MockRequest2 => Future {
-        msg.body.test should equal("54321")
-        cnt.incrementAndGet()
-      }
-    }
+    fsubs += transportManager.onEvent[MockRequest1](RequestMatcher(Some(Uri("/mock1/{partitionId}"))), "sub1", MockRequest1.apply, subscriber1)
+    fsubs += transportManager.onEvent[MockRequest2](RequestMatcher(Some(Uri("/mock2/{partitionId}"))), "sub1", MockRequest2.apply, subscriber2)
     val subs = fsubs.map(_.futureValue)
 
     Thread.sleep(1000) // we need to wait until subscriptions will go acros the

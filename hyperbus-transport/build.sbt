@@ -11,6 +11,7 @@ libraryDependencies ++= Seq(
   "eu.inn" %% "binders-json" % "0.12.47",
   "eu.inn" %% "binders-typesafe-config" % "0.12.15",
   "com.typesafe" % "config" % "1.2.1",
+  "io.reactivex" %% "rxscala" % "0.26.3",
   "org.slf4j" % "slf4j-api" % "1.7.12",
   "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 )

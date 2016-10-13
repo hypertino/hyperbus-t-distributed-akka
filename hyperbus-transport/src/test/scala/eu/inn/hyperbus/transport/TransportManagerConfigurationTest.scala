@@ -4,9 +4,10 @@ import com.typesafe.config.{Config, ConfigFactory}
 import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{Any, RegexMatcher, Specific, RequestMatcher}
+import eu.inn.hyperbus.transport.api.matchers.{Any, RegexMatcher, RequestMatcher, Specific}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
+import rx.lang.scala.Subscriber
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -26,10 +27,10 @@ class MockServerTransport(config: Config) extends ServerTransport {
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
 
-  override def onEvent(requestMatcher: RequestMatcher,
+  override def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                        groupName: String,
-                       inputDeserializer: RequestDeserializer[Request[Body]])
-                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = ???
+                       inputDeserializer: RequestDeserializer[REQ],
+                       subscriber: Subscriber[REQ]): Future[Subscription] = ???
 
   override def off(subscription: Subscription): Future[Unit] = ???
 }

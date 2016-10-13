@@ -5,6 +5,7 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
+import rx.lang.scala.Observable
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -16,7 +17,7 @@ trait HyperbusApi {
 
   def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperbusMacro.publish[REQ]
 
-  def |>[REQ <: Request[Body]](handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperbusMacro.onEvent[REQ]
+  def |>[REQ <: Request[Body]] : Observable[REQ] = macro HyperbusMacro.onEvent[REQ]
 
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): Future[Subscription] = macro HyperbusMacro.onCommand[REQ]
 
@@ -41,10 +42,9 @@ trait HyperbusApi {
 
   def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                     groupName: Option[String],
-                                    requestDeserializer: RequestDeserializer[REQ])
-                                   (handler: (REQ) => Future[Unit]): Future[Subscription]
+                                    requestDeserializer: RequestDeserializer[REQ]): Observable[REQ]
 
-  def onEventForGroup[REQ <: Request[Body]](groupName: String, handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperbusMacro.onEventForGroup[REQ]
+  def onEventForGroup[REQ <: Request[Body]](groupName: String): Observable[REQ] = macro HyperbusMacro.onEventForGroup[REQ]
 
   def off(subscription: Subscription): Future[Unit]
 

@@ -1,7 +1,8 @@
 package eu.inn.hyperbus.transport.api
 
 import com.typesafe.config.{Config, ConfigFactory}
-import eu.inn.hyperbus.transport.api.matchers.{RequestMatcher, Any}
+import eu.inn.hyperbus.model.{Body, Request}
+import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher}
 import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.util.ConfigUtils
 

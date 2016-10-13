@@ -12,6 +12,7 @@ import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.distributedakka._
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
+import rx.lang.scala.Subscriber
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -41,11 +42,11 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
     (subscriptionManager ? CommandSubscription(requestMatcher, inputDeserializer, handler)).asInstanceOf[Future[Subscription]]
   }
 
-  override def onEvent(requestMatcher: RequestMatcher,
+  override def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                        groupName: String,
-                       inputDeserializer: RequestDeserializer[Request[Body]])
-                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
-    (subscriptionManager ? EventSubscription(requestMatcher, groupName, inputDeserializer, handler)).asInstanceOf[Future[Subscription]]
+                       inputDeserializer: RequestDeserializer[REQ],
+                       subscriber: Subscriber[REQ]): Future[Subscription] = {
+    (subscriptionManager ? EventSubscription(requestMatcher, groupName, inputDeserializer, subscriber)).asInstanceOf[Future[Subscription]]
   }
 
   override def off(subscription: Subscription): Future[Unit] = {

@@ -5,17 +5,19 @@ import java.util.Properties
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ExecutorService, Executors, TimeUnit}
 
+import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization.MessageDeserializer
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}
 import org.slf4j.LoggerFactory
+import rx.lang.scala.Subscriber
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
 import scala.util.control.NonFatal
 
-private[transport] class TopicSubscription(
+private[transport] class TopicSubscription[REQ <: Request[Body]](
                          consumerProperties: Properties,
                          encoding: String,
                          threadCount: Int,
@@ -24,8 +26,8 @@ private[transport] class TopicSubscription(
                        ) {
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
   protected[this] val subscriptionCounter = new AtomicLong(1)
-  protected[this] val underlyingSubscriptions = TrieMap[Long, UnderlyingSubscription]()
-  protected[this] val subscriptionsByRequest = TrieMap[RequestMatcher, Vector[UnderlyingSubscription]]()
+  protected[this] val underlyingSubscriptions = TrieMap[Long, UnderlyingSubscription[REQ]]()
+  protected[this] val subscriptionsByRequest = TrieMap[RequestMatcher, Vector[UnderlyingSubscription[REQ]]]()
   protected[this] val consumerId = this.hashCode().toHexString + "@" + groupName
   protected val randomGen = new Random()
 
@@ -73,7 +75,7 @@ private[transport] class TopicSubscription(
     }
   }
 
-  def addUnderlying(subscription: UnderlyingSubscription): Long = {
+  def addUnderlying(subscription: UnderlyingSubscription[REQ]): Long = {
     val nextId = subscriptionCounter.incrementAndGet()
     this.underlyingSubscriptions.put(nextId, subscription)
     this.subscriptionsByRequest.get(subscription.requestMatcher) match {
@@ -122,8 +124,9 @@ private[transport] class TopicSubscription(
         val inputBytes = new ByteArrayInputStream(message)
         val input = MessageDeserializer.deserializeRequestWith(inputBytes)(underlying.inputDeserializer)
         if (underlying.requestMatcher.matchMessage(input)) {
+          println(input + " - " + underlying)
           // todo: test order of matching?
-          underlying.handler(input)
+          underlying.subscriber.asInstanceOf[Subscriber[REQ]].onNext(input)
           atLeastOneHandler = true
         }
       }

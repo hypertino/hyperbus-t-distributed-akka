@@ -8,9 +8,10 @@ import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, U
 import akka.pattern.pipe
 import eu.inn.binders.value.Null
 import eu.inn.hyperbus.model.{Body, DynamicBody, DynamicRequest, Request}
-import eu.inn.hyperbus.serialization.{StringSerializer, MessageDeserializer, RequestDeserializer}
+import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestDeserializer, StringSerializer}
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
+import rx.lang.scala.Subscriber
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -79,10 +80,10 @@ private[transport] case class CommandSubscription(requestMatcher: RequestMatcher
   def groupNameOption = None
 }
 
-private[transport] case class EventSubscription(requestMatcher: RequestMatcher,
+private[transport] case class EventSubscription[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                                 groupName: String,
-                                                inputDeserializer: RequestDeserializer[Request[Body]],
-                                                handler: (Request[Body]) => Future[Unit])
+                                                inputDeserializer: RequestDeserializer[REQ],
+                                                subscriber: Subscriber[REQ])
   extends SubscriptionCommand {
 
   def groupNameOption = Some(groupName)
@@ -256,11 +257,13 @@ private[transport] class EventActor(val topic: String, groupName: String) extend
           getRandomElement(subscriptions)
       }
 
-      selectedSubscriptions.foreach { case subscription: EventSubscription ⇒
-        subscription.handler(request).onFailure {
-          case NonFatal(e) ⇒
-            log.error(e, s"Handler ${subscription.handler} is failed on request $request")
-        }
+      selectedSubscriptions.foreach { case subscription: EventSubscription[Request[Body]] ⇒
+        subscription.subscriber.onNext(request)
+//          TODO: sort out
+//          .onFailure {
+//          case NonFatal(e) ⇒
+//            log.error(e, s"Handler ${subscription.handler} is failed on request $request")
+//        }
       }
     }
   }

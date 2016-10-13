@@ -11,6 +11,7 @@ import eu.inn.hyperbus.transport.inproc.{HandlerWrapper, InprocSubscription, Sub
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
+import rx.lang.scala.Subscriber
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -169,17 +170,17 @@ class InprocTransport(serialize: Boolean = false)
     Future.successful(InprocSubscription(id))
   }
 
-  override def onEvent(matcher: RequestMatcher,
+  override def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
                        groupName: String,
-                       inputDeserializer: RequestDeserializer[Request[Body]])
-                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
+                       inputDeserializer: RequestDeserializer[REQ],
+                       subscriber: Subscriber[REQ]): Future[Subscription] = {
     if (matcher.uri.isEmpty)
       throw new IllegalArgumentException("requestMatcher.uri")
 
     val id = subscriptions.add(
       matcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(Some(groupName), matcher),
-      HandlerWrapper(inputDeserializer, handler.asInstanceOf[(TransportRequest) => Future[TransportResponse]])
+      HandlerWrapper(inputDeserializer)
     )
     Future.successful(InprocSubscription(id))
   }
