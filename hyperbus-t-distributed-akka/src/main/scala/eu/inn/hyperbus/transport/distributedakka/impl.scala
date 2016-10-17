@@ -11,7 +11,7 @@ import eu.inn.hyperbus.model.{Body, DynamicBody, DynamicRequest, Request}
 import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestDeserializer, StringSerializer}
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
-import rx.lang.scala.Subscriber
+import rx.lang.scala.Observer
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -83,7 +83,7 @@ private[transport] case class CommandSubscription(requestMatcher: RequestMatcher
 private[transport] case class EventSubscription[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                                 groupName: String,
                                                 inputDeserializer: RequestDeserializer[REQ],
-                                                subscriber: Subscriber[REQ])
+                                                subscriber: Observer[REQ])
   extends SubscriptionCommand {
 
   def groupNameOption = Some(groupName)
@@ -245,7 +245,6 @@ private[transport] class CommandActor(val topic: String) extends SubscriptionAct
 }
 
 private[transport] class EventActor(val topic: String, groupName: String) extends SubscriptionActor {
-  import context._
   def groupNameOption = Some(groupName)
   def handleRequest(request: Request[Body], matchedSubscriptions: Seq[SubscriptionCommand]) = {
     if (matchedSubscriptions.isEmpty) {
@@ -259,11 +258,6 @@ private[transport] class EventActor(val topic: String, groupName: String) extend
 
       selectedSubscriptions.foreach { case subscription: EventSubscription[Request[Body]] ⇒
         subscription.subscriber.onNext(request)
-//          TODO: sort out
-//          .onFailure {
-//          case NonFatal(e) ⇒
-//            log.error(e, s"Handler ${subscription.handler} is failed on request $request")
-//        }
       }
     }
   }

@@ -1,6 +1,7 @@
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.concurrent.atomic.AtomicLong
 
+import eu.inn.binders.value._
 import eu.inn.hyperbus.Hyperbus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
@@ -9,13 +10,12 @@ import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher, Specific}
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
+import rx.lang.scala.Observer
 import testclasses._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
-import eu.inn.binders.value._
-import rx.lang.scala.{Observer, Subscriber}
 
 class ClientTransportTest(output: String) extends ClientTransport {
   private val messageBuf = new StringBuilder
@@ -53,7 +53,6 @@ class ServerTransportTest extends ServerTransport {
   var sUriFilter: Uri = null
   var sInputDeserializer: RequestDeserializer[Request[Body]] = null
   var sHandler: (TransportRequest) ⇒ Future[TransportResponse] = null
-  var sSubscriptionHandler: (TransportRequest) ⇒ Future[Unit] = null
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
 
@@ -71,7 +70,7 @@ class ServerTransportTest extends ServerTransport {
   override def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
                        groupName: String,
                        inputDeserializer: RequestDeserializer[REQ],
-                       subscriber: Subscriber[REQ]): Future[Subscription] = {
+                       subscriber: Observer[REQ]): Future[Subscription] = {
     sInputDeserializer = inputDeserializer
     Future {
       ServerSubscriptionTest(idCounter.incrementAndGet().toHexString)
@@ -418,14 +417,15 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
         override def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                              groupName: String,
                              inputDeserializer: RequestDeserializer[REQ],
-                             subscriber: Subscriber[REQ]): Future[Subscription] = {
+                             subscriber: Observer[REQ]): Future[Subscription] = {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer, subscriber)
         }
       }
       val hyperbus = newHyperbus(null, serverTransport)
+      val observer = new Observer[testclasses.TestPost1]{}
 
-      hyperbus.|> [testclasses.TestPost1].subscribe(request ⇒ ())
+      hyperbus |> observer
 
       receivedEvents should equal(1)
     }
@@ -436,19 +436,21 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
         override def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                              groupName: String,
                              inputDeserializer: RequestDeserializer[REQ],
-                             subscriber: Subscriber[REQ]): Future[Subscription] = {
+                             subscriber: Observer[REQ]): Future[Subscription] = {
           receivedEvents += 1
           super.onEvent(requestMatcher, groupName, inputDeserializer, subscriber)
         }
       }
       val hyperbus = newHyperbus(null, serverTransport)
+      val observer = new Observer[DynamicRequest]{}
 
       hyperbus.onEvent(
         RequestMatcher(
           Some(Uri("/test")),
           Map(Header.METHOD → Specific(Method.GET))),
-        Some("group1")
-      ).subscribe(request ⇒ ())
+        Some("group1"),
+        observer
+      )
       receivedEvents should equal(1)
     }
 
@@ -509,22 +511,19 @@ class HyperbusTest extends FreeSpec with ScalaFutures with Matchers {
     "off test |> (server)" in {
       val st = new ServerTransportTest()
       val hyperbus = newHyperbus(null, st)
-      val id1f = hyperbus.|>[testclasses.TestPost1]
-      // TODO: may be remove this test
-//      val id1 = id1f.futureValue
+      val observer = new Observer[testclasses.TestPost1]{}
 
-//      st.sSubscriptionHandler shouldNot equal(null)
-//      hyperbus.off(id1).futureValue
-//      st.sSubscriptionHandler should equal(null)
-//      st.sSubscriptionId should equal("1")
+      val id1f = hyperbus |> observer
+      val id1 = id1f.futureValue
 
-      val id2f = hyperbus.|>[testclasses.TestPost1]
-//      val id2 = id2f.futureValue
-//
-//      st.sSubscriptionHandler shouldNot equal(null)
-//      hyperbus.off(id2).futureValue
-//      st.sSubscriptionHandler should equal(null)
-//      st.sSubscriptionId should equal("2")
+      hyperbus.off(id1).futureValue
+      st.sSubscriptionId should equal("1")
+
+      val id2f = hyperbus |> observer
+      val id2 = id2f.futureValue
+
+      hyperbus.off(id2).futureValue
+      st.sSubscriptionId should equal("2")
     }
   }
 

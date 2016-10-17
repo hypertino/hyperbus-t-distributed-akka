@@ -9,10 +9,10 @@ import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.util.LogUtils
 import org.slf4j.LoggerFactory
-import rx.lang.scala.Observable
+import rx.lang.scala.{Observable, Observer, Subscriber}
 
-import scala.concurrent.duration.{DurationDouble, FiniteDuration}
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 import scala.util.Try
 
@@ -25,8 +25,8 @@ class Hyperbus(val transportManager: TransportManager,
 
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def onEvent(requestMatcher: RequestMatcher, groupName: Option[String]): Observable[DynamicRequest] = {
-    onEvent[DynamicRequest](requestMatcher, groupName, DynamicRequest.apply)
+  def onEvent(requestMatcher: RequestMatcher, groupName: Option[String], observer: Observer[DynamicRequest]): Future[Subscription] = {
+    onEvent[DynamicRequest](requestMatcher, groupName, DynamicRequest.apply, observer)
   }
 
   def onCommand(requestMatcher: RequestMatcher)
@@ -57,15 +57,6 @@ class Hyperbus(val transportManager: TransportManager,
       }
     }
   }
-//
-//  protected class PubSubSubscription[REQ <: Request[Body]](val requestDeserializer: RequestDeserializer[REQ]) {
-//    def underlyingHandler(in: TransportRequest): Unit = {
-//      if (logMessages && log.isTraceEnabled) {
-//        log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
-//          "subscriptionId" → this.hashCode.toHexString), s"hyperbus |> $in")
-//      }
-//    }
-//  }
 
   def ask[RESP <: Response[Body], REQ <: Request[Body]](request: REQ,
                                                         responseDeserializer: ResponseDeserializer[RESP]): Future[RESP] = {
@@ -104,22 +95,33 @@ class Hyperbus(val transportManager: TransportManager,
 
   def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                     groupName: Option[String],
-                                    requestDeserializer: RequestDeserializer[REQ]): Observable[REQ] = {
-    Observable { subscriber ⇒
+                                    requestDeserializer: RequestDeserializer[REQ],
+                                    observer: Observer[REQ]): Future[Subscription] = {
+    val transportSubscriptionPromise = Promise[Subscription]()
+    val observableSubscription = Observable { subscriber: Subscriber[REQ] ⇒
       val finalGroupName = groupName.getOrElse {
         defaultGroupName.getOrElse {
           throw new UnsupportedOperationException(s"Can't subscribe: group name is not defined")
         }
       }
-      val subscription = Await.result(transportManager.onEvent(requestMatcher, finalGroupName, requestDeserializer, subscriber), 20 seconds)
-      subscriber.add(rx.lang.scala.Subscription {
-        off(subscription)
-      })
+      transportSubscriptionPromise.completeWith(
+        transportManager.onEvent(requestMatcher, finalGroupName, requestDeserializer, subscriber)
+      )
+    }.subscribe(observer)
+    transportSubscriptionPromise.future map { transportSubscription ⇒
+      EventStreamSubscription(observableSubscription, transportSubscription)
     }
   }
 
   def off(subscription: Subscription): Future[Unit] = {
-    transportManager.off(subscription)
+    subscription match {
+      case EventStreamSubscription(observableSubscription, transportSubscription) ⇒
+        transportManager.off(transportSubscription) map { _ ⇒
+          observableSubscription.unsubscribe()
+        }
+      case _ ⇒
+        transportManager.off(subscription)
+    }
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {

@@ -11,7 +11,7 @@ import eu.inn.hyperbus.transport.inproc.{HandlerWrapper, InprocSubscription, Sub
 import eu.inn.hyperbus.util.ConfigUtils._
 import eu.inn.hyperbus.util.Subscriptions
 import org.slf4j.LoggerFactory
-import rx.lang.scala.Subscriber
+import rx.lang.scala.Observer
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -88,15 +88,16 @@ class InprocTransport(serialize: Boolean = false)
 
             if (matched) {
               commandHandlerFound = true
-              subscriber.handler(messageForSubscriber) map { case response ⇒
-                if (!isPublish) {
-                  val finalResponse = if (serialize) {
-                    reserializeResponse(response, outputDeserializer)
-                  } else {
-                    response
+              subscriber.requestHandler(messageForSubscriber) map {
+                case response ⇒
+                  if (!isPublish) {
+                    val finalResponse = if (serialize) {
+                      reserializeResponse(response, outputDeserializer)
+                    } else {
+                      response
+                    }
+                    resultPromise.success(finalResponse)
                   }
-                  resultPromise.success(finalResponse)
-                }
               } recover {
                 case NonFatal(e) ⇒
                   log.error("`onCommand` handler failed with", e)
@@ -115,10 +116,7 @@ class InprocTransport(serialize: Boolean = false)
 
             if (matched) {
               eventHandlerFound = true
-              subscriber.handler(messageForSubscriber).onFailure {
-                case NonFatal(e) ⇒
-                  log.error("`onEvent` handler failed with", e)
-              }
+              subscriber.eventHandler.onNext(messageForSubscriber)
             }
             else {
               log.error(s"Message ($messageForSubscriber) is not matched after serialize and deserialize")
@@ -165,7 +163,7 @@ class InprocTransport(serialize: Boolean = false)
     val id = subscriptions.add(
       matcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(None, matcher),
-      HandlerWrapper(inputDeserializer, handler)
+      HandlerWrapper(inputDeserializer, Left(handler))
     )
     Future.successful(InprocSubscription(id))
   }
@@ -173,14 +171,14 @@ class InprocTransport(serialize: Boolean = false)
   override def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
                        groupName: String,
                        inputDeserializer: RequestDeserializer[REQ],
-                       subscriber: Subscriber[REQ]): Future[Subscription] = {
+                       subscriber: Observer[REQ]): Future[Subscription] = {
     if (matcher.uri.isEmpty)
       throw new IllegalArgumentException("requestMatcher.uri")
 
     val id = subscriptions.add(
       matcher.uri.get.pattern.specific, // currently only Specific url's are supported, todo: add Regex, Any, etc...
       SubKey(Some(groupName), matcher),
-      HandlerWrapper(inputDeserializer)
+      HandlerWrapper(inputDeserializer, Right(subscriber.asInstanceOf[Observer[Request[Body]]]))
     )
     Future.successful(InprocSubscription(id))
   }

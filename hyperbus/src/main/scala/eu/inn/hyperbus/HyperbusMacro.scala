@@ -3,7 +3,7 @@ package eu.inn.hyperbus
 import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.model.annotations.{contentType, method, uri}
 import eu.inn.hyperbus.transport.api.Subscription
-import rx.lang.scala.Observable
+import rx.lang.scala.{Observable, Observer}
 
 import scala.concurrent.Future
 import scala.reflect.macros._
@@ -22,21 +22,23 @@ private[hyperbus] object HyperbusMacro {
   }
 
   def onEvent[IN: c.WeakTypeTag]
-  (c: whitebox.Context): c.Expr[Observable[IN]] = {
+  (c: whitebox.Context)
+  (observer: c.Expr[Observer[IN]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperbusMacroImplementation
-    bundle.onEvent[IN](None)
+    bundle.onEvent[IN](None, observer)
   }
 
   def onEventForGroup[IN: c.WeakTypeTag]
-  (c: whitebox.Context)(groupName: c.Expr[String]): c.Expr[Observable[IN]] = {
+  (c: whitebox.Context)
+  (groupName: c.Expr[String], observer: c.Expr[Observer[IN]]): c.Expr[Future[Subscription]] = {
     val c0: c.type = c
     val bundle = new {
       val c: c0.type = c0
     } with HyperbusMacroImplementation
-    bundle.onEvent[IN](Some(groupName))
+    bundle.onEvent[IN](Some(groupName), observer)
   }
 
   def ask[IN <: Request[Body] : c.WeakTypeTag]
@@ -96,7 +98,7 @@ private[hyperbus] trait HyperbusMacroImplementation {
   }
 
   def onEvent[IN: c.WeakTypeTag]
-  (groupName: Option[c.Expr[String]]): c.Expr[Observable[IN]] = {
+  (groupName: Option[c.Expr[String]], observer: c.Expr[Observer[IN]]): c.Expr[Future[Subscription]] = {
     val thiz = c.prefix.tree
     val requestType = weakTypeOf[IN]
     if (requestType.companion == null) {
@@ -116,10 +118,10 @@ private[hyperbus] trait HyperbusMacroImplementation {
       q"""{
       val $thizVal = $thiz
       val $rmVal = $thizVal.macroApiImpl.requestMatcher($uriPattern, $methodGetter, $contentType)
-      $thizVal.onEvent[$requestType]($rmVal, $groupName, $requestDeserializer _)
+      $thizVal.onEvent[$requestType]($rmVal, $groupName, $requestDeserializer _, $observer)
     }"""
 //    println(obj)
-    c.Expr[Observable[IN]](obj)
+    c.Expr[Future[Subscription]](obj)
   }
 
   def ask[IN <: Request[Body] : c.WeakTypeTag](r: c.Expr[IN]): c.Expr[Any] = {

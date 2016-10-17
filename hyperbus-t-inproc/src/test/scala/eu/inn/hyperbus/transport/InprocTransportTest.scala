@@ -9,7 +9,7 @@ import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
-import rx.lang.scala.Subscriber
+import rx.lang.scala.{Observer, Subscriber}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
@@ -111,13 +111,13 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       val t = new InprocTransport
 
       val processor = new AtomicInteger(0)
-      t.onCommand(RequestMatcher(Some(Uri("/mock"))), null) { case msg: MockRequest =>
+      val onCommandFuture1 = t.onCommand(RequestMatcher(Some(Uri("/mock"))), null) { case msg: MockRequest =>
         Future {
           processor.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
         }
       }
-      t.onCommand(RequestMatcher(Some(Uri("/mock"))), null) { case msg: MockRequest =>
+      val onCommandFuture2 = t.onCommand(RequestMatcher(Some(Uri("/mock"))), null) { case msg: MockRequest =>
         Future {
           processor.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
@@ -126,20 +126,20 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
 
       val group1 = new AtomicInteger(0)
       val group1promise = Promise[Unit]()
-      val group1subscriber = new Subscriber[Request[Body]] {
+      val group1observer = new Observer[Request[Body]] {
         override def onNext(value: Request[Body]): Unit = {
           group1.incrementAndGet()
           group1promise.success(Unit)
         }
       }
 
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
-      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1subscriber)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1observer)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1observer)
+      t.onEvent(RequestMatcher(Some(Uri("/mock"))), "group1", null, group1observer)
 
       val group2 = new AtomicInteger(0)
       val group2promise = Promise[Unit]()
-      val group2subscriber = new Subscriber[Request[Body]] {
+      val group2subscriber = new Observer[Request[Body]] {
         override def onNext(value: Request[Body]): Unit = {
           group2.incrementAndGet()
           group2promise.success(Unit)
@@ -154,12 +154,14 @@ class InprocTransportTest extends FreeSpec with ScalaFutures with Matchers {
       whenReady(f) { publishResult =>
         publishResult.sent should equal(Some(true))
         publishResult.offset should equal(None)
-        processor.get() should equal(1)
-        whenReady(group1promise.future) { _ =>
-          whenReady(group2promise.future) { _ =>
-            Thread.sleep(300)
-            group1.get() should equal(1)
-            group2.get() should equal(1)
+        whenReady(onCommandFuture1) { _ ⇒
+          processor.get() should equal(1)
+          whenReady(group1promise.future) { _ =>
+            whenReady(group2promise.future) { _ =>
+              Thread.sleep(300)
+              group1.get() should equal(1)
+              group2.get() should equal(1)
+            }
           }
         }
       }

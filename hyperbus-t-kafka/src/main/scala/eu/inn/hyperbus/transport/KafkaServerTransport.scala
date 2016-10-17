@@ -10,7 +10,7 @@ import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.kafkatransport._
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
-import rx.lang.scala.Subscriber
+import rx.lang.scala.Observer
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -38,7 +38,7 @@ class KafkaServerTransport(
   override def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
                        groupName: String,
                        inputDeserializer: RequestDeserializer[REQ],
-                       subscriber: Subscriber[REQ]): Future[Subscription] = {
+                       subscriber: Observer[REQ]): Future[Subscription] = {
 
     routes.find(r ⇒ r.requestMatcher.matchRequestMatcher(matcher)) map { route ⇒
       val key = TopicSubscriptionKey(route.kafkaTopic, route.kafkaPartitionKeys, groupName)
