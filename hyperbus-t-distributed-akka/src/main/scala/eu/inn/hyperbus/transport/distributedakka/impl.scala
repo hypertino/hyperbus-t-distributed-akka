@@ -256,7 +256,7 @@ private[transport] class EventActor(val topic: String, groupName: String) extend
           getRandomElement(subscriptions)
       }
 
-      selectedSubscriptions.foreach { case subscription: EventSubscription[Request[Body]] ⇒
+      selectedSubscriptions.foreach { case subscription: EventSubscription[Request[Body]] ⇒ // todo: is this correct?
         subscription.subscriber.onNext(request)
       }
     }
