@@ -22,9 +22,9 @@ trait HyperbusApi {
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): Future[Subscription] = macro HyperbusMacro.onCommand[REQ]
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
-    ask(request,
-      macroApiImpl.responseDeserializer(_, _, PartialFunction.empty)
-    ).asInstanceOf[Future[Response[DynamicBody]]]
+    ask[Response[DynamicBody],DynamicRequest](request,
+      macroApiImpl.responseDeserializer(_, _, PartialFunction.empty).asInstanceOf[Response[DynamicBody]]
+    )
   }
 
   def <|(request: DynamicRequest): Future[PublishResult] = {

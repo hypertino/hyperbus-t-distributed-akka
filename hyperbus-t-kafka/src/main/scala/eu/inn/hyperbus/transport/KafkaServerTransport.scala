@@ -27,13 +27,13 @@ class KafkaServerTransport(
     encoding = config.getOptionString("encoding") getOrElse "UTF-8"
   )(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
 
-  protected[this] val subscriptions = mutable.Map[TopicSubscriptionKey, TopicSubscription[Request[Body]]]()
+  protected[this] val subscriptions = mutable.Map[TopicSubscriptionKey, TopicSubscription[_ <: Request[Body]]]()
   protected[this] val lock = new Object
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def onCommand(matcher: RequestMatcher,
-                         inputDeserializer: RequestDeserializer[Request[Body]])
-                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = ???
+  override def onCommand[REQ <: Request[Body]](matcher: RequestMatcher,
+                         inputDeserializer: RequestDeserializer[REQ])
+                        (handler: (REQ) => Future[TransportResponse]): Future[Subscription] = ???
 
   override def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
                        groupName: String,
@@ -45,15 +45,15 @@ class KafkaServerTransport(
       val underlyingSubscription = UnderlyingSubscription(matcher, inputDeserializer, subscriber)
       lock.synchronized {
         subscriptions.get(key) match {
-          case Some(subscription) ⇒
-            val nextId = subscription.addUnderlying(underlyingSubscription.asInstanceOf[UnderlyingSubscription[Request[Body]]])
+          case Some(subscription: TopicSubscription[REQ] @unchecked) ⇒
+            val nextId = subscription.addUnderlying(underlyingSubscription)
             Future.successful(KafkaTransportSubscription(key, nextId))
 
-          case None ⇒
-            val subscription = new TopicSubscription[Request[Body]](consumerProperties, encoding, 1, /*todo: per topic thread count*/
+          case _ ⇒
+            val subscription = new TopicSubscription[REQ](consumerProperties, encoding, 1, /*todo: per topic thread count*/
               route, groupName)
             subscriptions.put(key, subscription)
-            val nextId = subscription.addUnderlying(underlyingSubscription.asInstanceOf[UnderlyingSubscription[Request[Body]]])
+            val nextId = subscription.addUnderlying(underlyingSubscription)
             subscription.run()
             Future.successful(KafkaTransportSubscription(key, nextId))
         }

@@ -53,9 +53,9 @@ case class EventStreamSubscription(observableSubscription: rx.lang.scala.Subscri
 
 trait ServerTransport {
   // todo: instead of ((Request[Body]) => Future[TransportResponse]) use class like Observer[-T] with contravariance
-  def onCommand(matcher: RequestMatcher,
-                inputDeserializer: RequestDeserializer[Request[Body]])
-               (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription]
+  def onCommand[REQ <: Request[Body]](matcher: RequestMatcher,
+                inputDeserializer: RequestDeserializer[REQ])
+               (handler: (REQ) => Future[TransportResponse]): Future[Subscription]
 
   def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
               groupName: String,

@@ -7,4 +7,4 @@ import rx.lang.scala.Observer
 
 private[transport] case class UnderlyingSubscription[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                                     inputDeserializer: RequestDeserializer[REQ],
-                                                    subscriber: Observer[_])
+                                                    observer: Observer[REQ])

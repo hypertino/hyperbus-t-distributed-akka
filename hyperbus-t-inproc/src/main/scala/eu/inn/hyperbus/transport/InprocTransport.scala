@@ -69,9 +69,9 @@ class InprocTransport(serialize: Boolean = false)
     _ask(message, null, isPublish = true).asInstanceOf[Future[PublishResult]]
   }
 
-  override def onCommand(matcher: RequestMatcher,
-                         inputDeserializer: RequestDeserializer[Request[Body]])
-                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
+  override def onCommand[REQ <: Request[Body]](matcher: RequestMatcher,
+                         inputDeserializer: RequestDeserializer[REQ])
+                        (handler: (REQ) => Future[TransportResponse]): Future[Subscription] = {
 
     if (matcher.uri.isEmpty)
       throw new IllegalArgumentException("requestMatcher.uri is empty")

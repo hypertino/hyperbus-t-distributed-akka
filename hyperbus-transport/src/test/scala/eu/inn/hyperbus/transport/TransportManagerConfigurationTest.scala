@@ -7,7 +7,7 @@ import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.{Any, RegexMatcher, RequestMatcher, Specific}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
-import rx.lang.scala.{Observer, Subscriber}
+import rx.lang.scala.Observer
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -21,9 +21,9 @@ class MockClientTransport(config: Config) extends ClientTransport {
 }
 
 class MockServerTransport(config: Config) extends ServerTransport {
-  override def onCommand(requestMatcher: RequestMatcher,
-                         inputDeserializer: RequestDeserializer[Request[Body]])
-                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = ???
+  override def onCommand[REQ <: Request[Body]](requestMatcher: RequestMatcher,
+                         inputDeserializer: RequestDeserializer[REQ])
+                        (handler: (REQ) => Future[TransportResponse]): Future[Subscription] = ???
 
   override def shutdown(duration: FiniteDuration): Future[Boolean] = ???
 

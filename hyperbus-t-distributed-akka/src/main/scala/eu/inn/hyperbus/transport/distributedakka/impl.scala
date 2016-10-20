@@ -73,9 +73,9 @@ private[transport] trait SubscriptionCommand {
   }
 }
 
-private[transport] case class CommandSubscription(requestMatcher: RequestMatcher,
-                                                  inputDeserializer: RequestDeserializer[Request[Body]],
-                                                  handler: (Request[Body]) => Future[TransportResponse])
+private[transport] case class CommandSubscription[REQ <: Request[Body]](requestMatcher: RequestMatcher,
+                                                  inputDeserializer: RequestDeserializer[REQ],
+                                                  handler: (REQ) => Future[TransportResponse])
   extends SubscriptionCommand {
   def groupNameOption = None
 }
@@ -231,8 +231,8 @@ private[transport] class CommandActor(val topic: String) extends SubscriptionAct
       sender() ! Status.Failure(HandlerIsNotFound(s"No handler were found for $request"))
     }
     else {
-      val handler = getRandomElement(matchedSubscriptions).asInstanceOf[CommandSubscription].handler
-      val futureResult = handler(request) map { case response ⇒
+      val handler = getRandomElement(matchedSubscriptions).asInstanceOf[CommandSubscription[Request[Body]]].handler
+      val futureResult = handler(request) map { response ⇒
         HyperbusResponse(StringSerializer.serializeToString(response))
       }
       futureResult.onFailure {
@@ -256,7 +256,7 @@ private[transport] class EventActor(val topic: String, groupName: String) extend
           getRandomElement(subscriptions)
       }
 
-      selectedSubscriptions.foreach { case subscription: EventSubscription[Request[Body]] ⇒ // todo: is this correct?
+      selectedSubscriptions.foreach { case subscription: EventSubscription[Request[Body]] @unchecked ⇒
         subscription.subscriber.onNext(request)
       }
     }

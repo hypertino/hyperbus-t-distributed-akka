@@ -10,7 +10,6 @@ import eu.inn.hyperbus.serialization.MessageDeserializer
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import kafka.consumer.{Consumer, ConsumerConfig, KafkaStream}
 import org.slf4j.LoggerFactory
-import rx.lang.scala.Subscriber
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.FiniteDuration
@@ -126,7 +125,7 @@ private[transport] class TopicSubscription[REQ <: Request[Body]](
         if (underlying.requestMatcher.matchMessage(input)) {
           println(input + " - " + underlying)
           // todo: test order of matching?
-          underlying.subscriber.asInstanceOf[Subscriber[REQ]].onNext(input)
+          underlying.observer.onNext(input)
           atLeastOneHandler = true
         }
       }

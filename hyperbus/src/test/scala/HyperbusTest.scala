@@ -56,9 +56,9 @@ class ServerTransportTest extends ServerTransport {
   var sSubscriptionId: String = null
   val idCounter = new AtomicLong(0)
 
-  override def onCommand(matcher: RequestMatcher,
-                         inputDeserializer: RequestDeserializer[Request[Body]])
-                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
+  override def onCommand[REQ <: Request[Body]](matcher: RequestMatcher,
+                         inputDeserializer: RequestDeserializer[REQ])
+                        (handler: (REQ) => Future[TransportResponse]): Future[Subscription] = {
 
     sInputDeserializer = inputDeserializer
     sHandler = handler.asInstanceOf[(TransportRequest) ⇒ Future[TransportResponse]]

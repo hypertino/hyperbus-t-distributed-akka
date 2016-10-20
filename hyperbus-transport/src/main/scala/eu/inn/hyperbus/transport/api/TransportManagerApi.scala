@@ -18,9 +18,9 @@ trait TransportManagerApi {
 
   def publish(message: TransportRequest): Future[PublishResult]
 
-  def onCommand(requestMatcher: RequestMatcher,
-                inputDeserializer: RequestDeserializer[Request[Body]])
-               (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription]
+  def onCommand[REQ <: Request[Body]](requestMatcher: RequestMatcher,
+                inputDeserializer: RequestDeserializer[REQ])
+               (handler: (REQ) => Future[TransportResponse]): Future[Subscription]
 
   def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
               groupName: String,

@@ -52,9 +52,9 @@ class TransportManager(protected[this] val clientRoutes: Seq[TransportRoute[Clie
     }
   }
 
-  def onCommand(requestMatcher: RequestMatcher,
-                inputDeserializer: RequestDeserializer[Request[Body]])
-               (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
+  def onCommand[REQ <: Request[Body]](requestMatcher: RequestMatcher,
+                inputDeserializer: RequestDeserializer[REQ])
+               (handler: (REQ) => Future[TransportResponse]): Future[Subscription] = {
 
     val transport = lookupServerTransport(requestMatcher)
     transport.onCommand(
