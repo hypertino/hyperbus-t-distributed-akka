@@ -6,6 +6,7 @@ import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.serialization.RequestDeserializer
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.api.uri.Uri
+import rx.lang.scala.Observer
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -48,15 +49,18 @@ trait ClientTransport {
 
 trait Subscription
 
-trait ServerTransport {
-  def onCommand(matcher: RequestMatcher,
-                inputDeserializer: RequestDeserializer[Request[Body]])
-               (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription]
+case class EventStreamSubscription(observableSubscription: rx.lang.scala.Subscription, transportSubscription: Subscription) extends Subscription
 
-  def onEvent(matcher: RequestMatcher,
+trait ServerTransport {
+  // todo: instead of ((Request[Body]) => Future[TransportResponse]) use class like Observer[-T] with contravariance
+  def onCommand[REQ <: Request[Body]](matcher: RequestMatcher,
+                inputDeserializer: RequestDeserializer[REQ])
+               (handler: (REQ) => Future[TransportResponse]): Future[Subscription]
+
+  def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
               groupName: String,
-              inputDeserializer: RequestDeserializer[Request[Body]])
-             (handler: (Request[Body]) => Future[Unit]): Future[Subscription] // todo: Unit -> some useful response?
+              inputDeserializer: RequestDeserializer[REQ],
+              observer: Observer[REQ]): Future[Subscription]
 
   def off(subscription: Subscription): Future[Unit]
 

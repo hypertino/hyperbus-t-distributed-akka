@@ -8,9 +8,10 @@ import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, U
 import akka.pattern.pipe
 import eu.inn.binders.value.Null
 import eu.inn.hyperbus.model.{Body, DynamicBody, DynamicRequest, Request}
-import eu.inn.hyperbus.serialization.{StringSerializer, MessageDeserializer, RequestDeserializer}
+import eu.inn.hyperbus.serialization.{MessageDeserializer, RequestDeserializer, StringSerializer}
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
+import rx.lang.scala.Observer
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -72,17 +73,17 @@ private[transport] trait SubscriptionCommand {
   }
 }
 
-private[transport] case class CommandSubscription(requestMatcher: RequestMatcher,
-                                                  inputDeserializer: RequestDeserializer[Request[Body]],
-                                                  handler: (Request[Body]) => Future[TransportResponse])
+private[transport] case class CommandSubscription[REQ <: Request[Body]](requestMatcher: RequestMatcher,
+                                                  inputDeserializer: RequestDeserializer[REQ],
+                                                  handler: (REQ) => Future[TransportResponse])
   extends SubscriptionCommand {
   def groupNameOption = None
 }
 
-private[transport] case class EventSubscription(requestMatcher: RequestMatcher,
+private[transport] case class EventSubscription[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                                 groupName: String,
-                                                inputDeserializer: RequestDeserializer[Request[Body]],
-                                                handler: (Request[Body]) => Future[Unit])
+                                                inputDeserializer: RequestDeserializer[REQ],
+                                                subscriber: Observer[REQ])
   extends SubscriptionCommand {
 
   def groupNameOption = Some(groupName)
@@ -230,8 +231,8 @@ private[transport] class CommandActor(val topic: String) extends SubscriptionAct
       sender() ! Status.Failure(HandlerIsNotFound(s"No handler were found for $request"))
     }
     else {
-      val handler = getRandomElement(matchedSubscriptions).asInstanceOf[CommandSubscription].handler
-      val futureResult = handler(request) map { case response ⇒
+      val handler = getRandomElement(matchedSubscriptions).asInstanceOf[CommandSubscription[Request[Body]]].handler
+      val futureResult = handler(request) map { response ⇒
         HyperbusResponse(StringSerializer.serializeToString(response))
       }
       futureResult.onFailure {
@@ -244,7 +245,6 @@ private[transport] class CommandActor(val topic: String) extends SubscriptionAct
 }
 
 private[transport] class EventActor(val topic: String, groupName: String) extends SubscriptionActor {
-  import context._
   def groupNameOption = Some(groupName)
   def handleRequest(request: Request[Body], matchedSubscriptions: Seq[SubscriptionCommand]) = {
     if (matchedSubscriptions.isEmpty) {
@@ -256,11 +256,8 @@ private[transport] class EventActor(val topic: String, groupName: String) extend
           getRandomElement(subscriptions)
       }
 
-      selectedSubscriptions.foreach { case subscription: EventSubscription ⇒
-        subscription.handler(request).onFailure {
-          case NonFatal(e) ⇒
-            log.error(e, s"Handler ${subscription.handler} is failed on request $request")
-        }
+      selectedSubscriptions.foreach { case subscription: EventSubscription[Request[Body]] @unchecked ⇒
+        subscription.subscriber.onNext(request)
       }
     }
   }

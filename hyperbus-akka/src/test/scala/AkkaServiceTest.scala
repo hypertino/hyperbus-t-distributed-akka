@@ -15,6 +15,7 @@ import eu.inn.hyperbus.transport.api.uri.Uri
 import eu.inn.hyperbus.{Hyperbus, IdGenerator}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
+import rx.lang.scala.Observer
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._

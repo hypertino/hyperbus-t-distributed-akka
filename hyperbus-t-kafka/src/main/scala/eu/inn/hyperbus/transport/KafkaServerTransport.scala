@@ -10,6 +10,7 @@ import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.kafkatransport._
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
+import rx.lang.scala.Observer
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -26,30 +27,30 @@ class KafkaServerTransport(
     encoding = config.getOptionString("encoding") getOrElse "UTF-8"
   )(scala.concurrent.ExecutionContext.global) // todo: configurable ExecutionContext like in akka?
 
-  protected[this] val subscriptions = mutable.Map[TopicSubscriptionKey, TopicSubscription]()
+  protected[this] val subscriptions = mutable.Map[TopicSubscriptionKey, TopicSubscription[_ <: Request[Body]]]()
   protected[this] val lock = new Object
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
 
-  override def onCommand(matcher: RequestMatcher,
-                         inputDeserializer: RequestDeserializer[Request[Body]])
-                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = ???
+  override def onCommand[REQ <: Request[Body]](matcher: RequestMatcher,
+                         inputDeserializer: RequestDeserializer[REQ])
+                        (handler: (REQ) => Future[TransportResponse]): Future[Subscription] = ???
 
-  override def onEvent(matcher: RequestMatcher,
+  override def onEvent[REQ <: Request[Body]](matcher: RequestMatcher,
                        groupName: String,
-                       inputDeserializer: RequestDeserializer[Request[Body]])
-                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
+                       inputDeserializer: RequestDeserializer[REQ],
+                       subscriber: Observer[REQ]): Future[Subscription] = {
 
     routes.find(r ⇒ r.requestMatcher.matchRequestMatcher(matcher)) map { route ⇒
       val key = TopicSubscriptionKey(route.kafkaTopic, route.kafkaPartitionKeys, groupName)
-      val underlyingSubscription = UnderlyingSubscription(matcher, inputDeserializer, handler)
+      val underlyingSubscription = UnderlyingSubscription(matcher, inputDeserializer, subscriber)
       lock.synchronized {
         subscriptions.get(key) match {
-          case Some(subscription) ⇒
+          case Some(subscription: TopicSubscription[REQ] @unchecked) ⇒
             val nextId = subscription.addUnderlying(underlyingSubscription)
             Future.successful(KafkaTransportSubscription(key, nextId))
 
-          case None ⇒
-            val subscription = new TopicSubscription(consumerProperties, encoding, 1, /*todo: per topic thread count*/
+          case _ ⇒
+            val subscription = new TopicSubscription[REQ](consumerProperties, encoding, 1, /*todo: per topic thread count*/
               route, groupName)
             subscriptions.put(key, subscription)
             val nextId = subscription.addUnderlying(underlyingSubscription)

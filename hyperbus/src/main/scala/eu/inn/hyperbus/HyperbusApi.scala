@@ -5,6 +5,7 @@ import eu.inn.hyperbus.model._
 import eu.inn.hyperbus.serialization._
 import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
+import rx.lang.scala.Observer
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -16,14 +17,14 @@ trait HyperbusApi {
 
   def <|[REQ <: Request[Body]](request: REQ): Future[PublishResult] = macro HyperbusMacro.publish[REQ]
 
-  def |>[REQ <: Request[Body]](handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperbusMacro.onEvent[REQ]
+  def |>[REQ <: Request[Body]](observer: Observer[REQ]) : Future[Subscription] = macro HyperbusMacro.onEvent[REQ]
 
   def ~>[REQ <: Request[Body]](handler: REQ => Future[Response[Body]]): Future[Subscription] = macro HyperbusMacro.onCommand[REQ]
 
   def <~(request: DynamicRequest): Future[Response[DynamicBody]] = {
-    ask(request,
-      macroApiImpl.responseDeserializer(_, _, PartialFunction.empty)
-    ).asInstanceOf[Future[Response[DynamicBody]]]
+    ask[Response[DynamicBody],DynamicRequest](request,
+      macroApiImpl.responseDeserializer(_, _, PartialFunction.empty).asInstanceOf[Response[DynamicBody]]
+    )
   }
 
   def <|(request: DynamicRequest): Future[PublishResult] = {
@@ -41,10 +42,11 @@ trait HyperbusApi {
 
   def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                     groupName: Option[String],
-                                    requestDeserializer: RequestDeserializer[REQ])
-                                   (handler: (REQ) => Future[Unit]): Future[Subscription]
+                                    requestDeserializer: RequestDeserializer[REQ],
+                                    observer: Observer[REQ]): Future[Subscription]
 
-  def onEventForGroup[REQ <: Request[Body]](groupName: String, handler: (REQ) => Future[Unit]): Future[Subscription] = macro HyperbusMacro.onEventForGroup[REQ]
+  def onEventForGroup[REQ <: Request[Body]](groupName: String,
+                                            observer: Observer[REQ]): Future[Subscription] = macro HyperbusMacro.onEventForGroup[REQ]
 
   def off(subscription: Subscription): Future[Unit]
 

@@ -1,6 +1,8 @@
 package eu.inn.hyperbus
 
+import eu.inn.hyperbus.model.{Body, Request}
 import eu.inn.hyperbus.transport.api.Subscription
+import rx.lang.scala.Observer
 
 import scala.concurrent.Future
 

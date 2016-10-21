@@ -9,12 +9,12 @@ import eu.inn.hyperbus.transport.api._
 import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.util.LogUtils
 import org.slf4j.LoggerFactory
+import rx.lang.scala.{Observable, Observer, Subscriber}
 
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 import scala.util.Try
-import scala.util.control.NonFatal
 
 class Hyperbus(val transportManager: TransportManager,
                val defaultGroupName: Option[String] = None,
@@ -25,9 +25,8 @@ class Hyperbus(val transportManager: TransportManager,
 
   protected val log = LoggerFactory.getLogger(this.getClass)
 
-  def onEvent(requestMatcher: RequestMatcher, groupName: Option[String])
-             (handler: (DynamicRequest) => Future[Unit]): Future[Subscription] = {
-    onEvent[DynamicRequest](requestMatcher, groupName, DynamicRequest.apply)(handler)
+  def onEvent(requestMatcher: RequestMatcher, groupName: Option[String], observer: Observer[DynamicRequest]): Future[Subscription] = {
+    onEvent[DynamicRequest](requestMatcher, groupName, DynamicRequest.apply, observer)
   }
 
   def onCommand(requestMatcher: RequestMatcher)
@@ -38,14 +37,14 @@ class Hyperbus(val transportManager: TransportManager,
 
   protected class RequestReplySubscription[REQ <: Request[Body]](val handler: (REQ) => Future[Response[Body]],
                                                                  val requestDeserializer: RequestDeserializer[REQ]) {
-    def underlyingHandler(in: TransportRequest): Future[TransportResponse] = {
+    def underlyingHandler(in: REQ): Future[TransportResponse] = {
       if (logMessages && log.isTraceEnabled) {
         log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
           "subscriptionId" → this.hashCode.toHexString), s"hyperbus ~> $in")
       }
-      val futureOut = handler(in.asInstanceOf[REQ]) recover {
+      val futureOut = handler(in) recover {
         case z: Response[_] ⇒ z
-        case t: Throwable ⇒ unhandledException(in.asInstanceOf[REQ], t)
+        case t: Throwable ⇒ unhandledException(in, t)
       }
       if (logMessages && log.isTraceEnabled) {
         futureOut map { out ⇒
@@ -55,22 +54,6 @@ class Hyperbus(val transportManager: TransportManager,
         }
       } else {
         futureOut
-      }
-    }
-  }
-
-  protected class PubSubSubscription[REQ <: Request[Body]](val handler: (REQ) => Future[Unit],
-                                                           val requestDeserializer: RequestDeserializer[REQ]) {
-    def underlyingHandler(in: TransportRequest): Future[Unit] = {
-      if (logMessages && log.isTraceEnabled) {
-        log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
-          "subscriptionId" → this.hashCode.toHexString), s"hyperbus |> $in")
-      }
-
-      handler(in.asInstanceOf[REQ]) recover {
-        case NonFatal(e) ⇒
-          log.error(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
-            "subscriptionId" → this.hashCode.toHexString), s"Failed event handling", e)
       }
     }
   }
@@ -86,11 +69,11 @@ class Hyperbus(val transportManager: TransportManager,
       (r: @unchecked) match {
         case throwable: Throwable ⇒
           throw throwable
-        case other ⇒
+        case other: RESP @unchecked ⇒
           if (logMessages && log.isTraceEnabled) {
             log.trace(Map("messageId" → other.messageId, "correlationId" → other.correlationId), s"hyperbus ~(R)~> $other")
           }
-          other.asInstanceOf[RESP]
+          other
       }
     }
   }
@@ -112,20 +95,33 @@ class Hyperbus(val transportManager: TransportManager,
 
   def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                                     groupName: Option[String],
-                                    requestDeserializer: RequestDeserializer[REQ])
-                                   (handler: (REQ) => Future[Unit]): Future[Subscription] = {
-
-    val finalGroupName = groupName.getOrElse {
-      defaultGroupName.getOrElse {
-        throw new UnsupportedOperationException(s"Can't subscribe: group name is not defined")
+                                    requestDeserializer: RequestDeserializer[REQ],
+                                    observer: Observer[REQ]): Future[Subscription] = {
+    val transportSubscriptionPromise = Promise[Subscription]()
+    val observableSubscription = Observable { subscriber: Subscriber[REQ] ⇒
+      val finalGroupName = groupName.getOrElse {
+        defaultGroupName.getOrElse {
+          throw new UnsupportedOperationException(s"Can't subscribe: group name is not defined")
+        }
       }
+      transportSubscriptionPromise.completeWith(
+        transportManager.onEvent(requestMatcher, finalGroupName, requestDeserializer, subscriber)
+      )
+    }.subscribe(observer)
+    transportSubscriptionPromise.future map { transportSubscription ⇒
+      EventStreamSubscription(observableSubscription, transportSubscription)
     }
-    val subscription = new PubSubSubscription[REQ](handler, requestDeserializer)
-    transportManager.onEvent(requestMatcher, finalGroupName, subscription.requestDeserializer)(subscription.underlyingHandler)
   }
 
   def off(subscription: Subscription): Future[Unit] = {
-    transportManager.off(subscription)
+    subscription match {
+      case EventStreamSubscription(observableSubscription, transportSubscription) ⇒
+        transportManager.off(transportSubscription) map { _ ⇒
+          observableSubscription.unsubscribe()
+        }
+      case _ ⇒
+        transportManager.off(subscription)
+    }
   }
 
   def shutdown(duration: FiniteDuration): Future[Boolean] = {

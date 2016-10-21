@@ -12,6 +12,7 @@ import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
 import eu.inn.hyperbus.transport.distributedakka._
 import eu.inn.hyperbus.util.ConfigUtils._
 import org.slf4j.LoggerFactory
+import rx.lang.scala.Observer
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -34,18 +35,18 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
   protected[this] val log = LoggerFactory.getLogger(this.getClass)
   protected[this] val subscriptionManager = actorSystem.actorOf(Props(classOf[distributedakka.SubscriptionManager]))
 
-  override def onCommand(requestMatcher: RequestMatcher,
-                         inputDeserializer: RequestDeserializer[Request[Body]])
-                        (handler: (Request[Body]) => Future[TransportResponse]): Future[Subscription] = {
+  override def onCommand[REQ <: Request[Body]](requestMatcher: RequestMatcher,
+                         inputDeserializer: RequestDeserializer[REQ])
+                        (handler: (REQ) => Future[TransportResponse]): Future[Subscription] = {
 
-    (subscriptionManager ? CommandSubscription(requestMatcher, inputDeserializer, handler)).asInstanceOf[Future[Subscription]]
+    (subscriptionManager ? CommandSubscription(requestMatcher, inputDeserializer, handler)).mapTo[Subscription]
   }
 
-  override def onEvent(requestMatcher: RequestMatcher,
+  override def onEvent[REQ <: Request[Body]](requestMatcher: RequestMatcher,
                        groupName: String,
-                       inputDeserializer: RequestDeserializer[Request[Body]])
-                      (handler: (Request[Body]) => Future[Unit]): Future[Subscription] = {
-    (subscriptionManager ? EventSubscription(requestMatcher, groupName, inputDeserializer, handler)).asInstanceOf[Future[Subscription]]
+                       inputDeserializer: RequestDeserializer[REQ],
+                       subscriber: Observer[REQ]): Future[Subscription] = {
+    (subscriptionManager ? EventSubscription(requestMatcher, groupName, inputDeserializer, subscriber)).mapTo[Subscription]
   }
 
   override def off(subscription: Subscription): Future[Unit] = {
