@@ -37,14 +37,14 @@ class Hyperbus(val transportManager: TransportManager,
 
   protected class RequestReplySubscription[REQ <: Request[Body]](val handler: (REQ) => Future[Response[Body]],
                                                                  val requestDeserializer: RequestDeserializer[REQ]) {
-    def underlyingHandler(in: TransportRequest): Future[TransportResponse] = {
+    def underlyingHandler(in: REQ): Future[TransportResponse] = {
       if (logMessages && log.isTraceEnabled) {
         log.trace(Map("messageId" → in.messageId, "correlationId" → in.correlationId,
           "subscriptionId" → this.hashCode.toHexString), s"hyperbus ~> $in")
       }
-      val futureOut = handler(in.asInstanceOf[REQ]) recover {
+      val futureOut = handler(in) recover {
         case z: Response[_] ⇒ z
-        case t: Throwable ⇒ unhandledException(in.asInstanceOf[REQ], t)
+        case t: Throwable ⇒ unhandledException(in, t)
       }
       if (logMessages && log.isTraceEnabled) {
         futureOut map { out ⇒
@@ -69,11 +69,11 @@ class Hyperbus(val transportManager: TransportManager,
       (r: @unchecked) match {
         case throwable: Throwable ⇒
           throw throwable
-        case other ⇒
+        case other: RESP @unchecked ⇒
           if (logMessages && log.isTraceEnabled) {
             log.trace(Map("messageId" → other.messageId, "correlationId" → other.correlationId), s"hyperbus ~(R)~> $other")
           }
-          other.asInstanceOf[RESP]
+          other
       }
     }
   }

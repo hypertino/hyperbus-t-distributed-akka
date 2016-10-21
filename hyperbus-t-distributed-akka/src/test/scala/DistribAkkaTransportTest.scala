@@ -81,7 +81,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
         }
       }
 
-      val idf = transportManager.onCommand(RequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
+      val idf = transportManager.onCommand(RequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
@@ -89,7 +89,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       }
       val id = idf.futureValue
 
-      val id2f = transportManager.onCommand(RequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { case msg: MockRequest =>
+      val id2f = transportManager.onCommand(RequestMatcher(Some(Uri("/mock"))), MockRequest.apply) { msg: MockRequest =>
         Future {
           cnt.incrementAndGet()
           MockResponse(MockBody(msg.body.test.reverse))
