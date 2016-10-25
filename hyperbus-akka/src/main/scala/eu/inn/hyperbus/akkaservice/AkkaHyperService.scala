@@ -75,15 +75,24 @@ private[akkaservice] trait AkkaHyperServiceImplementation {
       val arg = m.paramLists.head.head
       val argType = arg.typeSignatureIn(typ)
       val messageVal = fresh("message")
+      val subscriptionVal = fresh("subscription")
 
       getGroupAnnotation(m).map { groupName ⇒
-        q"""
-          $hyperbusVal.onEventForGroup[$argType]($groupName, new Observer[$argType]{
-            override def onNext(message: $argType): Unit = {
-              _root_.akka.pattern.ask($actorVal, message).mapTo[Unit]
+        q"""{
+          val $subscriptionVal = scala.concurrent.Promise[eu.inn.hyperbus.transport.api.Subscription]
+          rx.lang.scala.Observable { subscriber: rx.lang.scala.Subscriber[$argType] =>
+            $hyperbusVal.onEventForGroup[$argType]($groupName, subscriber).map { subscription =>
+              $subscriptionVal.success(subscription)
+            } recover {
+              case scala.util.control.NonFatal(e) =>
+                $subscriptionVal.failure(e)
             }
-          })
-        """
+          }.flatMap( event ⇒
+            rx.lang.scala.Observable.from(_root_.akka.pattern.ask($actorVal, event))
+          ).subscribeOn(rx.lang.scala.schedulers.ExecutionContextScheduler(implicitly[ExecutionContext]))
+          .subscribe(event=>{})
+          $subscriptionVal.future
+        }"""
       } getOrElse {
         val resultType = m.returnType
         val responseBodyTypeSig = typeOf[Response[Body]]
