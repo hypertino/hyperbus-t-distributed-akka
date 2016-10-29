@@ -16,8 +16,8 @@ scalacOptions := Seq(
 )
 
 libraryDependencies ++= Seq(
-  "eu.inn" %% "binders-core"  % "0.12.93",
-  "eu.inn" % "java-raml1-parser" % "0.0.31",
+  "eu.inn" %% "binders-core" % "0.12.93",
+  "eu.inn" % "raml-parser-2" % "1.0.1.35",
   "eu.inn" % "javascript-module-holders" % "0.0.31",
   "org.jibx" % "jibx-tools" % "1.2.6",
   "org.slf4j" % "slf4j-api" % "1.7.12",

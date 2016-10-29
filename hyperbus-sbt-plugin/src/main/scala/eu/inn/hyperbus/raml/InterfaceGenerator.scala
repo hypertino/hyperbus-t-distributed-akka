@@ -2,13 +2,13 @@ package eu.inn.hyperbus.raml
 
 import java.util.Date
 
-import com.mulesoft.raml1.java.parser.model.api.Api
-import com.mulesoft.raml1.java.parser.model.datamodel._
-import com.mulesoft.raml1.java.parser.model.methodsAndResources.{Method, Resource}
 import eu.inn.binders.naming._
-import eu.inn.hyperbus.raml.annotationtypes.feed
 import eu.inn.hyperbus.raml.utils.{DashCaseToPascalCaseConverter, DashCaseToUpperSnakeCaseConverter}
 import eu.inn.hyperbus.transport.api.uri.{TextToken, UriParser}
+import org.raml.v2.api.model.v10.api.Api
+import org.raml.v2.api.model.v10.datamodel._
+import org.raml.v2.api.model.v10.methods.Method
+import org.raml.v2.api.model.v10.resources.Resource
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
@@ -75,10 +75,10 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
 
   protected def generateTypes(builder: StringBuilder) = {
     api.types().foreach {
-      case obj: ObjectField ⇒
+      case obj: ObjectTypeDeclaration ⇒
         generateObjectType(builder, obj)
 
-      case strEl: StrElement ⇒
+      case strEl: StringTypeDeclaration ⇒
         generateEnumStrElement(builder, strEl)
 
       case other ⇒
@@ -86,7 +86,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     }
   }
 
-  protected def generateObjectType(builder: StringBuilder, obj: ObjectField) = {
+  protected def generateObjectType(builder: StringBuilder, obj: ObjectTypeDeclaration) = {
     val isBody = api.resources.exists { resource ⇒
       resource.methods.exists { method ⇒
         method.responses.exists { response ⇒
@@ -166,14 +166,15 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     api.resources.foreach { resource ⇒
       resource.methods.foreach { method ⇒
         generateRequest(builder, method, resource)
-        if (
-          method.annotations().exists(_.value().isInstanceOf[feed])
-          || resource.annotations().exists(_.value().isInstanceOf[feed])
-        ) generateFeedRequest(builder, method, resource)
+//        if (
+//          method.annotations().exists(_.name() ==   value().isInstanceOf[feed])
+//          || resource.annotations().exists(_.value().isInstanceOf[feed])
+//        ) generateFeedRequest(builder, method, resource)
       }
     }
   }
 
+  // method.method.toUpperCase -> for feed:put -> FEED_PUT
   protected def generateRequest(builder: StringBuilder, method: Method, resource: Resource) = {
     builder.append(s"""@request(Method.${method.method.toUpperCase}, "${resource.relativeUri.value}")\n""")
     val name = requestClassName(resource.relativeUri.value, method.method)
@@ -230,30 +231,30 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     }
   }
 
-  protected def generateFeedRequest(builder: StringBuilder, method: Method, resource: Resource) = {
-    builder.append(s"""@request(Method.${"FEED_" + method.method.toUpperCase}, "${resource.relativeUri.value}")\n""")
-    val name = requestClassName(resource.relativeUri.value, "feed-" + method.method)
-    builder.append(s"case class $name(\n")
-    val uriParameters = resource.uriParameters().toSeq
-
-    uriParameters.foreach { prop ⇒
-      if (messageReservedWords.contains(prop.name)) {
-        throw new RamlSyntaxException(s"Can't generate class '$name' for ${resource.relativeUri.value}: '${prop.name}' is a reserved word for a Request/Response")
-      }
-    }
-
-    generateCaseClassProperties(builder, uriParameters)
-    val bodyType = method.method match {
-      case "get" ⇒ "QueryBody"
-      case "delete" ⇒ "EmptyBody"
-      case _ ⇒
-        method.body.headOption.flatMap(_.`type`.headOption).getOrElse("DynamicBody")
-    }
-    if (uriParameters.nonEmpty) {
-      builder.append(",\n")
-    }
-    builder.append(s"    body: $bodyType\n  ) extends Request[$bodyType]\n\n")
-  }
+//  protected def generateFeedRequest(builder: StringBuilder, method: Method, resource: Resource) = {
+//    builder.append(s"""@request(Method.${"FEED_" + method.method.toUpperCase}, "${resource.relativeUri.value}")\n""")
+//    val name = requestClassName(resource.relativeUri.value, "feed-" + method.method)
+//    builder.append(s"case class $name(\n")
+//    val uriParameters = resource.uriParameters().toSeq
+//
+//    uriParameters.foreach { prop ⇒
+//      if (messageReservedWords.contains(prop.name)) {
+//        throw new RamlSyntaxException(s"Can't generate class '$name' for ${resource.relativeUri.value}: '${prop.name}' is a reserved word for a Request/Response")
+//      }
+//    }
+//
+//    generateCaseClassProperties(builder, uriParameters)
+//    val bodyType = method.method match {
+//      case "get" ⇒ "QueryBody"
+//      case "delete" ⇒ "EmptyBody"
+//      case _ ⇒
+//        method.body.headOption.flatMap(_.`type`.headOption).getOrElse("DynamicBody")
+//    }
+//    if (uriParameters.nonEmpty) {
+//      builder.append(",\n")
+//    }
+//    builder.append(s"    body: $bodyType\n  ) extends Request[$bodyType]\n\n")
+//  }
 
   protected def requestClassName(uriPattern: String, method: String): String = {
     val tokens = UriParser.tokens(uriPattern).zipWithIndex
@@ -271,7 +272,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     dashToPascal.convert(dashed)
   }
 
-  protected def generateCaseClassProperties(builder: StringBuilder, properties: Seq[DataElement]) = {
+  protected def generateCaseClassProperties(builder: StringBuilder, properties: Seq[TypeDeclaration]) = {
     var isFirst = true
     properties.foreach { property ⇒
       if (isFirst) {
@@ -303,22 +304,22 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     }
   }
 
-  protected def generateEnumStrElement(builder: StringBuilder, el: StrElement) = {
+  protected def generateEnumStrElement(builder: StringBuilder, el: StringTypeDeclaration) = {
     builder.append(s"object ${el.name} {\n  type StringEnum = String\n")
-    el.enum_.foreach { e ⇒
+    el.enumValues().foreach { e ⇒
       builder.append(s"""  val ${dashToUpper.convert(e)} = "$e"\n""")
     }
-    builder.append(s"  lazy val values = Seq(${el.enum_.map(dashToUpper.convert).mkString(",")})\n")
+    builder.append(s"  lazy val values = Seq(${el.enumValues().map(dashToUpper.convert).mkString(",")})\n")
     builder.append("  lazy val valuesSet = values.toSet\n")
     builder.append("}\n\n")
   }
 
-  protected def mapType(property: DataElement): String = {
+  protected def mapType(property: TypeDeclaration): String = {
     property match {
-      case se : StrElement ⇒
+      case se : StringTypeDeclaration ⇒
         se.`type`().headOption.flatMap { strEnumType ⇒
           api.types.find(_.name == strEnumType) match {
-            case Some(str: StrElement) if str.enum_.nonEmpty ⇒
+            case Some(str: StringTypeDeclaration) if str.enumValues.nonEmpty ⇒
               Some(strEnumType + ".StringEnum")
             case _ ⇒ None
           }
@@ -326,8 +327,8 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
           "String"
         }
 
-      case _ : IntegerElement ⇒ "Int"
-      case n : NumberElement ⇒ n.format match {
+      case _ : IntegerTypeDeclaration ⇒ "Int"
+      case n : NumberTypeDeclaration ⇒ n.format match {
         case "int32" | "int" ⇒ "Int"
         case "int64" | "long" ⇒ "Long"
         case "float" ⇒ "Float"
@@ -336,23 +337,17 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         case "int8" ⇒ "Byte"
         case _ ⇒ "Double"
       }
-      case _ : BooleanElement ⇒ "Boolean"
-      case _ : DateElement ⇒ "java.util.Date"
-      case a : ArrayField ⇒
-        a.`type`.headOption.map{ t ⇒
-          val it = {if(t.endsWith("[]")) t.substring(0,t.length-2) else t}
-          "Seq[" + mapType(it) + "]"
-        } getOrElse {
-          log.warn(s"Can't map array type $a")
-          "Seq[Any]"
-        }
-      case d: ObjectField ⇒ d.`type`().headOption match {
-        case Some("object")
+      case _ : BooleanTypeDeclaration ⇒ "Boolean"
+      case _ : DateTypeDeclaration ⇒ "java.util.Date"
+      case a : ArrayTypeDeclaration ⇒
+        "Seq[" + mapType(a.items()) + "]"
+      case d: ObjectTypeDeclaration ⇒ d.`type` match {
+        case "object"
           if d.properties.size == 1 &&
           d.properties.headOption.exists(_.name.startsWith("["))
         ⇒ "Map[String," + mapType(d.properties.get(0)) + "]"
 
-        case Some(t) ⇒ t
+        case t ⇒ t
       }
       case other ⇒
         log.warn(s"Can't map type $other")
@@ -368,8 +363,8 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     case "date" ⇒ "java.util.Date"
     case other ⇒
       api.types.find(_.name == `type`) match {
-        case Some(str: StrElement) ⇒
-          if (str.enum_.nonEmpty) {
+        case Some(str: StringTypeDeclaration) ⇒
+          if (str.enumValues().nonEmpty) {
             other + ".StringEnum" // enum
           }
           else {

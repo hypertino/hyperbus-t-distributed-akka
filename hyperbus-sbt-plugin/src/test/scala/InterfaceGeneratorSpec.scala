@@ -1,12 +1,7 @@
-import java.util
-
-import com.mulesoft.raml.webpack.holders.JSConsole
-import com.mulesoft.raml1.java.parser.core.JavaNodeFactory
-import com.mulesoft.raml1.java.parser.path.resolver.IJavaPathResolver
-import eu.inn.hyperbus.raml.utils.JsToLogConsole
 import eu.inn.hyperbus.raml.{GeneratorOptions, InterfaceGenerator}
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch.{Diff, Operation}
+import org.raml.v2.api.RamlModelBuilder
 import org.scalatest.{FreeSpec, Matchers}
 
 import scala.collection.JavaConversions
@@ -156,27 +151,26 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
 
   "RAML" in {
     import JavaConversions._
-    val factory = new JavaNodeFactory()
 
-    val existingConsole = factory.getBindings.get("console").asInstanceOf[JSConsole]
-    factory.getBindings.put("console", new JsToLogConsole(existingConsole.engine))
+    val path = "test.raml"
+    val resource = this.getClass.getResource(path)
+    if (resource == null) {
+      throw new IllegalArgumentException(s"resource not found: $path")
+    }
+    val source = Source.fromURL(resource).getLines().mkString("\n")
 
-    factory.setPathResolver(new IJavaPathResolver {
-      override def list(path: String): util.List[String] = List("test.raml")
-      override def content(path: String): String = {
-        val resource = getClass.getResource(path)
-        if (resource == null) {
-          throw new IllegalArgumentException(s"resource not found: $path")
-        }
-        val source = Source.fromURL(resource)
-        source.getLines().mkString("\n")
-      }
-    })
+    val api = new RamlModelBuilder().buildApi(source,path)
 
-    val api = factory.createApi("test.raml")
-    api.getErrors.foreach(s ⇒ println(s"---> $s"))
+    val validationErrors = api.getValidationResults.mkString("\n")
+    val apiV10 = api.getApiV10
+    if (apiV10 == null) {
+      fail(validationErrors)
+    }
+    else {
+      println(validationErrors)
+    }
 
-    val gen = new InterfaceGenerator(api, GeneratorOptions(packageName = "eu.inn.raml"))
+    val gen = new InterfaceGenerator(apiV10, GeneratorOptions(packageName = "eu.inn.raml"))
     val result = gen.generate()
 
     result should include("package eu.inn.raml")

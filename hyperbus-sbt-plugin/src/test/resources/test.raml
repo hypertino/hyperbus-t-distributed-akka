@@ -51,9 +51,9 @@ types:
         type: number
         format: long
       lastRegistered:
-        type: date
+        type: datetime
         required: false
-      firstInserted?: date
+      firstInserted?: datetime
 
   Author:
     type: object
@@ -62,9 +62,7 @@ types:
       books:
         type: Book[]
       clicks:
-        type: object
-        properties:
-          []: Click
+        type: Click[]
 
 /authors/{authorId}/books/{bookId}:
   uriParameters:
