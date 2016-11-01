@@ -91,11 +91,11 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
       resource.methods.exists { method ⇒
         method.responses.exists { response ⇒
           response.body.exists { body ⇒
-            body.`type`.contains(obj.name)
+            body.`type` == obj.name
           }
         } ||
         method.body.exists { body ⇒
-          body.`type`.contains(obj.name)
+          body.`type` == obj.name
         }
       }
     }
@@ -107,7 +107,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
             method.responses.exists { response ⇒
               response.code.value == "200" &&
                 response.body.exists { body ⇒
-                  body.`type`.contains(obj.name)
+                  body.`type` == obj.name
                 }
             }
         }
@@ -117,7 +117,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
           method.responses.exists { response ⇒
             response.code.value == "201" &&
               response.body.exists { body ⇒
-                body.`type`.contains(obj.name)
+                body.`type` == obj.name
               }
           }
         }
@@ -192,7 +192,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
       case "get" ⇒ "QueryBody"
       case "delete" ⇒ "EmptyBody"
       case _ ⇒
-        method.body.headOption.flatMap(_.`type`.headOption).getOrElse("DynamicBody")
+        method.body.headOption.filterNot(_.`type`()=="any").map(_.`type`).getOrElse("DynamicBody")
     }
     if (uriParameters.nonEmpty) {
       builder.append(",\n")
@@ -215,7 +215,7 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         isFirst = false
         builder.append(getResponseType(r.code.value))
         builder.append('[')
-        val responseBodyType = r.body.headOption.flatMap(_.`type`.headOption).getOrElse("DynamicBody")
+        val responseBodyType = r.body.headOption.filterNot(_.`type`()=="any").map(_.`type`).getOrElse("DynamicBody")
         builder.append(responseBodyType)
         if (r.code.value == "201" && responseBodyType == "DynamicBody") {
           builder.append(" with CreatedBody")
@@ -314,19 +314,11 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
     builder.append("}\n\n")
   }
 
+  // todo: numeric enums?
   protected def mapType(property: TypeDeclaration): String = {
     property match {
-      case se : StringTypeDeclaration ⇒
-        se.`type`().headOption.flatMap { strEnumType ⇒
-          api.types.find(_.name == strEnumType) match {
-            case Some(str: StringTypeDeclaration) if str.enumValues.nonEmpty ⇒
-              Some(strEnumType + ".StringEnum")
-            case _ ⇒ None
-          }
-        } getOrElse {
-          "String"
-        }
-
+      case se : StringTypeDeclaration if se.enumValues().nonEmpty ⇒ se.`type`() + ".StringEnum"
+      case _ : StringTypeDeclaration ⇒ "String"
       case _ : IntegerTypeDeclaration ⇒ "Int"
       case n : NumberTypeDeclaration ⇒ n.format match {
         case "int32" | "int" ⇒ "Int"
@@ -338,9 +330,10 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
         case _ ⇒ "Double"
       }
       case _ : BooleanTypeDeclaration ⇒ "Boolean"
-      case _ : DateTypeDeclaration ⇒ "java.util.Date"
+      case _ : DateTypeDeclaration | _: DateTimeTypeDeclaration |
+           _: DateTimeOnlyTypeDeclaration | _: TimeOnlyTypeDeclaration ⇒ "java.util.Date"
       case a : ArrayTypeDeclaration ⇒
-        "Seq[" + mapType(a.items()) + "]"
+        "Seq[" + mapType(stripArrayEnding(a.`type`())) + "]"
       case d: ObjectTypeDeclaration ⇒ d.`type` match {
         case "object"
           if d.properties.size == 1 &&
@@ -372,6 +365,13 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
           }
         case _ ⇒ other
       }
+  }
+
+  protected def stripArrayEnding(s:String): String = {
+    if (s.endsWith("[]"))
+      s.substring(0,s.length-2)
+    else
+      s
   }
 
   protected def getResponseType(code: String) = code match {

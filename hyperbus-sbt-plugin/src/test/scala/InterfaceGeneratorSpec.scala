@@ -71,8 +71,7 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
 
     case class Author(
       name: String,
-      books: Seq[Book],
-      clicks: Map[String,Click]
+      books: Seq[Book]
     )
 
 
@@ -192,13 +191,13 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         case d: Diff if d.operation == Operation.EQUAL ⇒
           print(d.text)
         case d: Diff if d.operation == Operation.INSERT ⇒
-          println("\n+++ ==>")
+          print("\n+++>")
           print(d.text)
-          println("<== +++\n")
+          print("<+++\n")
         case d: Diff if d.operation == Operation.DELETE ⇒
-          println("\n--- ==>")
+          print("\n--->")
           print(d.text)
-          println("<== ---\n")
+          print("<---\n")
       }
       fail("RAML generator doesn't return reference text")
     }
