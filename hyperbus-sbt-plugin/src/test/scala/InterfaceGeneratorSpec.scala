@@ -35,7 +35,7 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         @fieldName("_links") links: Links.LinksMap = Book.defaultLinks
       ) extends Body with Links
 
-    object Book{
+    object Book extends BodyObjectApi[Book] {
       val selfPattern = "/authors/{authorId}/books/{bookId}"
       val defaultLinks = Links(selfPattern, templated = true)
     }
@@ -45,16 +45,22 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         transactionId: String
       ) extends Body
 
+    object BookTransaction extends BodyObjectApi[BookTransaction]
+
     @body("book-created-transaction")
     case class BookCreatedTransaction(
         transactionId: String,
         @fieldName("_links") links: Links.LinksMap
       ) extends Body with Links with CreatedBody
 
+    object BookCreatedTransaction extends BodyObjectApi[BookCreatedTransaction]
+
     @body("click")
     case class Click(
         clickUrl: String
       ) extends Body
+
+    object Click extends BodyObjectApi[Click]
 
     @body("click-confirmation")
     case class ClickConfirmation(
@@ -62,12 +68,16 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         @fieldName("_links") links: Links.LinksMap
       ) extends Body with Links with CreatedBody
 
+    object ClickConfirmation extends BodyObjectApi[ClickConfirmation]
+
     @body("clicks-information")
     case class ClicksInformation(
         count: Long,
         lastRegistered: Option[java.util.Date],
         firstInserted: Option[java.util.Date]
       ) extends Body
+
+    object ClicksInformation extends BodyObjectApi[ClicksInformation]
 
     case class Author(
       name: String,
@@ -87,6 +97,8 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         Ok[Book]
       ]
 
+    object AuthorBookGet extends RequestObjectApi[AuthorBookGet]
+
     @request(Method.PUT, "/authors/{authorId}/books/{bookId}")
     case class AuthorBookPut(
         authorId: String,
@@ -98,6 +110,8 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         Created[DynamicBody with CreatedBody]
       )]
 
+    object AuthorBookPut extends RequestObjectApi[AuthorBookPut]
+
     @request(Method.GET, "/authors/{authorId}/books")
     case class AuthorBooksGet(
         authorId: String,
@@ -106,6 +120,8 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
       with DefinedResponse[
         Ok[DynamicBody]
       ]
+
+    object AuthorBooksGet extends RequestObjectApi[AuthorBooksGet]
 
     @request(Method.POST, "/authors/{authorId}/books")
     case class AuthorBooksPost(
@@ -117,6 +133,8 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         Created[BookCreatedTransaction]
       )]
 
+    object AuthorBooksPost extends RequestObjectApi[AuthorBooksPost]
+
     @request(Method.POST, "/clicks")
     case class ClicksPost(
         body: Click
@@ -125,15 +143,19 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         Created[ClickConfirmation]
       ]
 
+    object ClicksPost extends RequestObjectApi[ClicksPost]
+
     @request(Method.GET, "/clicks/{clickUrl}")
     case class ClickGet(
         clickUrl: String,
         body: QueryBody
       ) extends Request[QueryBody]
+
+    object ClickGet extends RequestObjectApi[ClickGet]
   """
 
   def normalize(s: String): String = {
-    s.foldLeft (("",true)) { case ((r: String, prevIsSpace: Boolean), c: Char) ⇒
+    val step1 = s.foldLeft (("",true)) { case ((r: String, prevIsSpace: Boolean), c: Char) ⇒
       val c2 = c match {
         case '\r' ⇒ ' '
         case '\t' ⇒ ' '
@@ -146,6 +168,7 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
         (r + c2, c2 == ' ' || c2 == '\n')
       }
     }._1
+    step1.replace("  ", " ").trim()
   }
 
   "RAML" in {
@@ -175,7 +198,9 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
     result should include("package eu.inn.raml")
     val idx = result.indexOf("\nobject BookTag {")
     if (idx < 0) {
+      println("=======================================================================")
       println(result)
+      println("=======================================================================")
       fail("RAML generator doesn't contain permanent marker")
     }
     val resultPermanent = result.substring(idx)
@@ -184,6 +209,9 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
     val referenceValueNormalized = normalize(referenceValue)
 
     if (resultPermanentNormalized.indexOf(referenceValueNormalized) < 0) {
+      println("=======================================================================")
+      println(result)
+      println("=======================================================================")
       val diff = new DiffMatchPatch
       val diffResult = diff.diffMain(resultPermanentNormalized, referenceValueNormalized, false)
       import JavaConversions._

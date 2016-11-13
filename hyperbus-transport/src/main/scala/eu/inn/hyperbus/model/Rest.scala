@@ -118,6 +118,8 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
 
 trait RequestObjectApi[R <: Request[Body]] {
   def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): R
+  def uriPattern: String
+  def method: String
 }
 
 trait Response[+B <: Body] extends Message[B] with TransportResponse {

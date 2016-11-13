@@ -150,10 +150,12 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
       builder.append("\n\n")
 
       getBodyResource.map { r ⇒
-        builder.append(s"object ${obj.name}{\n")
+        builder.append(s"object ${obj.name} extends BodyObjectApi[${obj.name}] {\n")
         builder.append(s"""  val selfPattern = "${r.relativeUri.value}"\n""")
         builder.append(s"""  val defaultLinks = Links(selfPattern, templated = true)\n""")
         builder.append("}\n\n")
+      } getOrElse {
+        builder.append(s"object ${obj.name} extends BodyObjectApi[${obj.name}]\n\n")
       }
     } else {
       builder.append(s"case class ${obj.name}(\n")
@@ -227,8 +229,9 @@ class InterfaceGenerator(api: Api, options: GeneratorOptions) {
       else
         builder.append("\n  ]\n\n")
     } else {
-      builder.append("\n\n")
+      builder.append("\n")
     }
+    builder.append(s"object $name extends RequestObjectApi[$name]\n\n")
   }
 
 //  protected def generateFeedRequest(builder: StringBuilder, method: Method, resource: Resource) = {
