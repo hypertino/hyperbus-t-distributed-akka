@@ -16,6 +16,11 @@ trait Body {
   def serialize(output: OutputStream)
 }
 
+trait BodyObjectApi[B <: Body] {
+  def contentType: Option[String]
+  def apply(contentType: Option[String], jsonParser : com.fasterxml.jackson.core.JsonParser): B
+}
+
 trait NoContentType {
   def contentType: Option[String] = None
 }
@@ -109,6 +114,10 @@ trait Request[+B <: Body] extends Message[B] with TransportRequest {
   }
 
   override def serialize(outputStream: java.io.OutputStream) = MessageSerializer.serializeRequest(this, outputStream)
+}
+
+trait RequestObjectApi[R <: Request[Body]] {
+  def apply(requestHeader: eu.inn.hyperbus.serialization.RequestHeader, jsonParser : com.fasterxml.jackson.core.JsonParser): R
 }
 
 trait Response[+B <: Body] extends Message[B] with TransportResponse {

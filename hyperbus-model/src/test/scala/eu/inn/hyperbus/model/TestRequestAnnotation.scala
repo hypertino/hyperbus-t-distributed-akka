@@ -12,15 +12,20 @@ import org.scalatest.{FreeSpec, Matchers}
 @request(Method.POST, "/test-post-1/{id}")
 case class TestPost1(id: String, body: TestBody1) extends Request[TestBody1]
 
-object TestPost1 {
+trait TestPost1ObjectApi {
+  def apply(id: String, x: TestBody1, headers: Headers): TestPost1
+}
+
+object TestPost1 extends RequestObjectApi[TestPost1] with TestPost1ObjectApi {
   def apply(id: String, x: String, headers: Headers): TestPost1 = TestPost1(id, TestBody1(x), headers)
 }
 
 @body("test-inner-body")
 case class TestInnerBody(innerData: String) extends Body {
-
   def toEmbedded(links: Links.LinksMap = Links("/test-inner-resource")) = TestInnerBodyEmbedded(innerData, links)
 }
+
+object TestInnerBody extends BodyObjectApi[TestInnerBody]
 
 @body("test-inner-body")
 case class TestInnerBodyEmbedded(innerData: String,
@@ -29,14 +34,20 @@ case class TestInnerBodyEmbedded(innerData: String,
   def toOuter: TestInnerBody = TestInnerBody(innerData)
 }
 
+object TestInnerBodyEmbedded extends BodyObjectApi[TestInnerBodyEmbedded]
+
 case class TestOuterBodyEmbedded(simple: TestInnerBodyEmbedded, collection: List[TestInnerBodyEmbedded])
 
 @body("test-outer-body")
 case class TestOuterBody(outerData: String,
                          @fieldName("_embedded") embedded: TestOuterBodyEmbedded) extends Body
 
+object TestOuterBody extends BodyObjectApi[TestOuterBody]
+
 @request(Method.GET, "/test-outer-resource")
 case class TestOuterResource(body: TestOuterBody) extends Request[TestOuterBody]
+
+object TestOuterResource extends RequestObjectApi[TestOuterResource]
 
 class TestRequestAnnotation extends FreeSpec with Matchers {
   "Request Annotation " - {

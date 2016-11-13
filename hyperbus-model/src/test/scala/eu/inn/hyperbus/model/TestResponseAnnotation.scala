@@ -14,6 +14,8 @@ case class TestCreatedBody(resourceId: String,
 
 // with NoContentType
 
+object TestCreatedBody extends BodyObjectApi[TestCreatedBody]
+
 
 class TestResponseAnnotation extends FreeSpec with Matchers {
   "Response Annotation " - {
@@ -56,7 +58,7 @@ class TestResponseAnnotation extends FreeSpec with Matchers {
 
       val o: Any = r1
       o match {
-        case Created(body,headers) ⇒
+        case Created(body, headers) ⇒
           body shouldBe a[TestCreatedBody]
           headers shouldBe a[Map[_,_]]
         case _ ⇒ fail("unapply didn't matched for a response")
