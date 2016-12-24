@@ -123,7 +123,6 @@ private[transport] class TopicSubscription[REQ <: Request[Body]](
         val inputBytes = new ByteArrayInputStream(message)
         val input = MessageDeserializer.deserializeRequestWith(inputBytes)(underlying.inputDeserializer)
         if (underlying.requestMatcher.matchMessage(input)) {
-          println(input + " - " + underlying)
           // todo: test order of matching?
           underlying.observer.onNext(input)
           atLeastOneHandler = true
