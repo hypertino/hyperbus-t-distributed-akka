@@ -1,4 +1,4 @@
-import eu.inn.hyperbus.raml.{GeneratorOptions, InterfaceGenerator}
+import com.hypertino.hyperbus.raml.{GeneratorOptions, InterfaceGenerator}
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch.{Diff, Operation}
 import org.raml.v2.api.RamlModelBuilder
@@ -192,10 +192,10 @@ class InterfaceGeneratorSpec extends FreeSpec with Matchers {
       println(validationErrors)
     }
 
-    val gen = new InterfaceGenerator(apiV10, GeneratorOptions(packageName = "eu.inn.raml"))
+    val gen = new InterfaceGenerator(apiV10, GeneratorOptions(packageName = "com.hypertino.raml"))
     val result = gen.generate()
 
-    result should include("package eu.inn.raml")
+    result should include("package com.hypertino.raml")
     val idx = result.indexOf("\nobject BookTag {")
     if (idx < 0) {
       println("=======================================================================")

@@ -1,11 +1,11 @@
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.typesafe.config.ConfigFactory
-import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.{Body, DynamicRequest, Method, Request}
-import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
-import eu.inn.hyperbus.transport.api.uri.Uri
+import com.hypertino.hyperbus.model.annotations.{body, request}
+import com.hypertino.hyperbus.model.{Body, DynamicRequest, Method, Request}
+import com.hypertino.hyperbus.transport.api._
+import com.hypertino.hyperbus.transport.api.matchers.RequestMatcher
+import com.hypertino.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}

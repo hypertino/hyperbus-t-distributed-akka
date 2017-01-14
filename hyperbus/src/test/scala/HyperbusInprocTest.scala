@@ -1,10 +1,10 @@
-import eu.inn.binders.value.{Null, Text}
-import eu.inn.hyperbus.Hyperbus
-import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher}
-import eu.inn.hyperbus.transport.api.uri.Uri
+import com.hypertino.binders.value.{Null, Text}
+import com.hypertino.hyperbus.Hyperbus
+import com.hypertino.hyperbus.model._
+import com.hypertino.hyperbus.transport._
+import com.hypertino.hyperbus.transport.api._
+import com.hypertino.hyperbus.transport.api.matchers.{Any, RequestMatcher}
+import com.hypertino.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 import testclasses._

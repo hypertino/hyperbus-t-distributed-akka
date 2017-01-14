@@ -2,17 +2,17 @@
 import akka.actor.{Actor, ActorSystem}
 import akka.testkit.TestActorRef
 import akka.util.Timeout
-import eu.inn.binders.annotations.fieldName
-import eu.inn.binders.value.{Null, Text}
-import eu.inn.hyperbus.akkaservice.annotations.group
-import eu.inn.hyperbus.akkaservice.{AkkaHyperService, _}
-import eu.inn.hyperbus.model._
-import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.{Any, RequestMatcher}
-import eu.inn.hyperbus.transport.api.uri.Uri
-import eu.inn.hyperbus.{Hyperbus, IdGenerator}
+import com.hypertino.binders.annotations.fieldName
+import com.hypertino.binders.value.{Null, Text}
+import com.hypertino.hyperbus.akkaservice.annotations.group
+import com.hypertino.hyperbus.akkaservice.{AkkaHyperService, _}
+import com.hypertino.hyperbus.model._
+import com.hypertino.hyperbus.model.annotations.{body, request}
+import com.hypertino.hyperbus.transport._
+import com.hypertino.hyperbus.transport.api._
+import com.hypertino.hyperbus.transport.api.matchers.{Any, RequestMatcher}
+import com.hypertino.hyperbus.transport.api.uri.Uri
+import com.hypertino.hyperbus.{Hyperbus, IdGenerator}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{FreeSpec, Matchers}
 import rx.lang.scala.Observer

@@ -1,8 +1,8 @@
 package testclasses
 
-import eu.inn.binders.annotations.fieldName
-import eu.inn.hyperbus.model.annotations.{body, request}
-import eu.inn.hyperbus.model.{EmptyBody, QueryBody, _}
+import com.hypertino.binders.annotations.fieldName
+import com.hypertino.hyperbus.model.annotations.{body, request}
+import com.hypertino.hyperbus.model.{EmptyBody, QueryBody, _}
 
 @body("test-1")
 case class TestBody1(resourceData: String) extends Body

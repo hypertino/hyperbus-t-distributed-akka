@@ -8,13 +8,13 @@ import akka.event.LoggingReceive
 import akka.testkit.TestActorRef
 import com.fasterxml.jackson.core.JsonParser
 import com.typesafe.config.ConfigFactory
-import eu.inn.hyperbus.model.annotations.{body, request, response}
-import eu.inn.hyperbus.model.{Body, Method, Request, Response}
-import eu.inn.hyperbus.serialization.{MessageDeserializer, ResponseHeader}
-import eu.inn.hyperbus.transport._
-import eu.inn.hyperbus.transport.api._
-import eu.inn.hyperbus.transport.api.matchers.RequestMatcher
-import eu.inn.hyperbus.transport.api.uri.Uri
+import com.hypertino.hyperbus.model.annotations.{body, request, response}
+import com.hypertino.hyperbus.model.{Body, Method, Request, Response}
+import com.hypertino.hyperbus.serialization.{MessageDeserializer, ResponseHeader}
+import com.hypertino.hyperbus.transport._
+import com.hypertino.hyperbus.transport.api._
+import com.hypertino.hyperbus.transport.api.matchers.RequestMatcher
+import com.hypertino.hyperbus.transport.api.uri.Uri
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
@@ -57,7 +57,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
   before {
     val transportConfiguration = TransportConfigurationLoader.fromConfig(ConfigFactory.load())
     transportManager = new TransportManager(transportConfiguration)
-    ActorSystemRegistry.get("eu-inn").foreach { implicit actorSystem ⇒
+    ActorSystemRegistry.get("com-hypertino").foreach { implicit actorSystem ⇒
       val testActor = TestActorRef[TestActorX]
       Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
     }
