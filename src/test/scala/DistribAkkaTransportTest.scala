@@ -15,13 +15,16 @@ import com.hypertino.hyperbus.transport.api._
 import com.hypertino.hyperbus.transport.api.matchers.RequestMatcher
 import com.typesafe.config.ConfigFactory
 import monix.execution.Ack.Continue
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Span}
 import org.scalatest.{BeforeAndAfter, FreeSpec, Matchers}
+import scaldi.Module
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
+import scala.util.Success
 
 
 
@@ -58,8 +61,11 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
 
   var transportManager: TransportManager = null
   before {
+    implicit val injector = new Module {
+      bind [Scheduler] to global
+    }
     val transportConfiguration = TransportConfigurationLoader.fromConfig(ConfigFactory.load())
-    transportManager = new TransportManager(transportConfiguration)
+    transportManager = new TransportManager(transportConfiguration)(injector)
     ActorSystemRegistry.get("com-hypertino").foreach { implicit actorSystem ⇒
       val testActor = TestActorRef[TestActorX]
       Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
@@ -85,18 +91,18 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       val requestDeserializer: RequestDeserializer[MockRequest] = MockRequest.apply(_: Reader, _: Obj)
 
       val c1 = transportManager.commands[MockRequest](RequestMatcher("hb://mock", Method.POST), requestDeserializer).subscribe { c ⇒
-        c.responsePromise.success {
+        c.reply(Success {
           cnt.incrementAndGet()
           MockResponse(MockBody(c.request.body.test.reverse))
-        }
+        })
         Continue
       }
 
       val c2 = transportManager.commands[MockRequest](RequestMatcher("hb://mock", Method.POST), requestDeserializer).subscribe { c ⇒
-        c.responsePromise.success {
+        c.reply(Success {
           cnt.incrementAndGet()
           MockResponse(MockBody(c.request.body.test.reverse))
-        }
+        })
         Continue
       }
 
@@ -145,7 +151,7 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
       }
       */
 
-      Thread.sleep(500) // we need to wait until subscriptions will go across
+      // Thread.sleep(500) // we need to wait until subscriptions will go across
 
       val f3: Future[ResponseBase] = transportManager.ask(MockNotExistingRequest(MockBody("12345")), responseDeserializer) runAsync
 

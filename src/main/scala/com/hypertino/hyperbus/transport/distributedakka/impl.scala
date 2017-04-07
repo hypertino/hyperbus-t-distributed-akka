@@ -4,15 +4,16 @@ import java.io.Reader
 import java.util.concurrent.atomic.AtomicInteger
 
 import akka.actor._
-import akka.pattern.ask
+import akka.pattern.pipe
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.{Subscribe, SubscribeAck, Unsubscribe, UnsubscribeAck}
 import com.hypertino.binders.value.Obj
-import com.hypertino.hyperbus.model.{Body, DynamicRequest, EmptyBody, ErrorBody, HyperbusError, InternalServerError, Request, RequestBase, RequestHeaders}
+import com.hypertino.hyperbus.model.{Body, DynamicRequest, EmptyBody, ErrorBody, HyperbusError, InternalServerError, Request, RequestBase, RequestHeaders, ResponseBase}
 import com.hypertino.hyperbus.serialization.{MessageReader, RequestDeserializer}
 import com.hypertino.hyperbus.transport.api.CommandEvent
 import com.hypertino.hyperbus.transport.api.matchers.RequestMatcher
 import com.hypertino.hyperbus.util.HyperbusSubscription
+import monix.eval.Task
 
 import scala.collection.mutable
 import scala.concurrent.{Await, Promise}
@@ -75,7 +76,7 @@ private[transport] trait DAkkaSubscription {
     , groupNameOption)
   }
 
-  def handleRequest(implicit request: RequestBase, sender: ActorRef)
+  def handleRequest(sender: ActorRef)(implicit request: RequestBase, context: ActorContext)
 }
 
 private[transport] class CommandHyperbusSubscription(val requestMatcher: RequestMatcher,
@@ -96,15 +97,15 @@ private[transport] class CommandHyperbusSubscription(val requestMatcher: Request
     subscriptionManager ! UnsubscribeCommand(this)
   }
 
-  override def handleRequest(implicit request: RequestBase, sender: ActorRef): Unit = {
-    val cmd = CommandEvent(request, Promise())
-    subject.onNext(cmd)
-    val futureResult = cmd.responsePromise.future recover {
+
+  override def handleRequest(sender: ActorRef)(implicit request: RequestBase, context: ActorContext): Unit = {
+    Task.create[ResponseBase] { (_, callback) ⇒
+      val command = CommandEvent(request, callback)
+      publish(command).runAsync
+    }.onErrorRecover {
       case e: HyperbusError[ErrorBody] ⇒ e
       case NonFatal(e) ⇒ InternalServerError(ErrorBody(e.toString)) // todo: log exception & errorId
-    } map { result ⇒
-      sender ! HyperbusResponse(result.serializeToString)
-    }
+    }.map(r ⇒ HyperbusResponse(r.serializeToString)).runAsync pipeTo sender
   }
 }
 
@@ -127,8 +128,8 @@ private[transport] class EventHyperbusSubscription(val requestMatcher: RequestMa
     subscriptionManager ! UnsubscribeCommand(this)
   }
 
-  override def handleRequest(implicit request: RequestBase, sender: ActorRef): Unit = {
-    subject.onNext(request)
+  override def handleRequest(sender: ActorRef)(implicit request: RequestBase, context: ActorContext): Unit = {
+    publish(request)
   }
 }
 
@@ -259,8 +260,6 @@ private[transport] abstract class SubscriptionActor extends Actor with ActorLogg
 }
 
 private[transport] class CommandActor(val topic: String) extends SubscriptionActor {
-  import context._
-
   def groupNameOption = None
 
   def handleRequest(request: Request[Body], matchedSubscriptions: Seq[DAkkaSubscription]) = {
@@ -269,7 +268,7 @@ private[transport] class CommandActor(val topic: String) extends SubscriptionAct
       sender() ! Status.Failure(HandlerIsNotFound(s"No handler were found for $request"))
     }
     else {
-      getRandomElement(matchedSubscriptions).handleRequest(request, sender)
+      getRandomElement(matchedSubscriptions).handleRequest(sender)(request, context)
     }
   }
 }
@@ -286,7 +285,7 @@ private[transport] class EventActor(val topic: String, groupName: String) extend
           getRandomElement(subscriptions)
       }
 
-      selectedSubscriptions.foreach(_.handleRequest(request, sender))
+      selectedSubscriptions.foreach(_.handleRequest(sender)(request, context))
     }
   }
 }
