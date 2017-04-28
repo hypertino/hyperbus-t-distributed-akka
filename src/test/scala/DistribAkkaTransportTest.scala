@@ -1,7 +1,7 @@
 import java.io.Reader
 import java.util.concurrent.atomic.AtomicInteger
 
-import akka.actor.{Actor, ActorLogging}
+import akka.actor.{Actor, ActorLogging, ActorSystem}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.event.LoggingReceive
@@ -10,9 +10,9 @@ import com.hypertino.binders.value.Obj
 import com.hypertino.hyperbus.model.annotations.{body, request, response}
 import com.hypertino.hyperbus.model.{Body, MessagingContext, Method, Request, Response, ResponseBase, ResponseHeaders, ResponseMeta}
 import com.hypertino.hyperbus.serialization.{RequestDeserializer, ResponseBaseDeserializer}
-import com.hypertino.hyperbus.transport.ActorSystemRegistry
 import com.hypertino.hyperbus.transport.api._
 import com.hypertino.hyperbus.transport.api.matchers.RequestMatcher
+import com.hypertino.hyperbus.transport.distributedakka.ActorSystemInjector
 import com.typesafe.config.ConfigFactory
 import monix.execution.Ack.Continue
 import monix.execution.Scheduler
@@ -63,13 +63,13 @@ class DistribAkkaTransportTest extends FreeSpec with ScalaFutures with Matchers 
   before {
     implicit val injector = new Module {
       bind [Scheduler] to global
+      bind [ActorSystem] identifiedBy "com-hypertino" to ActorSystem("com-hypertino")
     }
-    val transportConfiguration = TransportConfigurationLoader.fromConfig(ConfigFactory.load())
+    val transportConfiguration = TransportConfigurationLoader.fromConfig(ConfigFactory.load(), injector)
     transportManager = new TransportManager(transportConfiguration)(injector)
-    ActorSystemRegistry.get("com-hypertino").foreach { implicit actorSystem ⇒
-      val testActor = TestActorRef[TestActorX]
-      Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
-    }
+    implicit val actorSystem = ActorSystemInjector()
+    val testActor = TestActorRef[TestActorX]
+    Cluster(actorSystem).subscribe(testActor, initialStateMode = InitialStateAsEvents, classOf[MemberEvent])
   }
 
   after {

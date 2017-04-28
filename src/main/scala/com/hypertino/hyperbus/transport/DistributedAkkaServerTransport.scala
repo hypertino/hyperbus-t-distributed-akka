@@ -14,22 +14,19 @@ import com.typesafe.config.Config
 import monix.eval.Task
 import monix.reactive.Observable
 import org.slf4j.LoggerFactory
+import scaldi.Injector
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
-                                     val actorSystemRegistryKey: Option[String] = None,
                                      implicit val scheduler: monix.execution.Scheduler,
                                      implicit val timeout: Timeout = Util.defaultTimeout)
   extends ServerTransport {
 
-  private def this(actorSystemWrapper: ActorSystemWrapper, scheduler: monix.execution.Scheduler, timeout: Timeout) =
-    this(actorSystemWrapper.actorSystem, Some(actorSystemWrapper.key), scheduler)
-
-  def this(config: Config) = this(
-    actorSystemWrapper = ActorSystemRegistry.addRef(config),
+  def this(config: Config, injector: Injector) = this(
+    actorSystem = ActorSystemInjector(config.getOptionString("actor-system"))(injector),
     scheduler = monix.execution.Scheduler.Implicits.global, // todo: configurable
     timeout = new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
@@ -68,13 +65,7 @@ class DistributedAkkaServerTransport(val actorSystem: ActorSystem,
         Future.successful(false)
     }
 
-    Task.fromFuture(futureStopManager map { result ⇒
-      actorSystemRegistryKey foreach { key ⇒
-        log.debug(s"DistributedAkkaServerTransport: releasing ActorSystem(${actorSystem.name}) key: $key")
-        ActorSystemRegistry.release(key)(duration)
-      }
-      result
-    })
+    Task.fromFuture(futureStopManager).timeout(duration)
   }
 }
 

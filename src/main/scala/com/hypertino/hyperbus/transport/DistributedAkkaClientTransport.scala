@@ -13,19 +13,16 @@ import com.hypertino.hyperbus.util.ConfigUtils._
 import com.typesafe.config.Config
 import monix.eval.Task
 import org.slf4j.LoggerFactory
+import scaldi.Injector
 
-import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 
 class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
                                      val localAffinity: Boolean = true,
-                                     val actorSystemRegistryKey: Option[String] = None,
                                      implicit val timeout: Timeout = Util.defaultTimeout) extends ClientTransport {
 
-  private def this(actorSystemWrapper: ActorSystemWrapper, localAffinity: Boolean, timeout: Timeout) =
-    this(actorSystemWrapper.actorSystem, localAffinity, Some(actorSystemWrapper.key), timeout)
-
-  def this(config: Config) = this(ActorSystemRegistry.addRef(config),
+  def this(config: Config, injector: Injector) = this(
+    actorSystem = ActorSystemInjector(config.getOptionString("actor-system"))(injector),
     localAffinity = config.getOptionBoolean("local-afinity") getOrElse true,
     new Timeout(config.getOptionDuration("timeout") getOrElse Util.defaultTimeout)
   )
@@ -71,10 +68,6 @@ class DistributedAkkaClientTransport(val actorSystem: ActorSystem,
 
   override def shutdown(duration: FiniteDuration): Task[Boolean] = {
     log.info("Shutting down DistributedAkkaClientTransport...")
-    actorSystemRegistryKey foreach { key ⇒
-      log.debug(s"DistributedAkkaClientTransport: releasing ActorSystem(${actorSystem.name}) key: $key")
-      ActorSystemRegistry.release(key)(duration)
-    }
     Task.now(true)
   }
 }
